@@ -36,9 +36,28 @@ your operating system and CPU from the
 
 | File | For |
 |---|---|
-| `wsprd-linux-x86_64` | Linux on x86-64 with AVX2 (Intel since Haswell, AMD since Zen) |
-| `wsprd-linux-aarch64` | Linux on 64-bit ARM: a Raspberry Pi 4 or 5 on a 64-bit OS, for one |
-| `wsprd-windows-x86_64.exe` | 64-bit Windows 10 or 11 (AVX2); nothing else to install |
+| `wsprd-linux-x86_64` | Linux on an x86-64 CPU with AVX2 |
+| `wsprd-linux-aarch64` | Linux on 64-bit ARM (NEON): a Raspberry Pi 3, 4, 5 or Zero 2 W on a 64-bit OS, for one |
+| `wsprd-windows-x86_64.exe` | 64-bit Windows 10 or 11 on an x86-64 CPU with AVX2; nothing else to install |
+
+**The CPU.** The decoder's searches run eight lanes at a time, with the
+CPU's vector instructions:
+
+- **x86-64: AVX2** (with FMA and BMI2, the x86-64-v3 level). Intel: Core
+  i3/i5/i7 from the 4th generation (Haswell, 2013) on, and Xeons from E3/E5
+  v3; Pentium, Celeron and Atom only from Alder Lake-N (N100, N200, N305,
+  2023), not the earlier ones (Gemini Lake, Jasper Lake and the like). AMD:
+  every Ryzen, EPYC and Threadripper (Zen, 2017 on), and Excavator APUs
+  (2015). On Linux, `grep -o -m1 avx2 /proc/cpuinfo` prints `avx2` if yours
+  has it. Without it the program stops at once ("Illegal instruction"):
+build it yourself instead, without AVX2 (see [Building it](#building-it)).
+- **ARM: NEON**, which every 64-bit ARM CPU has: on a Raspberry Pi 3, 4, 5,
+  400, 500, Compute Module 3, 4 or 5, or Zero 2 W, running a 64-bit OS
+  (Raspberry Pi OS 64-bit, `uname -m` says `aarch64`). Not the original Pi,
+  Pi 2 (v1.1) or Pi Zero / Zero W, nor a 32-bit OS (`armv7l`): build it
+  yourself there (see [Building it](#building-it)), without the vector code.
+
+Built without the vector code, it decodes the same, only slower.
 
 The release `latest` always holds the newest, so its links stay the same,
 e.g. `https://github.com/madpsy/ubersdr_wsprd/releases/download/latest/wsprd-linux-x86_64`;
@@ -178,6 +197,16 @@ in a minute or two): `build/wsprd`, and stripped, in `build/dist`. Or by hand:
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
+
+On an x86-64 CPU without AVX2, build for the compiler's baseline instead
+(the same decodes, slower):
+
+```
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DWSPRD_X86_ARCH=
+cmake --build build
+```
+
+A 32-bit ARM system (`armv7l`) builds the plain code by itself.
 
 **Windows**, cross-compiled on Linux with Docker (mingw-w64, FFTW built in,
 so `wsprd.exe` is one file that needs nothing beside it):
