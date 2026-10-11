@@ -40,8 +40,9 @@ your operating system and CPU from the
 | `wsprd-linux-aarch64` | Linux on 64-bit ARM (NEON): a Raspberry Pi 3, 4, 5 or Zero 2 W on a 64-bit OS, for one |
 | `wsprd-windows-x86_64.exe` | 64-bit Windows 10 or 11 on an x86-64 CPU with AVX2; nothing else to install |
 
-**The CPU.** The decoder's searches run eight lanes at a time, with the
-CPU's vector instructions:
+**The CPU: the prebuilt binaries need AVX2 on x86-64 (Linux and Windows)
+and NEON on ARM.** The decoder's searches run eight lanes at a time with
+these vector instructions:
 
 - **x86-64: AVX2** (with FMA and BMI2, the x86-64-v3 level). Intel: Core
   i3/i5/i7 from the 4th generation (Haswell, 2013) on, and Xeons from E3/E5
