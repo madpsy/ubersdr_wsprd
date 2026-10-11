@@ -168,6 +168,21 @@ Period by period, side by side (user CPU, seconds; decodes the number of
 | 20 m, WSJT-X's sample | 8 | 3.00 | 0.34 | 8.9x | 4.19 | 0.71 | 5.9x |
 | **all six** | 29 | **13.7** | **1.5** | **9.1x** | **19.6** | **3.4** | **5.7x** |
 
+Without AVX2 (built with `-DWSPRD_X86_ARCH=`, for an x86-64 CPU that lacks
+it) the decodes are the same, and it still takes half WSJT-X's CPU; with AVX2
+(the prebuilt binaries) four times less again. On the same x86-64 machine,
+the same six periods:
+
+| Period | WSJT-X's | this, without AVX2 | this, with AVX2 | AVX2's gain |
+|---|---:|---:|---:|---:|
+| 40 m, 19:14 | 2.13 | 0.96 | 0.25 | 3.9x |
+| 40 m, 19:16 | 2.81 | 1.51 | 0.31 | 4.9x |
+| 40 m, 19:18 | 2.00 | 0.96 | 0.23 | 4.1x |
+| 40 m, 19:20 | 2.06 | 1.01 | 0.24 | 4.2x |
+| 40 m, 19:22 | 1.72 | 0.93 | 0.22 | 4.3x |
+| 20 m, WSJT-X's sample | 3.00 | 1.34 | 0.35 | 3.8x |
+| **all six** | **13.7** | **6.7** | **1.6** | **4.2x** |
+
 About 21 MB while a WSPR period decodes (140 MB for WSPR-15), freed after.
 To time it yourself, on any of `recordings/`:
 
