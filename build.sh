@@ -102,8 +102,8 @@ dist_assets() {
 section_for() {
     local dir=$1 platform=$2 needs built_on fence='```'
     case "$platform" in
-        linux-x86_64) needs="an x86-64 CPU with AVX2 (Intel since Haswell, AMD since Zen) and FFTW's single-precision library (Debian/Ubuntu: \`sudo apt install libfftw3-single3\`)" ;;
-        linux-aarch64) needs="64-bit ARM (a Raspberry Pi 4 or 5 on a 64-bit OS, for one) and FFTW's single-precision library (\`sudo apt install libfftw3-single3\`)" ;;
+        linux-x86_64) needs="an x86-64 CPU with AVX2 (Intel since Haswell, AMD since Zen); nothing else to install" ;;
+        linux-aarch64) needs="64-bit ARM (a Raspberry Pi 4 or 5 on a 64-bit OS, for one); nothing else to install" ;;
         windows-x86_64) needs="64-bit Windows 10 or 11 on an x86-64 CPU with AVX2; nothing else to install" ;;
         *) needs="an ${platform#*-} CPU" ;;
     esac
@@ -211,6 +211,12 @@ rm -rf "$build"
 cmake -S "$root" -B "$build" -DCMAKE_BUILD_TYPE=Release -DWSPRD_VERSION="$version"
 cmake --build "$build" -j "$(nproc)"
 "$build/wsprd" --version | grep -qF "wsprd $version " || { echo "wsprd was not built as $version" >&2; exit 1; }
+# FFTW is linked in (CMakeLists.txt, libfftw3-dev's libfftw3f.a): a binary
+# that would need it installed is not one to hand out.
+if ldd "$build/wsprd" | grep -q libfftw3; then
+    echo "wsprd needs FFTW's shared library: FFTW's static one (libfftw3f.a, in libfftw3-dev) was not found" >&2
+    exit 1
+fi
 
 arch=$(uname -m)
 dist=$build/dist

@@ -65,8 +65,7 @@ e.g. `https://github.com/madpsy/ubersdr_wsprd/releases/download/latest/wsprd-lin
 each version is also kept as a release of its own (`vYYYY.MM.DD`), and
 `wsprd --version` says which you have.
 
-On Linux it needs FFTW's single-precision library:
-`sudo apt install libfftw3-single3` on Debian, Ubuntu or Raspberry Pi OS.
+Each is one file with FFTW built in: nothing else to install.
 
 Then rename it `wsprd` (`wsprd.exe` on Windows) and put it in place of
 WSJT-X's: whatever ran WSJT-X's `wsprd` runs this one, with nothing else to
@@ -213,6 +212,9 @@ in a minute or two): `build/wsprd`, and stripped, in `build/dist`. Or by hand:
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
+
+FFTW is linked into the binary (`libfftw3-dev`'s static library); add
+`-DWSPRD_STATIC_FFTW=OFF` to link the shared one instead.
 
 On an x86-64 CPU without AVX2, build for the compiler's baseline instead
 (the same decodes, slower):

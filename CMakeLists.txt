@@ -31,6 +31,19 @@ endif()
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(FFTW3F REQUIRED IMPORTED_TARGET fftw3f)
+# FFTW linked into the binary (libfftw3-dev's libfftw3f.a), so it runs with
+# nothing to install; OFF, or no libfftw3f.a, links the shared library.
+option(WSPRD_STATIC_FFTW "Link FFTW's static library into wsprd" ON)
+if(WSPRD_STATIC_FFTW)
+  find_library(FFTW3F_STATIC_LIBRARY NAMES libfftw3f.a HINTS ${FFTW3F_LIBRARY_DIRS})
+endif()
+if(WSPRD_STATIC_FFTW AND FFTW3F_STATIC_LIBRARY)
+  message(STATUS "FFTW linked in: ${FFTW3F_STATIC_LIBRARY}")
+  set(WSPRD_FFTW ${FFTW3F_STATIC_LIBRARY} m)
+  include_directories(${FFTW3F_INCLUDE_DIRS})
+else()
+  set(WSPRD_FFTW PkgConfig::FFTW3F)
+endif()
 
 # The decoder must decode exactly as WSJT-X's wsprd does, floats to the bit:
 # as wsprd.c built with gcc -O3 and no contraction. On x86-64 that is WSJT-X's
@@ -62,6 +75,6 @@ message(STATUS "wsprd version: ${WSPRD_VERSION_BUILT}")
 
 add_executable(wsprd src/wsprd_main.cpp ${WSPRD_SOURCES} src/fft.cpp src/fft_wisdom.cpp)
 target_include_directories(wsprd PRIVATE src)
-target_link_libraries(wsprd PRIVATE PkgConfig::FFTW3F Threads::Threads)
+target_link_libraries(wsprd PRIVATE ${WSPRD_FFTW} Threads::Threads)
 target_compile_definitions(wsprd PRIVATE WSPRD_VERSION="${WSPRD_VERSION_BUILT}")
 target_compile_options(wsprd PRIVATE -Wall -Wextra)
