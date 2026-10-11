@@ -1,0 +1,1 @@
+-v -d -f 10.1387 recordings/wsprd-sim/sim-sweep2-261010_1204.c2

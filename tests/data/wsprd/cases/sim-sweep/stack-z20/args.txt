@@ -1,0 +1,1 @@
+-c -J -z 20 -C 500 -f 14.0956 tests/data/wsprd/inputs/sim-sweep-261010_1202.c2

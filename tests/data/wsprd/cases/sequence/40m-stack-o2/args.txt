@@ -1,0 +1,5 @@
+-J -o 2 -d -w -f 7.0386 recordings/40m-wspr-20261010-1914/261010_1914.wav
+-J -o 2 -d -w -f 7.0386 recordings/40m-wspr-20261010-1914/261010_1916.wav
+-J -o 2 -d -w -f 7.0386 recordings/40m-wspr-20261010-1914/261010_1918.wav
+-J -o 2 -d -w -f 7.0386 recordings/40m-wspr-20261010-1914/261010_1920.wav
+-J -o 2 -d -w -f 7.0386 recordings/40m-wspr-20261010-1914/261010_1922.wav

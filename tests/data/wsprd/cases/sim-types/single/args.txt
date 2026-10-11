@@ -1,0 +1,1 @@
+-s -f 14.0956 tests/data/wsprd/inputs/sim-types-261010_1200.c2

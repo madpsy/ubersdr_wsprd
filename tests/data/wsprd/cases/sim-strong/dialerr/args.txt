@@ -1,0 +1,1 @@
+-e 2.5 -d -f 14.0956 recordings/wsprd-sim/sim-strong-261010_1158.c2

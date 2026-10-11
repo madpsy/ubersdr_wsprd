@@ -1,0 +1,1 @@
+-m -v -d -f 0.4742 recordings/wsprd-sim/sim-wav15-261010_1230.wav

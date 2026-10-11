@@ -1,0 +1,1 @@
+-J -f 7.0386 recordings/wsprd-sim/sim-wav2-261010_1218.wav

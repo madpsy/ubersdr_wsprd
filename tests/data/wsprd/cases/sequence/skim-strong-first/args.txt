@@ -1,0 +1,4 @@
+-c -C 500 -o 4 -d -f 14.0956 recordings/wsprd-sim/sim-strong-261010_1158.c2
+-c -C 500 -o 4 -d -f 14.0956 tests/data/wsprd/inputs/sim-sweep-261010_1202.c2
+-c -C 500 -o 4 -d -f 10.1387 recordings/wsprd-sim/sim-sweep2-261010_1204.c2
+-c -C 500 -o 4 -d -f 0.4742 recordings/wsprd-sim/sim-wspr15-261010_1215.c2

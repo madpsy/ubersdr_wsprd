@@ -1,0 +1,1 @@
+-q -f 14.0956 recordings/wsprd-sim/150426_0918.wav

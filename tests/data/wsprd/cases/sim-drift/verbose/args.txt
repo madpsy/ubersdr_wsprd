@@ -1,0 +1,1 @@
+-v -d -f 7.0386 tests/data/wsprd/inputs/sim-drift-261010_1206.c2

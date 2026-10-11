@@ -1,0 +1,1 @@
+- wspr_spots.txt ro

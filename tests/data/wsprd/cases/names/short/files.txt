@@ -1,0 +1,4 @@
+tests/data/wsprd/inputs/sim-types-261010_1200.c2 x.c2
+tests/data/wsprd/inputs/sim-types-261010_1200.c2 a.c2
+tests/data/wsprd/inputs/sim-types-261010_1200.c2 1200.c2
+tests/data/wsprd/inputs/sim-types-261010_1200.c2 x1200.c2

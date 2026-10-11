@@ -1,0 +1,1 @@
+ -f 0.4742 recordings/wsprd-sim/sim-wspr15-261010_1215.c2

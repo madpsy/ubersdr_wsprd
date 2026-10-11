@@ -1,0 +1,1 @@
+-H -o 4 -f 1.8366 recordings/wsprd-sim/sim-edge-261010_1214.c2

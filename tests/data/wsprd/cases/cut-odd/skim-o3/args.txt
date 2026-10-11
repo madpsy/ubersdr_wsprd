@@ -1,0 +1,1 @@
+-c -C 500 -o 3 -d -f 7.0386 tests/data/wsprd/inputs/cut-odd-261010_1218.wav
