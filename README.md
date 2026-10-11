@@ -51,7 +51,7 @@ these vector instructions:
   every Ryzen, EPYC and Threadripper (Zen, 2017 on), and Excavator APUs
   (2015). On Linux, `grep -o -m1 avx2 /proc/cpuinfo` prints `avx2` if yours
   has it. Without it the program stops at once ("Illegal instruction"):
-build it yourself instead, without AVX2 (see [Building it](#building-it)).
+  build it yourself instead, without AVX2 (see [Building it](#building-it)).
 - **ARM: NEON**, which every 64-bit ARM CPU has: on a Raspberry Pi 3, 4, 5,
   400, 500, Compute Module 3, 4 or 5, or Zero 2 W, running a 64-bit OS
   (Raspberry Pi OS 64-bit, `uname -m` says `aarch64`). Not the original Pi,
