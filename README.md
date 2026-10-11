@@ -1,9 +1,12 @@
 # wsprd
 
 WSJT-X's WSPR decoder, `wsprd`, rewritten in C++ to take a fraction of the
-CPU, and a drop-in replacement for it: the same options, the same output and
-the same files, byte for byte. Anything that runs `wsprd` can run this one
-instead.
+CPU.
+
+**A drop-in replacement for WSJT-X's `wsprd`.** It takes exactly the same
+arguments, plus one more (`-n`), and gives the same output and files, byte
+for byte. Put it where WSJT-X's `wsprd` is and whatever runs `wsprd` runs
+this one, with nothing to change.
 
 - **The same decodes, to the bit.** The decoder is WSJT-X's own `wsprd.c`
   (with its OSD, `osdwspr.f90`) at WSJT-X 3.2.0-rc1, commit `567ad29ce`,
@@ -15,7 +18,9 @@ instead.
   arithmetic, done in a cheaper order and many lanes at once (AVX2 on x86-64,
   NEON on arm64).
 - **One option more, `-n`**: no drift search, and each signal's spread.
-- Linux (x86-64, arm64) and Windows; GPLv3, as WSJT-X is.
+- Linux (x86-64, arm64) and Windows.
+- The original works are the WSJT-X project's, and this is released under
+  the same licence, the GNU GPL v3 (see [Credits and licence](#credits-and-licence)).
 
 It decodes what WSJT-X's `wsprd` decodes, WSPR-2 and WSPR-15, and nothing
 else: **not FST4W**, which is decoded by WSJT-X's `jt9` (`jt9 --fst4w`), a
@@ -64,7 +69,7 @@ An update of WSJT-X puts its own `wsprd` back: copy this one in again after.
 
 ## Using it
 
-Exactly as WSJT-X's `wsprd`:
+Exactly as WSJT-X's `wsprd`: the same arguments, and `-n` besides.
 
 ```
 wsprd [options...] infile        (infile: a .wav or .c2)
@@ -130,9 +135,25 @@ the median of three runs; every decode the same:
 | x86-64 (Ryzen 7 5700U) | 13.7 s | 1.5 s | 9.1x |
 | Raspberry Pi 5 | 19.6 s | 3.4 s | 5.7x |
 
-A period takes 0.2-0.3 s on the PC (1.7-3.0 s before), 0.5-0.7 s on the Pi
-5 (2.5-4.2 s before). About 21 MB while a WSPR period decodes (140 MB for
-WSPR-15), freed after.
+Period by period, side by side (user CPU, seconds; decodes the number of
+`ALL_WSPR.TXT` lines, identical from both):
+
+| Period | Decodes | x86-64: WSJT-X's | this | | Pi 5: WSJT-X's | this | |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 40 m, 19:14 | 3 | 2.13 | 0.22 | 9.5x | 3.03 | 0.52 | 5.8x |
+| 40 m, 19:16 | 8 | 2.81 | 0.29 | 9.7x | 3.95 | 0.70 | 5.6x |
+| 40 m, 19:18 | 2 | 2.00 | 0.23 | 8.6x | 2.93 | 0.50 | 5.8x |
+| 40 m, 19:20 | 4 | 2.06 | 0.23 | 9.0x | 2.98 | 0.52 | 5.7x |
+| 40 m, 19:22 | 4 | 1.72 | 0.19 | 9.1x | 2.49 | 0.47 | 5.3x |
+| 20 m, WSJT-X's sample | 8 | 3.00 | 0.34 | 8.9x | 4.19 | 0.71 | 5.9x |
+| **all six** | 29 | **13.7** | **1.5** | **9.1x** | **19.6** | **3.4** | **5.7x** |
+
+About 21 MB while a WSPR period decodes (140 MB for WSPR-15), freed after.
+To time it yourself, on any of `recordings/`:
+
+```
+time ./build/wsprd -C 500 -o 4 -d -f 7.0386 recordings/40m-wspr-20261010-1914/261010_1914.wav
+```
 
 ## Building it
 
@@ -197,9 +218,7 @@ directories, comparing everything they print and write byte for byte:
 - every recording under each option alone and the common sets.
 
 802 cases, all identical (only `wspr_timer.out`'s times, which are the
-clock's, are compared by their shape). With `--spread-oracle N_WSPRD` it
-also runs `-n` against another `wsprd` taking `-n`, every column but the
-spread's.
+clock's, are compared by their shape).
 
 On another platform than x86-64 Linux, FFTW's code paths differ, so a .wav's
 first transforms differ in their last bits; no decode differed in any case.
@@ -216,9 +235,13 @@ first transforms differ in their last bits; no decode differed in any case.
 | `tests/data/wsprd` | WSJT-X's `wsprd`'s outputs, case by case, and the synthetic inputs |
 | `recordings/` | the six real periods |
 
-## Licence
+## Credits and licence
 
-GNU GPL v3 (`LICENSE`), as WSJT-X's. The decoder is WSJT-X's: `wsprd.c`,
-Copyright 2001-2018 Joe Taylor, K1JT, and much of it by Steven Franke, K9AN,
-2014-2018; `fano.c`, Phil Karn, KA9Q, 1994; `osdwspr.f90`, Steven Franke and
-Joe Taylor. WSJT-X: <https://wsjt.sourceforge.io/wsjtx.html>.
+The original works are the WSJT-X project's, and the credit for the decoder
+is theirs: <https://wsjt.sourceforge.io/wsjtx.html>. In particular
+`wsprd.c`, Copyright 2001-2018 Joe Taylor, K1JT, with much of it by Steven
+Franke, K9AN, 2014-2018; `fano.c`, Phil Karn, KA9Q, 1994; `osdwspr.f90`,
+Steven Franke and Joe Taylor.
+
+This code is released under the same licence as WSJT-X, the GNU General
+Public License, version 3 (`LICENSE`).
