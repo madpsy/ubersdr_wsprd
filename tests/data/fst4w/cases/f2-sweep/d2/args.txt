@@ -1,0 +1,1 @@
+-p 120 --fst4w -f 1500 -F 100 -d 2 recordings/fst4w-sim/f2-sweep-261012_1210.wav

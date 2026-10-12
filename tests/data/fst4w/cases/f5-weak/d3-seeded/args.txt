@@ -1,0 +1,1 @@
+-p 300 --fst4w -f 1500 -F 100 -d 3 recordings/fst4w-sim/f5-weak-261012_1320.wav

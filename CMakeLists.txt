@@ -78,3 +78,18 @@ target_include_directories(wsprd PRIVATE src)
 target_link_libraries(wsprd PRIVATE ${WSPRD_FFTW} Threads::Threads)
 target_compile_definitions(wsprd PRIVATE WSPRD_VERSION="${WSPRD_VERSION_BUILT}")
 target_compile_options(wsprd PRIVATE -Wall -Wextra)
+
+# jt9: WSJT-X's jt9 run on WAV files, a mode at a time (FST4W so far), its
+# command line, output and files as WSJT-X's (src/jt9_cli.h). FST4W must
+# decode exactly as WSJT-X's jt9 does, floats to the bit: no contraction, as
+# above, and glibc's vector maths (libmvec, through libm) where WSJT-X's -O3
+# build calls it (on Windows, without glibc, the plain functions: the same
+# printed results, scripts/jt9-wine-check.sh). Linked as wsprd is (FFTW
+# built in).
+set(FST4W_SOURCES src/fst4w_unpack.cpp src/fst4w_ldpc.cpp src/fst4w_frontend.cpp src/fst4w.cpp src/fst4w_jt9.cpp)
+set_source_files_properties(${FST4W_SOURCES} PROPERTIES COMPILE_OPTIONS "-ffp-contract=off")
+add_executable(jt9 src/jt9_main.cpp src/jt9_cli.cpp ${FST4W_SOURCES} src/wsprd_osd.cpp src/fft.cpp src/fft_wisdom.cpp)
+target_include_directories(jt9 PRIVATE src)
+target_link_libraries(jt9 PRIVATE ${WSPRD_FFTW} m Threads::Threads)
+target_compile_definitions(jt9 PRIVATE JT9_VERSION="${WSPRD_VERSION_BUILT}")
+target_compile_options(jt9 PRIVATE -Wall -Wextra)

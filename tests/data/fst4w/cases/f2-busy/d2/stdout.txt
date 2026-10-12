@@ -1,0 +1,2 @@
+1220 -31  0.3 1547 `  G4XYZ IO91 23                              0.008
+<DecodeFinished>   0   1        0

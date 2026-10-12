@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
-# Build wsprd.
+# Build wsprd and jt9.
 #
-#   ./build.sh            build wsprd for this machine, Linux on x86-64 or
-#                         arm64 (a Raspberry Pi too): build/wsprd, and
-#                         stripped, build/dist/wsprd-linux-<arch>
-#   ./build.sh --windows  the same, and wsprd.exe for 64-bit Windows,
+#   ./build.sh            build wsprd and jt9 for this machine, Linux on
+#                         x86-64 or arm64 (a Raspberry Pi too): build/wsprd,
+#                         build/jt9, and stripped, build/dist/wsprd-linux-<arch>
+#                         and build/dist/jt9-linux-<arch>
+#   ./build.sh --windows  the same, and wsprd.exe and jt9.exe for 64-bit Windows,
 #                         cross-compiled here on Linux in Docker (mingw-w64):
 #                         build/dist/wsprd-windows-x86_64.exe, checked under
 #                         wine when it is installed
-#   ./build.sh --check    the same as ./build.sh, then this wsprd compared
-#                         with WSJT-X's own, byte for byte, on every option
-#                         and recording (scripts/wsprd-compare.sh)
+#   ./build.sh --check    the same as ./build.sh, then this wsprd and jt9
+#                         compared with WSJT-X's own, byte for byte, on every
+#                         option and recording (scripts/wsprd-compare.sh,
+#                         scripts/jt9-compare.sh)
 #   ./build.sh --version TAG
-#                         built as release TAG (wsprd --version); otherwise
+#                         built as release TAG (wsprd --version, jt9 -v); otherwise
 #                         dev-<commit>
 #
 # Releases (the maintainer's):
@@ -25,20 +27,22 @@
 #                         .../releases/download/latest/<file>. Earlier
 #                         releases are kept.
 #   ./build.sh --add-built TAG DIR
-#                         no build: add the wsprd another machine built (a
+#                         no build: add the wsprd and jt9 another machine built (a
 #                         copy of its build/dist, made with --version TAG) to
 #                         release TAG, and to "latest" while that is TAG: an
 #                         arm64 build from a Pi, for one
 #
 # The check needs WSJT-X's source at the decoder's commit (WSJTX, default
 # ~/repos/wsjtx, at 567ad29ce; scripts/wsprd-oracle.sh --build-only builds its
-# wsprd with WSJT-X's Release flags) and takes some minutes;
-# WSPRD_SKIP_COMPARE=1 leaves it out. Publishing needs the GitHub CLI logged
+# wsprd with WSJT-X's Release flags; scripts/fst4w-oracle.sh builds its jt9
+# with WSJT-X's own CMake in Docker, and makes jt9's inputs) and takes some
+# minutes (jt9's the longer, building WSJT-X); WSPRD_SKIP_COMPARE=1 leaves
+# wsprd's out, JT9_SKIP_COMPARE=1 jt9's. Publishing needs the GitHub CLI logged
 # in (gh auth login), a clean working tree and HEAD pushed, so what is
 # released is a commit on GitHub; Windows needs Docker.
 #
-# Debian or Ubuntu: cmake, g++, pkg-config and libfftw3-dev (and gfortran for
-# the check).
+# Debian or Ubuntu: cmake, g++, pkg-config and libfftw3-dev (and gfortran and
+# Docker for the check).
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -71,7 +75,7 @@ while [ $# -gt 0 ]; do
             shift 2
             ;;
         -h|--help)
-            sed -n '2,41p' "$0" | sed 's/^# \{0,1\}//'
+            sed -n '2,45p' "$0" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *)
@@ -92,9 +96,11 @@ say() { printf '\n== %s\n' "$*"; }
 # A dist directory's files for one platform (linux-x86_64, linux-aarch64,
 # windows-x86_64).
 dist_assets() {
-    local dir=$1 platform=$2 exe=""
-    case "$platform" in windows-*) exe=.exe ;; esac
-    echo "$dir/wsprd-$platform$exe" "$dir/SHA256SUMS-$platform"
+    local dir=$1 platform=$2
+    case "$platform" in
+        windows-*) echo "$dir/wsprd-$platform.exe" "$dir/jt9-$platform.exe" "$dir/SHA256SUMS-$platform" ;;
+        *) echo "$dir/wsprd-$platform" "$dir/jt9-$platform" "$dir/SHA256SUMS-$platform" ;;
+    esac
 }
 
 # The notes' section for one platform: where it was built, what it needs,
@@ -139,6 +145,7 @@ if [ -n "$added" ]; then
     gh release view "$tag" >/dev/null 2>&1 || { echo "there is no release $tag" >&2; exit 1; }
     arch=$(cd "$added" && ls wsprd-linux-* 2>/dev/null | head -1 | sed 's/^wsprd-linux-//')
     [ -n "$arch" ] || { echo "$added holds no wsprd-linux-<arch>" >&2; exit 1; }
+    [ -f "$added/jt9-linux-$arch" ] || { echo "$added holds no jt9-linux-$arch" >&2; exit 1; }
     for f in $(dist_assets "$added" "linux-$arch") "$added/built-on"; do
         [ -f "$f" ] || { echo "$added has no $(basename "$f")" >&2; exit 1; }
     done
@@ -206,27 +213,32 @@ fi
 [ -n "$version" ] || version="dev-$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 
 # --- build (Linux, this machine) ---------------------------------------------
-say "building wsprd $version (Release)"
+say "building wsprd and jt9 $version (Release)"
 rm -rf "$build"
 cmake -S "$root" -B "$build" -DCMAKE_BUILD_TYPE=Release -DWSPRD_VERSION="$version"
 cmake --build "$build" -j "$(nproc)"
 "$build/wsprd" --version | grep -qF "wsprd $version " || { echo "wsprd was not built as $version" >&2; exit 1; }
+"$build/jt9" -v | grep -qF "jt9 $version " || { echo "jt9 was not built as $version" >&2; exit 1; }
 # FFTW is linked in (CMakeLists.txt, libfftw3-dev's libfftw3f.a): a binary
 # that would need it installed is not one to hand out.
-if ldd "$build/wsprd" | grep -q libfftw3; then
-    echo "wsprd needs FFTW's shared library: FFTW's static one (libfftw3f.a, in libfftw3-dev) was not found" >&2
-    exit 1
-fi
+for p in wsprd jt9; do
+    if ldd "$build/$p" | grep -q libfftw3; then
+        echo "$p needs FFTW's shared library: FFTW's static one (libfftw3f.a, in libfftw3-dev) was not found" >&2
+        exit 1
+    fi
+done
 
 arch=$(uname -m)
 dist=$build/dist
 mkdir -p "$dist"
-cp "$build/wsprd" "$dist/wsprd-linux-$arch"
-strip "$dist/wsprd-linux-$arch"
-(cd "$dist" && sha256sum -- "wsprd-linux-$arch" > "SHA256SUMS-linux-$arch")
+for p in wsprd jt9; do
+    cp "$build/$p" "$dist/$p-linux-$arch"
+    strip "$dist/$p-linux-$arch"
+done
+(cd "$dist" && sha256sum -- "wsprd-linux-$arch" "jt9-linux-$arch" > "SHA256SUMS-linux-$arch")
 (. /etc/os-release && echo "$PRETTY_NAME") > "$dist/built-on"
 echo "$version" > "$dist/version"
-echo "built: $dist/wsprd-linux-$arch ($version)"
+echo "built: $dist/wsprd-linux-$arch, $dist/jt9-linux-$arch ($version)"
 
 # --- the check: WSJT-X's own wsprd, every option and recording ---------------
 if $check && [ "${WSPRD_SKIP_COMPARE:-0}" != 1 ]; then
@@ -234,13 +246,23 @@ if $check && [ "${WSPRD_SKIP_COMPARE:-0}" != 1 ]; then
     WSPRD_ORACLE_WORK=$build/stock "$root/scripts/wsprd-oracle.sh" --build-only
     WSPRD_COMPARE_WORK=$build/compare "$root/scripts/wsprd-compare.sh" "$build/wsprd" "$build/stock/bin/wsprd-release"
 fi
+if $check && [ "${JT9_SKIP_COMPARE:-0}" != 1 ]; then
+    say "comparing with WSJT-X's jt9"
+    # WSJT-X's jt9 (built in Docker, image wsjtx-oracle) and the inputs.
+    FST4W_ORACLE_WORK=$build/stock-jt9 "$root/scripts/fst4w-oracle.sh" --sim-only
+    # On arm64 fort.52 (the spread's debug spectrum) differs in its last
+    # printed digit: FFTW's NEON code rounds differently from the reference's.
+    ignore=; [ "$(uname -m)" = x86_64 ] || ignore=fort.52
+    JT9_COMPARE_IGNORE=$ignore JT9_COMPARE_WORK=$build/compare-jt9 \
+        "$root/scripts/jt9-compare.sh" "$build/jt9" "$build/stock-jt9/release/jt9" --docker wsjtx-oracle
+fi
 
 $windows || exit 0
 
 # --- Windows (Docker, mingw-w64) -----------------------------------------------
 command -v docker >/dev/null && docker info >/dev/null 2>&1 ||
     { echo "--windows builds wsprd.exe in Docker: Docker is not usable here" >&2; exit 1; }
-say "building wsprd.exe (mingw-w64)"
+say "building wsprd.exe and jt9.exe (mingw-w64)"
 image=ubersdr-wsprd-win
 wbuild=$build/windows
 docker build -q -t "$image" -f docker/windows.Dockerfile docker >/dev/null
@@ -249,14 +271,16 @@ docker run --rm -u "$(id -u):$(id -g)" -v "$root:$root:ro" -v "$wbuild:/b" "$ima
     cmake -S '$root' -B /b -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=/win/toolchain.cmake \
           -DWSPRD_VERSION='$version' &&
     cmake --build /b"
-file "$wbuild/wsprd.exe" | grep -q 'PE32+ executable.*x86-64' || { echo "wsprd.exe was not built" >&2; exit 1; }
-# One file: any DLL but Windows' own would have to be shipped beside it.
-other=$(docker run --rm -v "$wbuild:/b" "$image" x86_64-w64-mingw32-objdump -p /b/wsprd.exe |
-    awk '/DLL Name:/ {print $3}' |
-    grep -viE '^(kernel32|advapi32|bcrypt|crypt32|ws2_32|msvcrt|user32|shell32|ole32)\.dll$' || true)
-[ -z "$other" ] || { echo "wsprd.exe needs DLLs Windows does not have: $other" >&2; exit 1; }
-docker run --rm -u "$(id -u):$(id -g)" -v "$wbuild:/b" "$image" \
-    x86_64-w64-mingw32-strip -o /b/wsprd-windows-x86_64.exe /b/wsprd.exe
+for p in wsprd jt9; do
+    file "$wbuild/$p.exe" | grep -q 'PE32+ executable.*x86-64' || { echo "$p.exe was not built" >&2; exit 1; }
+    # One file: any DLL but Windows' own would have to be shipped beside it.
+    other=$(docker run --rm -v "$wbuild:/b" "$image" x86_64-w64-mingw32-objdump -p "/b/$p.exe" |
+        awk '/DLL Name:/ {print $3}' |
+        grep -viE '^(kernel32|advapi32|bcrypt|crypt32|ws2_32|msvcrt|user32|shell32|ole32)\.dll$' || true)
+    [ -z "$other" ] || { echo "$p.exe needs DLLs Windows does not have: $other" >&2; exit 1; }
+    docker run --rm -u "$(id -u):$(id -g)" -v "$wbuild:/b" "$image" \
+        x86_64-w64-mingw32-strip -o "/b/$p-windows-x86_64.exe" "/b/$p.exe"
+done
 # Under wine, when it is there: the same decodes as Linux's of a .c2 (whose
 # FFT is the same on both; a .wav's first FFTs' last bits are FFTW's build's).
 if command -v wine >/dev/null; then
@@ -273,15 +297,19 @@ if command -v wine >/dev/null; then
             { echo "wsprd.exe's $f differs from Linux's" >&2; exit 1; }
     done
     echo "wsprd.exe decodes as Linux's does"
+    # jt9.exe: every case of WSJT-X's jt9 whose inputs are here (made by
+    # --check) printed and written as WSJT-X's.
+    say "checking jt9.exe under wine"
+    "$root/scripts/jt9-wine-check.sh" "$wbuild/jt9-windows-x86_64.exe" "$build/wine-jt9"
 else
-    echo "wine is not installed: wsprd.exe is built but not checked"
+    echo "wine is not installed: wsprd.exe and jt9.exe are built but not checked"
 fi
-cp "$wbuild/wsprd-windows-x86_64.exe" "$dist/"
-(cd "$dist" && sha256sum -- wsprd-windows-x86_64.exe > SHA256SUMS-windows-x86_64)
+cp "$wbuild/wsprd-windows-x86_64.exe" "$wbuild/jt9-windows-x86_64.exe" "$dist/"
+(cd "$dist" && sha256sum -- wsprd-windows-x86_64.exe jt9-windows-x86_64.exe > SHA256SUMS-windows-x86_64)
 compiler=$(docker run --rm "$image" x86_64-w64-mingw32-g++ -dumpfullversion)
 echo "$(. /etc/os-release && echo "$PRETTY_NAME"), cross-compiled with mingw-w64 GCC $compiler" > "$dist/built-on-windows-x86_64"
 echo
-echo "built: $dist/wsprd-windows-x86_64.exe"
+echo "built: $dist/wsprd-windows-x86_64.exe, $dist/jt9-windows-x86_64.exe"
 $release || exit 0
 
 # --- publish -------------------------------------------------------------------
@@ -289,10 +317,12 @@ say "releasing $tag"
 commit=$(git rev-parse HEAD)
 notes="Built from $commit.
 
-WSJT-X's \`wsprd\` (567ad29ce's decoder), a drop-in for it: the same options, output and files, byte for byte, in a tenth of its CPU on x86-64 and a sixth on a Raspberry Pi 5. One option more, \`-n\`: no search for a drifting signal, and each ALL_WSPR.TXT line ending in the signal's spread in Hz. \`wsprd --version\` gives this release. WSPR-2 and WSPR-15 only, as WSJT-X's \`wsprd\`: FST4W is decoded by WSJT-X's \`jt9\`, which this does not replace.
+WSJT-X's \`wsprd\` (567ad29ce's decoder), a drop-in for it: the same options, output and files, byte for byte, in a tenth of its CPU on x86-64 and a sixth on a Raspberry Pi 5. One option more, \`-n\`: no search for a drifting signal, and each ALL_WSPR.TXT line ending in the signal's spread in Hz. \`wsprd --version\` gives this release.
 
-- \`wsprd-linux-x86_64\`, \`wsprd-linux-aarch64\`: Linux.
-- \`wsprd-windows-x86_64.exe\`: Windows."
+And WSJT-X's \`jt9\` for FST4W (FST4W-120 to -1800, and 15, 30 and 60 s), run on WAV files: the same command line, output and files, byte for byte, in about a seventh of its CPU. One option more, \`--spread fast|exact|off\`. FST4W only so far: keep WSJT-X's own \`jt9\` for WSJT-X and its other modes. \`jt9 -v\` gives this release.
+
+- \`wsprd-linux-x86_64\`, \`wsprd-linux-aarch64\`, \`jt9-linux-x86_64\`, \`jt9-linux-aarch64\`: Linux.
+- \`wsprd-windows-x86_64.exe\`, \`jt9-windows-x86_64.exe\`: Windows."
 assets=()
 for platform in "linux-$arch" windows-x86_64; do
     notes="$notes

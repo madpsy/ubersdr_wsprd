@@ -1,0 +1,1 @@
+-p 120 --fst4w -f 1500 -F 100 -d 3 recordings/fst4w-sim/f2-hash-261012_1302.wav

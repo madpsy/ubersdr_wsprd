@@ -1,0 +1,1 @@
+-p 1800 --fst4w -f 1500 -F 100 -d 3 recordings/fst4w-sim/f30-mix-261012_1400.wav

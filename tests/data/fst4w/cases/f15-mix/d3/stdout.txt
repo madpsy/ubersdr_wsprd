@@ -1,0 +1,2 @@
+1330 -36  0.0 1440 `  K1ABC FN42 37                              0.002
+<DecodeFinished>   0   1        0

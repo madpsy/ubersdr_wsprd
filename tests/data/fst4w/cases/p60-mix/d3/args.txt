@@ -1,0 +1,1 @@
+-p 60 --fst4w -f 1500 -F 100 -d 3 recordings/fst4w-sim/p60-mix-261012_1412.wav

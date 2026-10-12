@@ -1,0 +1,1 @@
+-p 1800 --fst4w -f 1500 -F 100 -d 1 recordings/fst4w-real/201230_0300.wav

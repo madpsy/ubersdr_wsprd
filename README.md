@@ -1,7 +1,7 @@
-# wsprd
+# wsprd and jt9
 
-WSJT-X's WSPR decoder, `wsprd`, rewritten in C++ to take a fraction of the
-CPU.
+WSJT-X's WSPR decoder, `wsprd`, and its `jt9` for FST4W, rewritten in C++ to
+take a fraction of the CPU.
 
 **A drop-in replacement for WSJT-X's `wsprd`.** It takes exactly the same
 arguments, plus one more (`-n`), and gives the same output and files, byte
@@ -22,9 +22,17 @@ this one, with nothing to change.
 - The original works are the WSJT-X project's, and this is released under
   the same licence, the GNU GPL v3 (see [Credits and licence](#credits-and-licence)).
 
-It decodes what WSJT-X's `wsprd` decodes, WSPR-2 and WSPR-15, and nothing
-else: **not FST4W**, which is decoded by WSJT-X's `jt9` (`jt9 --fst4w`), a
-separate program this does not replace. Keep `jt9` installed for FST4W.
+It decodes what WSJT-X's `wsprd` decodes, WSPR-2 and WSPR-15. FST4W is
+`jt9`'s (below).
+
+**And `jt9` for FST4W.** WSJT-X decodes FST4W (FST4W-120 to -1800) with its
+`jt9`; this `jt9` does the same from WAV files, as `jt9 -p 120 --fst4w ...
+file.wav` does: the same command line, the same output and files
+(`fst4_decodes.dat`, `decoded.txt`, `fst4w_calls.txt`), byte for byte, in
+about a seventh of the CPU. FST4W only so far, more of `jt9`'s modes to
+follow. Linux (x86-64, arm64) and Windows. It does not replace WSJT-X's own
+`jt9` inside WSJT-X, which runs it for every mode through shared memory:
+see [jt9](#jt9-fst4w).
 
 Originally designed for UberSDR Skimmer.
 
@@ -39,6 +47,9 @@ your operating system and CPU from the
 | `wsprd-linux-x86_64` | Linux on an x86-64 CPU with AVX2 |
 | `wsprd-linux-aarch64` | Linux on 64-bit ARM (NEON): a Raspberry Pi 3, 4, 5 or Zero 2 W on a 64-bit OS, for one |
 | `wsprd-windows-x86_64.exe` | 64-bit Windows 10 or 11 on an x86-64 CPU with AVX2; nothing else to install |
+| `jt9-linux-x86_64` | `jt9` (FST4W) for Linux on an x86-64 CPU with AVX2 |
+| `jt9-linux-aarch64` | `jt9` (FST4W) for Linux on 64-bit ARM |
+| `jt9-windows-x86_64.exe` | `jt9` (FST4W) for 64-bit Windows 10 or 11 on an x86-64 CPU with AVX2 |
 
 **The CPU: the prebuilt binaries need AVX2 on x86-64 (Linux and Windows)
 and NEON on ARM.** The decoder's searches run eight lanes at a time with
@@ -65,7 +76,8 @@ e.g. `https://github.com/madpsy/ubersdr_wsprd/releases/download/latest/wsprd-lin
 each version is also kept as a release of its own (`vYYYY.MM.DD`), and
 `wsprd --version` says which you have.
 
-Each is one file with FFTW built in: nothing else to install.
+Each is one file with FFTW built in: nothing else to install (`jt9` on Linux also
+uses glibc's vector maths library, `libmvec`, part of the C library itself).
 
 Then rename it `wsprd` (`wsprd.exe` on Windows) and put it in place of
 WSJT-X's: whatever ran WSJT-X's `wsprd` runs this one, with nothing else to
@@ -142,6 +154,39 @@ expected, at SNRs down to -25 dB. It costs about 0.7 ms a decode.
 `wsprd --version` (alone) prints the release it came from, where WSJT-X's
 would refuse `--version`.
 
+## jt9: FST4W
+
+Run it as WSJT-X's `jt9` is run on WAV files, for FST4W:
+
+```
+jt9 -a DIR -p 120 --fst4w -f 1500 -F 100 -d 3 YYMMDD_HHMM.wav [more.wav ...]
+```
+
+`-p` the period in seconds (FST4W-120 to -1800: 120, 300, 900, 1800; and
+15, 30 or 60), `--fst4w` (or `-W`; `-Y` to print the hash22 values), `-f`
+and `-F` the frequency and tolerance (at most 100 Hz for FST4W), `-d` the
+depth (1 to 3), `-a` and `-t` the data and temporary directories, `-c` and
+`-x` the calls fst4_decode is given (`K1ABC` and `W9XYZ` unless given), `-X`
+the noise blanker's flags, `-q` no `<DecodeFinished>`. Several files in one
+run share one hash table and calls list, as with WSJT-X's. Everything is
+WSJT-X's: the decodes, every field of `fst4_decodes.dat` (with a `decdata`
+file in the data directory), `decoded.txt`, `fst4w_calls.txt`, and its
+messages, down to its command line's quirks (`jt9 -h` lists the options).
+
+One option more, `--spread fast|exact|off`: the spread (w50, with a
+`plotspec` file in the directory it runs in). `fast`, the default, measures
+it from the same product decimated by 120 before a 120 times smaller FFT,
+within 0.0001 Hz of WSJT-X's (the printed w50 the same on 463 of 465 test
+decodes) and several times cheaper; `exact` is WSJT-X's own, to the bit; `off`
+measures none.
+
+The other modes of WSJT-X's `jt9` (FT8, FT4, JT65, Q65, MSK144...), its
+shared-memory mode (`-s`, how WSJT-X itself runs it) and its stdin stream
+are not here yet: they are unknown options to this one, so do not put it in
+place of WSJT-X's `jt9` inside WSJT-X. Run it where `jt9 --fst4w` is run on
+files. Not written: `timer.out` and `jt9_wisdom.dat` (WSJT-X's timings and
+FFTW's plans). `-c` and `-x` take standard calls only.
+
 ## Its CPU
 
 Against WSJT-X's own `wsprd`, built from the same commit with WSJT-X's
@@ -189,6 +234,24 @@ To time it yourself, on any of `recordings/`:
 time ./build/wsprd -C 500 -o 4 -d -f 7.0386 recordings/40m-wspr-20261010-1914/261010_1914.wav
 ```
 
+### jt9
+
+Against WSJT-X's `jt9` built from the same commit with WSJT-X's Release
+flags on each machine (`-p P --fst4w -f 1500 -F 100 -d 3`, with `plotspec`
+and `decdata`; user and system CPU, best of three; WSJT-X's run once a
+period, as it is run on files): nine periods, five real 40 m ones (busy with
+WSPR, which FST4W tries and fails on), a busy generated FST4W-120 and one
+each of FST4W-300, -900 and -1800; every decode the same.
+
+| CPU for 9 periods | WSJT-X's jt9 | this jt9 | |
+|---|---:|---:|---:|
+| x86-64 (Ryzen 7 5700U) | 32.8 s | 4.4 s | 7.5x |
+| Raspberry Pi 5 | 56.4 s | 8.5 s | 6.6x |
+
+With `--spread exact` (WSJT-X's own spread, an FFT of twice the period's
+length a decode) 10.8 s and 28.5 s. An FST4W-1800 period takes about 0.5 GB
+while it decodes, WSJT-X's 1.1 GB.
+
 ## Building it
 
 Most users only need a prebuilt binary from
@@ -206,7 +269,8 @@ cd ubersdr_wsprd
 ```
 
 That builds for the machine it runs on, x86-64 or arm64 (a Pi builds its own
-in a minute or two): `build/wsprd`, and stripped, in `build/dist`. Or by hand:
+in a few minutes): `build/wsprd` and `build/jt9`, and stripped, in
+`build/dist`. Or by hand:
 
 ```
 cmake -B build -DCMAKE_BUILD_TYPE=Release
@@ -227,14 +291,19 @@ cmake --build build
 A 32-bit ARM system (`armv7l`) builds the plain code by itself.
 
 **Windows**, cross-compiled on Linux with Docker (mingw-w64, FFTW built in,
-so `wsprd.exe` is one file that needs nothing beside it):
+so `wsprd.exe` and `jt9.exe` are one file each that need nothing beside them):
 
 ```
 ./build.sh --windows
 ```
 
-It lands in `build/dist/wsprd-windows-x86_64.exe`, and when `wine` is
-installed it is checked to decode as the Linux build does.
+They land in `build/dist/wsprd-windows-x86_64.exe` and
+`jt9-windows-x86_64.exe`, and when `wine` is installed they are checked:
+`wsprd.exe` decodes as the Linux build does, and `jt9.exe` prints and writes
+what WSJT-X's `jt9` does on every case of `tests/data/fst4w` whose inputs
+are there (`scripts/jt9-wine-check.sh`; `fort.52`, the spread's debug
+spectrum, to within its last printed digit: Windows' maths library and
+FFTW's build round differently).
 
 Build with the settings in `CMakeLists.txt`: the decoder's files are
 compiled with no fused multiply-adds (`-ffp-contract=off`), as WSJT-X's own
@@ -267,6 +336,19 @@ directories, comparing everything they print and write byte for byte:
 802 cases, all identical (only `wspr_timer.out`'s times, which are the
 clock's, are compared by their shape).
 
+For `jt9` (Docker needed): `scripts/fst4w-oracle.sh --sim-only` builds
+WSJT-X's `jt9` with WSJT-X's own CMake in a container
+(`docker/wsjtx-oracle.Dockerfile`) and makes the generated inputs
+(`recordings/fst4w-sim`: FST4W of every period and type, hashed calls, weak
+and faded signals, with WSPR beside them; and WSJT-X's own FST4W-1800 sample),
+and `scripts/jt9-compare.sh` runs both, comparing stdout, stderr, the exit
+status and every file written, byte for byte: every case in
+`tests/data/fst4w/cases`, the command line (bad, missing and attached
+values, long options, `--`, odd and broken WAV files, every option's
+values), and every recording; 182 cases, all identical. On arm64 FFTW's
+NEON code rounds the spread's debug spectrum (`fort.52`) differently in its
+last printed digit; everything else is the same.
+
 On another platform than x86-64 Linux, FFTW's code paths differ, so a .wav's
 first transforms differ in their last bits; no decode differed in any case.
 
@@ -278,8 +360,10 @@ first transforms differ in their last bits; no decode differed in any case.
 | `src/wsprd_files.cpp` | its command line, files and output: `wsprd.c`'s `main()` |
 | `src/wsprd_main.cpp` | the program |
 | `src/fft.cpp`, `fft_wisdom.cpp` | a small FFTW wrapper, for the spread |
-| `scripts/` | the comparison with WSJT-X's `wsprd`, and the synthetic periods' generator |
-| `tests/data/wsprd` | WSJT-X's `wsprd`'s outputs, case by case, and the synthetic inputs |
+| `src/fst4w*.cpp` | jt9's FST4W decoder: WSJT-X's `fst4_decode.f90` and what it calls (`get_fst4_bitmetrics`, `decode240_74`, `osd240_74`, `packjt77`'s unpacking, `gen_fst4wave`...) |
+| `src/jt9_cli.cpp`, `fst4w_jt9.cpp`, `jt9_main.cpp` | jt9's command line, files and output: `jt9.f90`, `decoder.f90`, `options.f90` |
+| `scripts/` | the comparisons with WSJT-X's `wsprd` and `jt9`, and the synthetic periods' generators |
+| `tests/data/wsprd`, `tests/data/fst4w` | WSJT-X's `wsprd`'s and `jt9`'s outputs, case by case, and wsprd's synthetic inputs |
 | `recordings/` | the six real periods |
 
 ## Credits and licence
@@ -288,7 +372,9 @@ The original works are the WSJT-X project's, and the credit for the decoder
 is theirs: <https://wsjt.sourceforge.io/wsjtx.html>. In particular
 `wsprd.c`, Copyright 2001-2018 Joe Taylor, K1JT, with much of it by Steven
 Franke, K9AN, 2014-2018; `fano.c`, Phil Karn, KA9Q, 1994; `osdwspr.f90`,
-Steven Franke and Joe Taylor.
+Steven Franke and Joe Taylor; FST4W's `fst4_decode.f90` and its routines,
+Steven Franke, K9AN, and Joe Taylor, K1JT; `packjt77.f90`, Joe Taylor,
+Steven Franke and the WSJT-X developers.
 
 This code is released under the same licence as WSJT-X, the GNU General
 Public License, version 3 (`LICENSE`).
