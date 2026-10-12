@@ -190,7 +190,8 @@ run_one() {  # side spec
         (cd "$dir/cwd" && "$stock" "${argv[@]}" > ../stdout 2> ../stderr < /dev/null)
     fi
     echo $? > "$dir/status"
-    rm -f "$dir/cwd/timer.out" "$dir/cwd/jt9_wisdom.dat" "$dir/cwd/plotspec" "$dir/cwd/decdata"
+    # (and a crash's core file, where the system writes one)
+    rm -f "$dir/cwd/timer.out" "$dir/cwd/jt9_wisdom.dat" "$dir/cwd/plotspec" "$dir/cwd/decdata" "$dir"/cwd/core "$dir"/cwd/core.*
 }
 
 compare() {  # spec -> results/<name>

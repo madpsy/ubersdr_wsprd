@@ -278,14 +278,21 @@ int run_files(const FileMode& fm, const std::vector<std::string>& files, const s
             o.spread = spread;
             bool calls_changed = false;
             // fst4_decode has its sizes for these periods alone; on any
-            // other its decode divides by a size never set, and jt9 dies
-            // of SIGFPE: said as gfortran says it, its status a shell's
-            // for that signal (stdout so far kept: ours is not lost).
+            // other its decode divides by a size never set, and jt9 dies:
+            // of SIGFPE on x86-64, of SIGSEGV on arm64 (where an integer
+            // division by zero does not trap, and it goes on to read out of
+            // bounds). Said as gfortran says it, the status a shell's for
+            // that signal (stdout so far kept: ours is not lost).
             if (o.ntrperiod != 15 && o.ntrperiod != 30 && o.ntrperiod != 60 && o.ntrperiod != 120 &&
                 o.ntrperiod != 300 && o.ntrperiod != 900 && o.ntrperiod != 1800) {
                 if (!exists(join(temp_dir, "decoded.txt"))) std::ofstream(join(temp_dir, "decoded.txt"));  // opened before the decode
+#if defined(__aarch64__)
+                err << "\nProgram received signal SIGSEGV: Segmentation fault - invalid memory reference.\n";
+                return 128 + 11;
+#else
                 err << "\nProgram received signal SIGFPE: Floating-point exception - erroneous arithmetic operation.\n";
                 return 128 + 8;
+#endif
             }
             try {
             dec.decode(id2.data(), nutc, o, [&](const Result& r) {

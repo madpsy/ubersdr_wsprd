@@ -16,8 +16,8 @@
 // checks it twice), an unknown option is said and the usage printed (status
 // 0), and -c and -x are read as Fortran reads a list ("-c PJ4/K1ABC" is
 // PJ4). FST4W on a period fst4_decode has no sizes for (not 15, 30, 60, 120,
-// 300, 900 or 1800 s) ends as WSJT-X's does, of SIGFPE: gfortran's line on
-// stderr, status 136 (no backtrace).
+// 300, 900 or 1800 s) ends as WSJT-X's does: of SIGFPE on x86-64 (status
+// 136), of SIGSEGV on arm64 (139); gfortran's line on stderr, no backtrace.
 //
 // Ours alone: --spread fast|exact|off (FST4W's dopspread: fast by default,
 // exact for WSJT-X's byte for byte; a long option alone, taking its one
