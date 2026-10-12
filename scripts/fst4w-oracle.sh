@@ -51,6 +51,8 @@ configure() {  # dir [cmake args]
     cmake -S "$src" -B "$dir" -DCMAKE_BUILD_TYPE=Release -DWSJT_GENERATE_DOCS=OFF \
         -DWSJT_SKIP_MANPAGES=ON -DWSJT_ENABLE_TESTS=OFF -DWSJT_SKIP_QMAP=ON "$@" > "$dir/configure.log" 2>&1
 }
+# libquadmath: gfortran's on x86-64, none on aarch64.
+quadmath=; [[ $(gcc -print-file-name=libquadmath.so) == /* ]] && quadmath=-lquadmath
 o2="-O2 -ffp-contract=off"
 configure "$work/release"
 configure "$work/o2" -DCMAKE_Fortran_FLAGS_RELEASE="$o2" -DCMAKE_C_FLAGS_RELEASE="$o2" \
@@ -67,7 +69,7 @@ cmake --build "$work/o2" --target jt9 fst4sim -j"$(nproc)" > "$work/o2/build.log
         -c "$repo/scripts/fst4w-sim.f90" -o sim/fst4w-sim.o
     c++ -fopenmp -pthread sim/fst4w-sim.o -o fst4w-sim libwsjt_fort.a libwsjt_cxx.a -lm \
         /usr/lib/$(gcc -dumpmachine)/libboost_{log_setup,log,chrono,filesystem,regex,thread,atomic}.so.1.83.0 \
-        -lfftw3f_threads -lfftw3f -lgfortran -lquadmath
+        -lfftw3f_threads -lfftw3f -lgfortran $quadmath
 )
 # The unpack and LDPC harnesses (scripts/fst4w-unpack-oracle.f90,
 # fst4w-ldpc-oracle.f90), the same way, against each build's library (the
@@ -81,7 +83,7 @@ for b in release o2; do (
             -o "sim/fst4w-$h-oracle.o"
         c++ -fopenmp -pthread "sim/fst4w-$h-oracle.o" -o "fst4w-$h-oracle" libwsjt_fort.a libwsjt_cxx.a -lm \
             /usr/lib/$(gcc -dumpmachine)/libboost_{log_setup,log,chrono,filesystem,regex,thread,atomic}.so.1.83.0 \
-            -lfftw3f_threads -lfftw3f -lgfortran -lquadmath
+            -lfftw3f_threads -lfftw3f -lgfortran $quadmath
     done
 ) done
 echo "fst4w-oracle: built in $work/release and $work/o2" >&2
