@@ -1,0 +1,3 @@
+120445 -12  0.1  600 ~  CQ G4AAA IO91                           
+120445 -21  0.1 1500 ~  K1ABC W9XYZ R+05                    ? a8
+<DecodeFinished>   0   2        0

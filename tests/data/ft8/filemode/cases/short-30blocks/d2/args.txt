@@ -1,0 +1,1 @@
+jt9 -a . -8 -d 2 recordings/ft8-filemode/short-30blocks-261012_193500.wav

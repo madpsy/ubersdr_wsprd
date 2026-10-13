@@ -1,0 +1,1 @@
+jt9 -a . -8 -d 3 -G FN20 -g EN37 -x W9XYZ recordings/ft8-sim/calls-261013_120000.wav

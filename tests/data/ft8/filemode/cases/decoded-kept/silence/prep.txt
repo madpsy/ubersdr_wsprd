@@ -1,0 +1,1 @@
+seed:tests/data/ft8/cases/40m-193500/d2/decoded.txt>decoded.txt

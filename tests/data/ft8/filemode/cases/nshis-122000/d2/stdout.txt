@@ -1,0 +1,3 @@
+122000 -12  0.1  600 ~  CQ G4AAA IO91                           
+122000 -16  0.1 1500 ~  K1ABC <KH6/W9XYZ> -15                 a8
+<DecodeFinished>   0   2        0

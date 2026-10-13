@@ -1,0 +1,1 @@
+jt9 -a . -8 -L 100 -H 3200 -f 1500 -F 100 -c b -x b -d 3 recordings/ft8-sim/qso-261013_110000.wav recordings/ft8-sim/qso-261013_110015.wav recordings/ft8-sim/qso-261013_110030.wav recordings/ft8-sim/qso-261013_110045.wav recordings/ft8-sim/qso-261013_110100.wav recordings/ft8-sim/qso-261013_110115.wav

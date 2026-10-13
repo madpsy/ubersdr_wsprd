@@ -1,0 +1,15 @@
+193645   8   -2   0.1    773.   0   CQ PD3WMA JO22                        FT8
+193645   4   -5   0.1   1324.   0   CQ Z61DX KN02                         FT8
+193645   3   -6   0.4   1621.   0   UR3LM RC9WC -04                       FT8
+193645   2    7  -0.2   1024.   0   <Z33B> DF1OLS                         FT8
+193645   2    4   0.1    655.   0   CQ HB9EOT JN47                        FT8
+193645   5   -4  -0.0   1649.   0   R7BO SV1OML R+17                      FT8
+193645   4    1   0.1    659.   0   RK4CWA R1BMZ R-19                     FT8
+193645   3    2   0.0    676.   0   TJ1GD IU1VFA JN35                     FT8
+193645   5   -7   0.2   1657.   0   CQ TA2VUZ KM59                        FT8
+193645   2  -18  -0.5    592.   0   CQ GB26WTC                            FT8
+193645   2    2  -0.1   1001.   0   RY7G EA5HM IM99                       FT8
+193645   2   -4   0.1   2017.   0   TF1EM UB6OCP KN88                     FT8
+193645   2    0   0.0   1146.   0   G5MJF OZ2TF RR73                      FT8
+193645   2  -11  -0.6   1108.   0   CQ EY7BM MN40                         FT8
+193645   2   -4   0.2    765.   0   RN2F SV7SXE 73                        FT8

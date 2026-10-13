@@ -1,0 +1,1 @@
+jt9 -a . -8 -d 3 -X 2 recordings/ft8-sim/types-261013_100000.wav

@@ -1,0 +1,3 @@
+121500 -12  0.1  600 ~  CQ G4AAA IO91                           
+121500 -22  0.1 1500 ~  <PJ4/K1ABC> W9XYZ -15               ? a8
+<DecodeFinished>   0   2        0

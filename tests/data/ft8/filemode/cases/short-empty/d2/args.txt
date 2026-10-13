@@ -1,0 +1,1 @@
+jt9 -a . -8 -d 2 recordings/ft8-filemode/short-empty-261012_193500.wav

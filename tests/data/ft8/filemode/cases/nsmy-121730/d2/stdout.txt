@@ -1,0 +1,3 @@
+121730 -12  0.1  600 ~  CQ G4AAA IO91                           
+121730 -21  0.1 1500 ~  <PJ4/K1ABC> W9XYZ                       
+<DecodeFinished>   0   2        0

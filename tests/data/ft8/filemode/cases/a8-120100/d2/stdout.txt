@@ -1,0 +1,3 @@
+120100 -20  0.1 1505 ~  K1ABC W9XYZ R-12                        
+120100 -12  0.1  600 ~  CQ G4AAA IO91                           
+<DecodeFinished>   0   2        0

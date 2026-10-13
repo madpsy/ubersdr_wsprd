@@ -1,0 +1,3 @@
+121630 -12  0.1  600 ~  CQ G4AAA IO91                           
+121630 -16  0.1 1500 ~  PJ4/K1ABC <W9XYZ> RR73                a8
+<DecodeFinished>   0   2        0

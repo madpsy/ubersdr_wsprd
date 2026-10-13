@@ -1,0 +1,13 @@
+193530  16   10   0.1   2509.   0   BI4IWL ON8DM JO10                     FT8
+193530   7   13   0.1   1225.   0   M7KSV HA1BF R-08                      FT8
+193530   6    9   0.4   1941.   0   Z62NS UF5F KO98                       FT8
+193530   3    3   0.1   1108.   0   CQ TF1EM HP94                       ? FT8
+193530   2  -18   0.2   2164.   0   RA6OY HB9FBJ +02                      FT8
+193530   7    2   0.2   2545.   0   Z61DX RD3FY KO85                      FT8
+193530   7    7   0.1   1943.   0   CQ DK2KGB JO52                        FT8
+193530   6   10   0.0   1240.   0   Z62NS ON1PR JO11                      FT8
+193530   2  -11   0.1   1892.   0   RT4A UB3FBD KO85                      FT8
+193530  16    6  -0.2   1219.   0   Z62NS IK0XFD JN61                     FT8
+193530   8   -8   0.5   1274.   0   PA3BFS S53AK JN76                     FT8
+193530   1  -15   0.1   1170.   0   DF1OLS Z33B -06                       FT8
+193530   1   -6   0.1   1382.   0   F5SJC EA1VJ IN72                      FT8

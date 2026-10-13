@@ -1,7 +1,7 @@
 // jt9's command line (jt9_cli.h): lib/jt9.f90's option loop and checks,
 // lib/options.f90's getopt and print_opt, lib/jt9_input_validation.f90's
 // number checks, at 567ad29ce; then each mode's file mode (FST4W's:
-// fst4w_jt9.h).
+// fst4w_jt9.h; FT8's: ft8_jt9.h).
 #include "jt9_cli.h"
 
 #include <algorithm>
@@ -13,6 +13,7 @@
 #include <string>
 
 #include "fst4w_jt9.h"
+#include "ft8_jt9.h"
 
 namespace jt9_cli {
 
@@ -34,14 +35,20 @@ const Opt OPTS[] = {
     {"tr-period", true, 'p', "Tx/Rx period, default SECONDS=60", "SECONDS"},
     {"data-path", true, 'a', "Location of writeable data files, default PATH=\".\"", "PATH"},
     {"temp-path", true, 't', "Temporary files path, default PATH=\".\"", "PATH"},
+    {"lowest", true, 'L', "Lowest frequency decoded (JT65), default HERTZ=200", "HERTZ"},
+    {"highest", true, 'H', "Highest frequency decoded, default HERTZ=4000", "HERTZ"},
     {"rx-frequency", true, 'f', "Receive frequency offset, default HERTZ=1500", "HERTZ"},
     {"freq-tolerance", true, 'F', "Receive frequency tolerance, default HERTZ=20", "HERTZ"},
     {"fst4w", false, 'W', "FST4W mode", ""},
     {"fst4w", false, 'Y', "FST4W mode, print hash22 values", ""},
+    {"ft8", false, '8', "FT8 mode", ""},
     {"quiet", false, 'q', "Quiet mode, no <DecodeFinished>", ""},
+    {"QSOprog", true, 'Q', "QSO progress (0-5), default PROGRESS=1", "QSOprogress"},
     {"depth", true, 'd', "Decoding depth (1-3), default DEPTH=1", "DEPTH"},
     {"my-call", true, 'c', "my callsign", "CALL"},
+    {"my-grid", true, 'G', "my grid locator", "GRID"},
     {"his-call", true, 'x', "his callsign", "CALL"},
+    {"his-grid", true, 'g', "his grid locator", "GRID"},
     {"experience-decode", true, 'X', "experience based decoding flags (1..n), default FLAGS=0", "FLAGS"},
     {"spread", true, 0,
      "FST4W's spread (w50): fast (default: within 0.0001 Hz of jt9's, several times cheaper), exact (jt9's, "
@@ -49,7 +56,7 @@ const Opt OPTS[] = {
      "fast|exact|off"},
 };
 // getopt's option letters, ':' after those taking a value.
-const char* const SHORT = "hva:p:d:f:F:t:WYqc:x:X:";
+const char* const SHORT = "hva:p:d:f:F:t:L:H:WY8qQ:c:G:x:g:X:";
 
 std::string rtrim(std::string s) {
     while (!s.empty() && s.back() == ' ') s.pop_back();
@@ -178,10 +185,11 @@ bool real_token(const std::string& t) {
     return i >= n;
 }
 
-// Fortran's list-directed read of one character value into len 12: blanks
-// skipped, a quoted value to its closing quote, else to a blank, comma or
-// slash. Empty or a separator first: none read (the value as it was).
-bool read_list_chars(const std::string& t, std::string& v) {
+// Fortran's list-directed read of one character value into a character*len
+// (12 for a call, 6 for a grid): blanks skipped, a quoted value to its
+// closing quote, else to a blank, comma or slash. Empty or a separator
+// first: none read (the value as it was).
+bool read_list_chars(const std::string& t, std::string& v, size_t len = 12) {
     size_t i = 0;
     while (i < t.size() && t[i] == ' ') ++i;
     if (i >= t.size() || t[i] == ',' || t[i] == '/') return false;
@@ -202,7 +210,7 @@ bool read_list_chars(const std::string& t, std::string& v) {
     } else {
         for (; i < t.size() && t[i] != ' ' && t[i] != ',' && t[i] != '/'; ++i) r += t[i];
     }
-    v = rtrim(r.substr(0, 12));
+    v = rtrim(r.substr(0, len));
     return true;
 }
 
@@ -239,7 +247,8 @@ void usage(std::ostream& out) {
 int run(const std::vector<std::string>& args, const std::string& cwd, std::ostream& out, std::ostream& err,
         const std::string& version) {
     fst4w::FileMode fm;
-    int mode = 0;  // jt9's: 241 --fst4w (-W), 242 -Y
+    ft8::FileMode f8;  // what FT8 reads, beside FST4W's
+    int mode = 0;  // jt9's: 241 --fst4w (-W), 242 -Y, 8 -8
     bool display_help = false, display_version = false;
     Getopt getopt(args);
     Getopt::Got g;
@@ -276,21 +285,33 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
         switch (g.chr) {
         case 'h': display_help = true; break;
         case 'v': display_version = true; break;
-        case 'a': fm.data_dir = v; break;
-        case 't': fm.temp_dir = v; break;
+        case 'a': fm.data_dir = f8.data_dir = v; break;
+        case 't': fm.temp_dir = f8.temp_dir = v; break;
         case 'p': {
             if (!real_token(v)) return invalid('p', v, "must be a finite number");
             const double p = std::strtod(v.c_str(), nullptr);
             if (!std::isfinite(p)) return invalid('p', v, "must be a finite number");
             if (p <= 0 || p > 1800) return invalid('p', v, "must be between 0 and 1800 seconds");
-            fm.trperiod = p;
+            fm.trperiod = f8.trperiod = p;
             break;
         }
         case 'd':
             if (!integer('d', v, fm.ndepth)) return invalid('d', v, "must be an integer");
+            f8.ndepth = fm.ndepth;
             break;
         case 'f':
             if (!integer('f', v, fm.nrxfreq)) return invalid('f', v, "must be an integer");
+            f8.nrxfreq = fm.nrxfreq;
+            break;
+        case 'L':
+            if (!integer('L', v, f8.flow)) return invalid('L', v, "must be an integer");
+            break;
+        case 'H':
+            if (!integer('H', v, f8.fhigh)) return invalid('H', v, "must be an integer");
+            break;
+        case 'Q':
+            if (!integer('Q', v, f8.nqso_progress)) return invalid('Q', v, "must be an integer");
+            if (f8.nqso_progress < 0 || f8.nqso_progress > 5) return invalid('Q', v, "must be between 0 and 5");
             break;
         case 'F':
             if (!integer('F', v, fm.ntol)) return invalid('F', v, "must be an integer");
@@ -298,17 +319,38 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
         case 'X':
             if (!integer('X', v, fm.nexp_decode)) return invalid('X', v, "must be an integer");
             fm.nexp_decode_set = true;
+            f8.nexp_decode = fm.nexp_decode;
             break;
         case 'W': mode = 241; break;
         case 'Y': mode = 242; break;
-        case 'q': fm.quiet = true; break;
-        case 'c': read_list_chars(v, fm.mycall); break;
-        case 'x': read_list_chars(v, fm.hiscall); break;
+        case '8': mode = 8; break;
+        case 'q': fm.quiet = f8.quiet = true; break;
+        case 'c':
+        case 'x':
+        case 'G':
+        case 'g': {
+            // read (optarg(:arglen), *) at jt9.f90's line for it: an empty
+            // or blank value is the end of the internal file, a runtime
+            // error (said as gfortran says it, its backtrace left out).
+            if (v.find_first_not_of(' ') == std::string::npos) {
+                const int line = g.chr == 'c' ? 233 : g.chr == 'G' ? 235 : g.chr == 'x' ? 237 : 239;
+                err << "At line " << line << " of file jt9.f90\nFortran runtime error: End of file\n";
+                return 2;
+            }
+            if (g.chr == 'c') read_list_chars(v, fm.mycall), f8.mycall = fm.mycall;
+            if (g.chr == 'x') read_list_chars(v, fm.hiscall), f8.hiscall = fm.hiscall;
+            if (g.chr == 'g') read_list_chars(v, f8.hisgrid, 6);
+            if (g.chr == 'G') {  // mygrid: read (FT8 decodes without it)
+                std::string mygrid;
+                read_list_chars(v, mygrid, 6);
+            }
+            break;
+        }
         default: break;
         }
     }
     if (display_version) {
-        out << "jt9 " << version << " (FST4W: WSJT-X 567ad29ce's decoder)\n";
+        out << "jt9 " << version << " (FST4W and FT8: WSJT-X 567ad29ce's decoders)\n";
         return 0;
     }
     if (display_help || g.st < 0 || g.remain < 1) {
@@ -321,8 +363,22 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
         fm.hash22 = mode == 242;
         return fst4w::run_files(fm, files, cwd, out, err);
     }
-    err << "jt9: no mode given: this jt9 decodes FST4W (--fst4w, -W, or -Y) so far\nSTOP 2\n";
+    if (mode == 8) {
+        // Fox (ncontest 6) writes houndcallers.txt, which this jt9 does not.
+        if ((f8.nexp_decode & 7) == 6) {
+            err << "jt9: -X " << f8.nexp_decode << ": FT8's Fox mode (ncontest 6) is not taken by this jt9\nSTOP 2\n";
+            return 2;
+        }
+        return ft8::run_files(f8, files, cwd, out, err);
+    }
+    err << "jt9: no mode given: this jt9 decodes FST4W (--fst4w, -W, or -Y) and FT8 (-8) so far\nSTOP 2\n";
     return 2;
+}
+
+std::string stderr_as_file(const std::string& err) {
+    static const std::string stop = "STOP 2\n";
+    if (err.size() < stop.size() || err.compare(err.size() - stop.size(), stop.size(), stop) != 0) return err;
+    return stop + err.substr(0, err.size() - stop.size());
 }
 
 }  // namespace jt9_cli

@@ -1,0 +1,1 @@
+jt9 -a . -8 -d 2 -c 'PJ4/K1ABC' recordings/ft8-filemode/nsmy-261014_121730.wav

@@ -15,6 +15,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
+#include <fstream>
 #include <ostream>
 #include <string>
 #include <vector>
@@ -56,6 +58,85 @@ std::string decodes_dat_line(const Result& r);
 
 // fst4w_calls.txt as jt9 writes it ('(a20)' each: right-justified).
 std::string calls_file(const std::vector<std::string>& calls);
+
+// lib/readwav.f90: a RIFF WAV's header read and checked as it reads it
+// (its checks in its order, its messages), then its 16-bit samples from the
+// data chunk on demand. jt9's WAV reader for every mode's file mode.
+struct Wav {
+    std::ifstream f;
+    int rate = 0, channels = 0, bits = 0;
+    long remaining = 0;  // bytes of data left
+    bool open(const std::string& path, std::string& why) {
+        f.open(path, std::ios::binary);
+        if (!f) {
+            why = "cannot open file";
+            return false;
+        }
+        f.seekg(0, std::ios::end);
+        const int64_t filesize = static_cast<int64_t>(f.tellg());
+        f.seekg(0);
+        auto fail = [&](const char* text) {
+            why = text;
+            f.close();
+            return false;
+        };
+        if (filesize < 12) return fail("file is too short for a RIFF/WAVE header");
+        char riff[12];
+        if (!f.read(riff, 12)) return fail("cannot read RIFF/WAVE header");
+        if (std::memcmp(riff, "RIFF", 4) != 0 || std::memcmp(riff + 8, "WAVE", 4) != 0)
+            return fail("not a RIFF/WAVE file");
+        int64_t filepos = 13;  // Fortran's, 1-based
+        bool format_found = false;
+        for (;;) {
+            if (filepos + 8 > filesize + 1) return fail("missing data chunk");
+            char id[4];
+            int32_t size;
+            f.seekg(filepos - 1);
+            if (!f.read(id, 4) || !f.read(reinterpret_cast<char*>(&size), 4)) return fail("cannot read WAV chunk header");
+            filepos += 8;
+            if (size < 0) return fail("WAV chunk has an invalid size");
+            if (filepos + size > filesize + 1) return fail("WAV chunk extends beyond end of file");
+            const int64_t nextpos = filepos + size + (size % 2);
+            if (std::memcmp(id, "fmt ", 4) == 0) {
+                if (size < 16) return fail("fmt chunk is too short");
+                char b[16];
+                if (!f.read(b, 16)) return fail("cannot read fmt chunk");
+                int16_t fmt_tag, ch, bps;
+                int32_t sr;
+                std::memcpy(&fmt_tag, &b[0], 2);
+                std::memcpy(&ch, &b[2], 2);
+                std::memcpy(&sr, &b[4], 4);
+                std::memcpy(&bps, &b[14], 2);
+                rate = sr;
+                channels = ch;
+                bits = bps;
+                if (fmt_tag != 1 || ch != 1 || bps != 16) return fail("unsupported WAV format; expected mono 16-bit PCM");
+                if (sr != 11025 && sr != 12000) return fail("unsupported WAV sample rate");
+                format_found = true;
+            } else if (std::memcmp(id, "data", 4) == 0) {
+                if (!format_found) return fail("data chunk appears before fmt chunk");
+                remaining = size;
+                f.seekg(filepos - 1);
+                return true;
+            }
+            if (nextpos > filesize + 1) return fail("WAV chunk extends beyond end of file");
+            filepos = nextpos;
+        }
+    }
+    // Up to n samples; how many were read.
+    long read(int16_t* out, long n) {
+        const long want = std::min(n, remaining / 2);
+        f.read(reinterpret_cast<char*>(out), want * 2);
+        const long got = static_cast<long>(f.gcount()) / 2;
+        remaining -= got * 2;
+        return got;
+    }
+};
+
+
+// jt9's parse_wav_filename_nutc: the last 6 characters of the name before
+// .wav/.WAV if all digits, else '_' and the last 4, else 0.
+int jt9_nutc(const std::string& filename);
 
 // Fortran's Fw.d and Iw editing as gfortran writes them (asterisks when the
 // value does not fit; Fw.0 ends in a point). For the line formats.

@@ -1,0 +1,1 @@
+jt9 -a . -8 -d 3 -c K1ABC -x W9XYZ -g EN37 recordings/ft8-real/261012_125100.wav

@@ -1,0 +1,30 @@
+100000  27   -8   0.3   2944.   0   CQ YW18FIFA                           FT8
+100000  25   -8   0.1   1278.   0   CQ TEST K1ABC FN42                    FT8
+100000  23   -8   0.3    984.   0   <...> FK52UD                          FT8
+100000  23   -8   0.3    494.   0   WA9XYZ KA1ABC 7D EMA                  FT8
+100000  22   -8   0.1    788.   0   K1ABC FN42 37                         FT8
+100000  20   -8   0.3   2454.   0   CQ PJ4/K1ABC                          FT8
+100000  19   -8   0.1   1768.   0   W9XYZ K1ABC RRR                       FT8
+100000  16   -8   0.1   2748.   0   <...> <...> 590001 FN20QI             FT8
+100000  15   -8   0.3   1474.   0   K1ABC W9XYZ EN37                      FT8
+100000  13   -8   0.1    298.   0   K1ABC RR73; W9XYZ <...> -08           FT8
+100000  13   -8   0.4   2062.   0   WA9XYZ/R KA1ABC/R R FN42              FT8
+100000  13   -8   0.0   2650.   0   PJ4/K1ABC <W9XYZ> RRR                 FT8
+100000  12   -8   0.0    200.   0   TNX BOB 73 GL                         FT8
+100000  11   -8   0.4   1572.   0   W9XYZ K1ABC -11                       FT8
+100000  11   -9   0.2   1866.   0   K1ABC W9XYZ RR73                      FT8
+100000  11   -8   0.2   2356.   0   TU; W9XYZ G8ABC R 559 0013            FT8
+100000  11   -8   0.1   2258.   0   W9XYZ K1ABC R 579 MA                  FT8
+100000  10   -8  -0.0    690.   0   123456789ABCDEF012                    FT8
+100000  10   -9   0.4   2552.   0   <W9XYZ> PJ4/K1ABC RR73                FT8
+100000  10   -8   0.2   1376.   0   CQ 123 K1ABC FN42                     FT8
+100000   9   -8  -0.0   2160.   0   PA1XYZ/P GM4ABC/P R JO22              FT8
+100000   9   -9   0.4   1082.   0   CQ K1ABC FN42                         FT8
+100000   9   -8   0.2    396.   0   WA9XYZ KA1ABC R 16A EMA               FT8
+100000   8   -9   0.3   1964.   0   W9XYZ K1ABC 73                        FT8
+100000   8   -8   0.2    886.   0   PJ4/K1ABC 37                          FT8
+100000   8   -8  -0.0   1180.   0   CQ DX W9XYZ EN37                      FT8
+100000   8   -8   0.0   1670.   0   K1ABC W9XYZ R-09                      FT8
+100000   7   -8   0.4    592.   0   WA9XYZ KA1ABC R 32A EMA               FT8
+100000   7   -8   0.4   3042.   0   <YW18FIFA> KA1ABC R-17                FT8
+100000   3   -9   0.3    985.   0   <PJ4/K1ABC> FK52UD                    FT8

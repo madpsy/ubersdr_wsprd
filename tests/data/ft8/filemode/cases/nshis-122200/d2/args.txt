@@ -1,0 +1,1 @@
+jt9 -a . -8 -d 2 -x 'KH6/W9XYZ' recordings/ft8-filemode/nshis-261014_122200.wav

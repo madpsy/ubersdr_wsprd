@@ -1,0 +1,1 @@
+jt9 -a . -8 -d 2 recordings/ft8-live/40m-20261012-1934/261012_193500.wav recordings/ft8-filemode/short-13s-261012_193515.wav recordings/ft8-live/40m-20261012-1934/261012_193530.wav

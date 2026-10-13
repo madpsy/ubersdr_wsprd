@@ -79,16 +79,32 @@ target_link_libraries(wsprd PRIVATE ${WSPRD_FFTW} Threads::Threads)
 target_compile_definitions(wsprd PRIVATE WSPRD_VERSION="${WSPRD_VERSION_BUILT}")
 target_compile_options(wsprd PRIVATE -Wall -Wextra)
 
-# jt9: WSJT-X's jt9 run on WAV files, a mode at a time (FST4W so far), its
-# command line, output and files as WSJT-X's (src/jt9_cli.h). FST4W must
+# jt9: WSJT-X's jt9 run on WAV files, a mode at a time (FST4W and FT8), its
+# command line, output and files as WSJT-X's (src/jt9_cli.h). Both must
 # decode exactly as WSJT-X's jt9 does, floats to the bit: no contraction, as
-# above, and glibc's vector maths (libmvec, through libm) where WSJT-X's -O3
-# build calls it (on Windows, without glibc, the plain functions: the same
-# printed results, scripts/jt9-wine-check.sh). Linked as wsprd is (FFTW
-# built in).
+# above. FST4W calls glibc's vector maths (libmvec, through libm) where
+# WSJT-X's -O3 build does (on Windows, without glibc, the plain functions:
+# the same printed results, scripts/jt9-wine-check.sh). FT8 calls no maths
+# library function but sqrtf, fabsf, fmodf and lroundf: glibc's own (and
+# x86-64 libmvec's) are carried in src/ft8_maths.cpp, so it decodes alike
+# everywhere. Linked as wsprd is (FFTW built in).
 set(FST4W_SOURCES src/fst4w_unpack.cpp src/fst4w_ldpc.cpp src/fst4w_frontend.cpp src/fst4w.cpp src/fst4w_jt9.cpp)
 set_source_files_properties(${FST4W_SOURCES} PROPERTIES COMPILE_OPTIONS "-ffp-contract=off")
-add_executable(jt9 src/jt9_main.cpp src/jt9_cli.cpp ${FST4W_SOURCES} src/wsprd_osd.cpp src/fft.cpp src/fft_wisdom.cpp)
+# GCC before 13 (mingw-w64's 12.2 in docker/windows.Dockerfile, for one)
+# fuses complex multiplies into vfmaddsub under -march=x86-64-v3 despite
+# -ffp-contract=off: there FT8's files get no FMA instructions at all
+# (-mno-fma). ft8_maths.cpp keeps FMA for its explicit std::fma, the only
+# fused operations in it.
+set(FT8_FP_OPTIONS "-ffp-contract=off")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13
+   AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64" AND WSPRD_X86_ARCH)
+  set(FT8_FP_OPTIONS "-ffp-contract=off;-mno-fma")
+endif()
+set(FT8_SOURCES src/packjt77.cpp src/ft8_ldpc.cpp src/ft8_frontend.cpp src/ft8.cpp)
+set_source_files_properties(src/ft8_maths.cpp PROPERTIES COMPILE_OPTIONS "-ffp-contract=off")
+set_source_files_properties(${FT8_SOURCES} PROPERTIES COMPILE_OPTIONS "${FT8_FP_OPTIONS}")
+add_executable(jt9 src/jt9_main.cpp src/jt9_cli.cpp ${FST4W_SOURCES} ${FT8_SOURCES} src/ft8_maths.cpp src/ft8_jt9.cpp
+  src/wsprd_osd.cpp src/fft.cpp src/fft_wisdom.cpp)
 target_include_directories(jt9 PRIVATE src)
 target_link_libraries(jt9 PRIVATE ${WSPRD_FFTW} m Threads::Threads)
 target_compile_definitions(jt9 PRIVATE JT9_VERSION="${WSPRD_VERSION_BUILT}")

@@ -1,0 +1,1 @@
+jt9 -a . -8 -d 2 -p 14.4 recordings/ft8-filemode/short-151000-261012_193530.wav

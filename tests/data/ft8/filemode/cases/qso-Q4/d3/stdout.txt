@@ -1,0 +1,19 @@
+122500 -12  0.1  600 ~  CQ G4AAA IO91                           
+122500 -30  0.1 1495 ~  K1ABC W9XYZ EN37                      a8
+<DecodeFinished>   0   2        0
+122515 -12  0.1  600 ~  CQ G4AAA IO91                           
+122515 -23  0.1 1510 ~  K1ABC W9XYZ -09                     ? a3
+<DecodeFinished>   0   2        0
+122530 -12  0.1  600 ~  CQ G4AAA IO91                           
+122530 -22  0.2 1701 ~  CQ W9XYZ EN37                           
+<DecodeFinished>   0   2        0
+122545 -12  0.1  600 ~  CQ G4AAA IO91                           
+122545 -24  0.1 1520 ~  K1ABC W9XYZ RRR                     ? a4
+<DecodeFinished>   0   2        0
+122600 -12  0.1  600 ~  CQ G4AAA IO91                           
+122600 -24  0.1 1478 ~  K1ABC W9XYZ RR73                    ? a6
+122600 -22  0.2 1700 ~  CQ W9XYZ EN37                         a7
+<DecodeFinished>   0   3        0
+122615 -12  0.1  600 ~  CQ G4AAA IO91                           
+122615 -23  0.1 1531 ~  K1ABC W9XYZ 73                      ? a5
+<DecodeFinished>   0   2        0

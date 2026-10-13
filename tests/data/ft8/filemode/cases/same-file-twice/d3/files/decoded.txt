@@ -1,0 +1,10 @@
+193500   5    0   0.1   1494.   0   IU0CCE YO4NF -12                      FT8
+193500  11    6   0.2   1070.   0   RA5AD ON7YC -08                       FT8
+193500   7  -13   0.1   1761.   0   TA2EE SQ8OLS -14                      FT8
+193500   3   -3   0.1   1384.   0   F5SJC EA1VJ IN72                      FT8
+193500   3  -11   0.1   1834.   0   CQ POTA IT9GJK/P JM77                 FT8
+193500   2   -2   0.1    538.   0   VK2ZLX RY7G LN14                      FT8
+193500   2    3   0.0   1109.   0   EY7BM EA3CXN JN01                     FT8
+193500   3   -6  -0.1   1500.   0   CQ F4NHL IN94                       ? FT8
+193500  18   -4   0.1   1324.   0   Z61DX DL7ACA JO40                     FT8
+193500   3  -14   0.2   1821.   0   SP5ALV GI0VAB RR73                    FT8

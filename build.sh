@@ -297,8 +297,8 @@ if command -v wine >/dev/null; then
             { echo "wsprd.exe's $f differs from Linux's" >&2; exit 1; }
     done
     echo "wsprd.exe decodes as Linux's does"
-    # jt9.exe: every case of WSJT-X's jt9 whose inputs are here (made by
-    # --check) printed and written as WSJT-X's.
+    # jt9.exe: every case of WSJT-X's jt9 whose inputs are here (FST4W's
+    # made by --check) printed and written as WSJT-X's.
     say "checking jt9.exe under wine"
     "$root/scripts/jt9-wine-check.sh" "$wbuild/jt9-windows-x86_64.exe" "$build/wine-jt9"
 else
@@ -319,7 +319,7 @@ notes="Built from $commit.
 
 WSJT-X's \`wsprd\` (567ad29ce's decoder), a drop-in for it: the same options, output and files, byte for byte, in a tenth of its CPU on x86-64 and a sixth on a Raspberry Pi 5. One option more, \`-n\`: no search for a drifting signal, and each ALL_WSPR.TXT line ending in the signal's spread in Hz. \`wsprd --version\` gives this release.
 
-And WSJT-X's \`jt9\` for FST4W (FST4W-120 to -1800, and 15, 30 and 60 s), run on WAV files: the same command line, output and files, byte for byte, in about a seventh of its CPU. One option more, \`--spread fast|exact|off\`. FST4W only so far: keep WSJT-X's own \`jt9\` for WSJT-X and its other modes. \`jt9 -v\` gives this release.
+And WSJT-X's \`jt9\` for FST4W (FST4W-120 to -1800, and 15, 30 and 60 s) and FT8 (\`jt9 -8\`), run on WAV files: the same command line, output and files, byte for byte, in about a seventh of its CPU for FST4W and 2.1 to 2.9 times less for FT8 (x86-64, depths 1 to 3). One option more, \`--spread fast|exact|off\` (FST4W). FST4W and FT8 only so far: keep WSJT-X's own \`jt9\` for WSJT-X and its other modes. \`jt9 -v\` gives this release.
 
 - \`wsprd-linux-x86_64\`, \`wsprd-linux-aarch64\`, \`jt9-linux-x86_64\`, \`jt9-linux-aarch64\`: Linux.
 - \`wsprd-windows-x86_64.exe\`, \`jt9-windows-x86_64.exe\`: Windows."

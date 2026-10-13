@@ -1,0 +1,1 @@
+jt9 -a . -8 -d 2 recordings/ft8-filemode/la8-261014_121030.wav

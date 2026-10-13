@@ -1,0 +1,2 @@
+121700 -12  0.1  600 ~  CQ G4AAA IO91                           
+<DecodeFinished>   0   1        0

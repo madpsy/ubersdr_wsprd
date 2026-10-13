@@ -1,0 +1,42 @@
+110000 -11  0.3 1600 ~  CQ PJ4/K1ABC                            
+110000 -12  0.1 2200 ~  VK6FFF ZL7GGG -11                       
+110000 -10  0.2 1000 ~  CQ G3CCC IO91                           
+110000 -11  0.0 2500 ~  CQ YW18FIFA                             
+110000 -13  0.1  700 ~  K1AAA W2BBB EN37                        
+110000 -12  0.0  400 ~  CQ K1AAA FN42                           
+110000 -12  0.0 3000 ~  OH9III SM0JJJ R-07                      
+110000 -15  0.0 1900 ~  CQ JA5EEE PM95                          
+110000 -13  0.2 2800 ~  CQ PY8HHH GG66                          
+110000 -14  0.0 1300 ~  G3CCC DL4DDD JO62                       
+<DecodeFinished>   0  10        0
+110015 -11  0.1 1020 ~  DL4DDD G3CCC -08                        
+110015 -12  0.1 2520 ~  <YW18FIFA> KA1ABC                       
+110015 -12  0.0 2700 ~  <...> W9XYZ -10                         
+110015 -12  0.0 1620 ~  <PJ4/K1ABC> W9XYZ                       
+110015 -12  0.2 3020 ~  SM0JJJ OH9III RR73                      
+110015 -12  0.0  420 ~  W2BBB K1AAA -11                         
+110015 -13  0.0 2220 ~  ZL7GGG VK6FFF R-05                      
+<DecodeFinished>   0   7        0
+110030 -12  0.3 1600 ~  W9XYZ <PJ4/K1ABC> -10                   
+110030 -12 -0.0 3000 ~  OH9III SM0JJJ 73                        
+110030 -12  0.2 1006 ~  CQ G3CCC IO91                           
+110030 -22  0.2 2800 ~  CQ PY8HHH GG66                        a1
+110030 -21  0.1 2201 ~  VK6FFF ZL7GGG 73                      a7
+110030 -22  0.1  700 ~  K1AAA W2BBB R-09                      a7
+110030 -23 -0.0  400 ~  CQ K1AAA FN42                         a7
+<DecodeFinished>   0   7        0
+110045 -12  0.1 2520 ~  <YW18FIFA> KA1ABC 73                    
+110045 -12  0.0 2700 ~  <...> W9XYZ RR73                        
+110045 -12 -0.0 1620 ~  <PJ4/K1ABC> W9XYZ R-08                  
+110045 -21  0.2 3020 ~  SM0JJJ OH9III 73                        
+110045 -22  0.1 1020 ~  DL4DDD G3CCC RR73                     a7
+<DecodeFinished>   0   5        0
+110100 -12  0.3 1600 ~  W9XYZ <PJ4/K1ABC> RR73                  
+110100 -11  0.0 2500 ~  CQ YW18FIFA                             
+110100 -20  0.0  400 ~  CQ K1AAA FN42                           
+110100 -23  0.2 2801 ~  CQ PY8HHH GG66                        a7
+110100 -22  0.1  700 ~  K1AAA W2BBB 73                        a7
+<DecodeFinished>   0   5        0
+110115 -12  0.1 2520 ~  <YW18FIFA> KA1ABC RR73                  
+110115 -23  0.1 1021 ~  DL4DDD G3CCC 73                       a7
+<DecodeFinished>   0   2        0

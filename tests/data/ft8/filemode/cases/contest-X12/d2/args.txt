@@ -1,0 +1,1 @@
+jt9 -a . -8 -d 2 -X 12 recordings/ft8-filemode/contest-261014_123000.wav

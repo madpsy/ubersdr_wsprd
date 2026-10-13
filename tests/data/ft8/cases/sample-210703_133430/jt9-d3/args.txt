@@ -1,0 +1,1 @@
+jt9 -a . -8 -L 100 -H 3200 -f 1500 -F 100 -c b -x b -d 3 recordings/ft8-real/210703_133430.wav

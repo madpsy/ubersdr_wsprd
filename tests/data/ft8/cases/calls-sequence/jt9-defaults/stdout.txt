@@ -1,0 +1,6 @@
+120000 -20 -0.0  601 ~  K1ABC JA5EEE 73                       a2
+120000 -21  0.2  900 ~  K1ABC G3CCC IO91                        
+120000 -16  0.1 1502 ~  K1ABC W9XYZ -15                       a8
+<DecodeFinished>   0   3        0
+120015 -16  0.1 1502 ~  K1ABC W9XYZ -15                       a8
+<DecodeFinished>   0   1        0

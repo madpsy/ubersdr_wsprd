@@ -1,0 +1,17 @@
+121000 -10  0.1  900 ~  W9XYZ G3CCC IO91                        
+121000 -12  0.1  600 ~  CQ G4AAZ IO91                           
+<DecodeFinished>   0   2        0
+121015 -10  0.0 2000 ~  CQ K1AA FN42                            
+<DecodeFinished>   0   1        0
+121030 -12  0.1  600 ~  CQ G4AAZ IO91                           
+121030 -21  0.1 1501 ~  K1ABC W9XYZ RR73                      a2
+121030 -23  0.1  900 ~  W9XYZ G3CCC R-05                      a7
+<DecodeFinished>   0   3        0
+121045 -10  0.0 2000 ~  CQ K1AA FN42                            
+<DecodeFinished>   0   1        0
+121100 -12  0.1 1500 ~  K1ABC W9XYZ -11                         
+<DecodeFinished>   0   1        0
+121115 -10  0.0 2000 ~  CQ K1AA FN42                            
+<DecodeFinished>   0   1        0
+121130 -24  0.1 1501 ~  K1ABC W9XYZ R-10                      a7
+<DecodeFinished>   0   1        0

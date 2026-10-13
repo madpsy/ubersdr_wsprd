@@ -1,0 +1,42 @@
+193500  11  0.2 1500 ~  EB5GIE F4HKP JN18                       
+193500  18  0.1 1225 ~  M7KSV HA1BF R-08                        
+193500  17  0.2 1943 ~  RZ4FWA DK2KGB RR73                      
+193500   6  0.1  935 ~  BG7BVI ON1AEY -18                       
+193500   3  0.1 1684 ~  R7ZY S57BTI 73                          
+193500   8  0.3 2451 ~  BI6PWL 9A7W RR73                        
+193500   5 -1.3 1804 ~  EY7BM SQ5JRE -10                        
+193500  16  0.1 1443 ~  HB9MXV GU4WRP RR73                      
+193500  10  0.9 1993 ~  IU1MQC OZ2CDJ -10                       
+193500   2  0.1 1369 ~  MW7NQU OK1CI -09                        
+193500   1  0.1 2302 ~  CQ OZ1A JO65                            
+193500   4  0.1 1053 ~  Z61DX F4EGM 73                          
+193500   2  0.2 2545 ~  Z61DX RD3FY KO85                        
+193500  12 -0.1 1103 ~  I2LAX PA3AGN JO22                       
+193500   1  0.1  540 ~  EB5GIE F6FHZ JN18                       
+193500  14  0.1  854 ~  EY7BM F4IFO JN29                        
+193500  -1  0.5 2230 ~  Z61DX CT1HHP IN51                       
+193500  -2  0.1 2049 ~  PD2ET OK2PGJ R-05                       
+193500  -8  0.1  396 ~  CQ PD2MAC/P JO21                        
+193500 -11  0.1 2751 ~  CQ SA3LEN JP80                          
+193500  -6  0.1  667 ~  PC2F EA5JLB -09                         
+193500  -6  0.1  353 ~  EY7BM DB9LG JO40                        
+193500 -12  0.2 2168 ~  UA9KBC YO6LM KN25                       
+193500  -2  0.1 1302 ~  HB9DDZ SP9EIA JO90                      
+193500  -5  0.2 2325 ~  2E0SHD SV2AEL RR73                      
+193500  13  0.1  831 ~  OE5OSP ON2BCB RR73                      
+193500  -6  0.6  997 ~  RW9QA DL9AN -14                         
+193500   3 -0.3  502 ~  <...> UR3LM KN89                        
+193500 -10  0.2  943 ~  R3NC PA3GYF JO22                        
+193500  -8 -1.1 1723 ~  CQ R4PFY LO45                           
+193500   1  0.1 1512 ~  OK1TRJ SP5ROM -06                       
+193500  -4  0.1  313 ~  MW0CVT DL3IAK 73                        
+193500 -12  0.1 1170 ~  DF1OLS Z33B -14                         
+193500 -16  1.2 2164 ~  RA6OY HB9FBJ +02                        
+193500  -8  0.1 1384 ~  F5SJC EA1VJ IN72                        
+193500 -16  1.2 2059 ~  RW9QA LY2BNL KO24                       
+193500   4 -0.3  487 ~  CQ OS9T JO11                            
+193500  -1  0.1  785 ~  CQ EK/RX3DPK                            
+193500  -1  0.1 1551 ~  F4NGC EA1IOK IN62                       
+193500  -6  0.1 1575 ~  CQ EC1DD IN52                           
+193500   8  0.1 1108 ~  CQ TF1EM HP94                         a1
+<DecodeFinished>   0  41        0

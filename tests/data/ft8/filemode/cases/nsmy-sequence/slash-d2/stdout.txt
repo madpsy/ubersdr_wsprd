@@ -1,0 +1,27 @@
+121500 -12  0.1  600 ~  CQ G4AAA IO91                           
+<DecodeFinished>   0   1        0
+121515 -12  0.1  600 ~  CQ G4AAA IO91                           
+<DecodeFinished>   0   1        0
+121530 -12  0.1  600 ~  CQ G4AAA IO91                           
+<DecodeFinished>   0   1        0
+121545 -12  0.1  600 ~  CQ G4AAA IO91                           
+<DecodeFinished>   0   1        0
+121600 -12  0.1  600 ~  CQ G4AAA IO91                           
+<DecodeFinished>   0   1        0
+121615 -12  0.1  600 ~  CQ G4AAA IO91                           
+<DecodeFinished>   0   1        0
+121630 -12  0.1  600 ~  CQ G4AAA IO91                           
+<DecodeFinished>   0   1        0
+121645 -12  0.1  600 ~  CQ G4AAA IO91                           
+<DecodeFinished>   0   1        0
+121700 -12  0.1  600 ~  CQ G4AAA IO91                           
+<DecodeFinished>   0   1        0
+121715 -12  0.1  600 ~  CQ G4AAA IO91                           
+121715 -17  0.1 1500 ~  CQ W9XYZ EN37                         a8
+<DecodeFinished>   0   2        0
+121730 -12  0.1  600 ~  CQ G4AAA IO91                           
+121730 -21  0.1 1500 ~  <...> W9XYZ                             
+<DecodeFinished>   0   2        0
+121745 -12  0.1  600 ~  CQ G4AAA IO91                           
+121745 -23  0.1 1500 ~  CQ W9XYZ EN37                         a8
+<DecodeFinished>   0   2        0

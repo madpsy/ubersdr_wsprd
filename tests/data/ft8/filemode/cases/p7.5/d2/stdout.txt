@@ -1,0 +1,3 @@
+193500   6 -1.3 1804 ~  EY7BM SQ5JRE -10                        
+193500  15 -2.2  240 ~  F5SJC SP3HRN RR73                       
+<DecodeFinished>   0   2        0

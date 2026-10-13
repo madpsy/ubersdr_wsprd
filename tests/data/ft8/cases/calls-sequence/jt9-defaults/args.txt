@@ -1,0 +1,1 @@
+jt9 -a . -8 recordings/ft8-sim/calls-261013_120000.wav recordings/ft8-sim/calls-261013_120015.wav

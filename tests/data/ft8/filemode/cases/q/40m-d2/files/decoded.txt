@@ -1,0 +1,13 @@
+193515   5    6   0.4   1494.   0   CQ DK5NC JO52                         FT8
+193515  19    0  -0.1   1000.   0   RY7G EA5HM IM99                       FT8
+193515  15    1   0.3   1724.   0   R4PFY EA1KCN IN53                     FT8
+193515  13    8   0.1   2498.   0   TA3BJK SP3JHZ JO71                    FT8
+193515   8   -3   0.2   2017.   0   TF1EM UB6OCP KN88                     FT8
+193515   7    3   0.1   2392.   0   CQ II5GG JN53                         FT8
+193515   4   -3   0.2    765.   0   RN2F SV7SXE KN20                      FT8
+193515   3    0   0.1   1324.   0   CQ Z61DX KN02                         FT8
+193515  11   -1   0.2   2462.   0   EA8FB SP7CVW KO00                     FT8
+193515   4   -3   0.1   1715.   0   RA6YDX RL3FA +02                      FT8
+193515   9   -7   0.4   1684.   0   S57BTI R4FEO LO23                     FT8
+193515   4   -9   0.1   2452.   0   9A7W DL9FFM JO40                      FT8
+193515   3  -11   0.1   1724.   0   CQ OZ7TN JO65                         FT8

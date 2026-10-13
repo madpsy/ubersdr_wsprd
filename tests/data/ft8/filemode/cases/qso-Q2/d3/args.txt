@@ -1,0 +1,1 @@
+jt9 -a . -8 -d 3 -Q 2 recordings/ft8-filemode/qso-261014_122500.wav recordings/ft8-filemode/qso-261014_122515.wav recordings/ft8-filemode/qso-261014_122530.wav recordings/ft8-filemode/qso-261014_122545.wav recordings/ft8-filemode/qso-261014_122600.wav recordings/ft8-filemode/qso-261014_122615.wav

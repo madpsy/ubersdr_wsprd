@@ -1,0 +1,3 @@
+120015 -12  0.1  600 ~  CQ G4AAA IO91                           
+120015 -30  0.1 1503 ~  K1ABC W9XYZ -15                       a8
+<DecodeFinished>   0   2        0

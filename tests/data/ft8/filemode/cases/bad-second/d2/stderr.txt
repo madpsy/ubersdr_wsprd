@@ -1,0 +1,2 @@
+STOP 2
+jt9: cannot read WAV file nothere-261012_193515.wav: cannot open file

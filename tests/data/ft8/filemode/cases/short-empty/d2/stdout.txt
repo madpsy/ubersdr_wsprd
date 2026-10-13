@@ -1,0 +1,2 @@
+ EOF on input file recordings/ft8-filemode/short-empty-261012_193500.wav
+<DecodeFinished>   0   0        0

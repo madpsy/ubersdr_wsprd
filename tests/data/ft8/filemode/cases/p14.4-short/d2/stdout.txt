@@ -1,0 +1,50 @@
+ EOF on input file recordings/ft8-filemode/short-151000-261012_193530.wav
+193530  11  0.2 1500 ~  EB5GIE F4HKP JN18                       
+193530  21 -2.2  240 ~  CQ SP3HRN JO71                          
+193530  11  0.1  935 ~  BG7BVI ON1AEY RR73                      
+193530  26  0.1 1443 ~  CQ GU4WRP IN89                          
+193530  13 -0.1 1103 ~  I2LAX PA3AGN JO22                       
+193530   0  0.1 2862 ~  Z61DX IK0VAQ JN61                       
+193530   5  0.9 1993 ~  G4DBW OZ2CDJ RR73                       
+193530  -4  0.2 1851 ~  SV2ROG DL2MUC JN58                      
+193530  -2  0.4 2230 ~  Z61DX CT1HHP IN51                       
+193530  -7  0.1 2750 ~  R3DQK SA3LEN +02                        
+193530  -7  0.1 2049 ~  PD2ET OK2PGJ 73                         
+193530  11 -0.0  526 ~  F4NGC DG2EBG JO31                       
+193530  10  0.1  854 ~  EY7BM F4IFO JN29                        
+193530  -3  0.1 2302 ~  CQ OZ1A JO65                            
+193530  -5  0.1 1684 ~  R4FEO S57BTI -12                        
+193530  11 -0.1  831 ~  CQ ON2BCB JO21                          
+193530  -9  0.1 2456 ~  EB5GIE SV1EKI KM18                      
+193530 -13  0.2 2168 ~  UA9KBC YO6LM KN25                       
+193530 -14 -0.3 2391 ~  DL1YCL TA3BJK -16                       
+193530  -5  0.1  396 ~  CQ PD2MAC/P JO21                        
+193530  -1  0.1 1301 ~  HB9DDZ SP9EIA JO90                      
+193530 -11  0.3 1761 ~  TA2EE SQ8OLS -14                        
+193530   0  0.1 1368 ~  MW7NQU OK1CI RR73                       
+193530  -6  0.1 1575 ~  SQ9PBV EC1DD -15                        
+193530   0  0.2  943 ~  RW9QA PA3GYF JO22                       
+193530  -3  0.1 1387 ~  EA4DL DJ0MAB JN49                       
+193530  -7  0.2 2325 ~  CQ SV2AEL KN10                          
+193530   6  0.1  241 ~  EA4DL OS4K +01                          
+193530  -6  0.1 1324 ~  Z61DX DL7ACA JO40                       
+193530  -7  0.1  353 ~  EY7BM DB9LG JO40                        
+193530   6 -0.3  487 ~  CQ OS9T JO11                            
+193530  -6 -1.1 1723 ~  CQ R4PFY LO45                           
+193530   3  0.1  540 ~  EB5GIE F6FHZ JN18                       
+193530  -2  0.1 1512 ~  OK1TRJ SP5ROM -06                       
+193530  -7  0.1  792 ~  IU0CCE DL4DP R+06                       
+193530  -7  0.1 1551 ~  F4NGC EA1IOK IN62                       
+193530 -10  0.1 1834 ~  CQ POTA IT9GJK/P JM77                   
+193530 -16  0.2 2220 ~  DL7ACA LA8MGA -11                       
+193530   1 -0.3  502 ~  <...> UR3LM R-23                        
+193530  10  0.1 2509 ~  BI4IWL ON8DM JO10                       
+193530  -2  0.6  997 ~  RW9QA DL9AN -14                         
+193530  12  0.1 1225 ~  M7KSV HA1BF R-08                        
+193530   1  0.1 1108 ~  CQ TF1EM HP94                       ? a1
+193530 -19  0.2 2164 ~  RA6OY HB9FBJ +02                        
+193530 -12  0.1  785 ~  SP9QMN <...> -13                        
+193530   1  0.2 2545 ~  Z61DX RD3FY KO85                        
+193530   9  0.0 1240 ~  Z62NS ON1PR JO11                        
+193530   6 -0.2 1219 ~  Z62NS IK0XFD JN61                       
+<DecodeFinished>   0  48        0

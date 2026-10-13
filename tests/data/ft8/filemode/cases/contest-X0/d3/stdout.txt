@@ -1,0 +1,9 @@
+123000 -12 -0.0 1500 ~  K1ABC W9XYZ 2A EMA                      
+123000 -10 -0.0  500 ~  CQ TEST K1ABC FN42                      
+123000 -12 -0.0 1900 ~  W9XYZ K1ABC 579 MA                      
+123000 -12  0.0 2500 ~  G4ABC/P PA9XYZ JO22                     
+123000 -12 -0.0 2900 ~  K1ABC RR73; W9XYZ <...> -08             
+123000 -12  0.0 2300 ~  <...> <...> R 590003 IO91NP             
+123000 -21 -0.0  700 ~  CQ FD K1ABC FN42                        
+123000 -22 -0.0 2700 ~  K1ABC W9XYZ R FN42                    a2
+<DecodeFinished>   0   8        0

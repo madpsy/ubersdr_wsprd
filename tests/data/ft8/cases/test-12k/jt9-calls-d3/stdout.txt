@@ -1,0 +1,11 @@
+125100  16 -2.0 2549 ~  IOTA EU-170                             
+125100  15 -2.6 1553 ~  YO9PH DJ9YL R+10                        
+125100   9 -2.5 2187 ~  M8GUH SP6AXW JO80                       
+125100   5 -2.5 1256 ~  F4JGI DL9MAC JN58                       
+125100   0 -2.2 1484 ~  PD0AG F1IZC 73                          
+125100  -8 -1.8 1707 ~  IT9CCQ SV0TPN +09                       
+125100  11 -2.6 1966 ~  IK0VVN F5RRS JN36                       
+125100  -7 -2.4 1509 ~  IZ5TJF EA8DQE IL27                      
+125100   1 -2.5 1239 ~  PD0DDQ UT4PA KO20                       
+125100 -12 -2.6 1693 ~  CQ SQ5PTZ KO02                          
+<DecodeFinished>   0  10        0
