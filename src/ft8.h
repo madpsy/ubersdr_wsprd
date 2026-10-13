@@ -1,4 +1,4 @@
-// The built-in FT8 decoder (docs/ft8-decoder.md): what one long-running
+// The built-in FT8 decoder: what one long-running
 // WSJT-X jt9 does for one FT8 dial, from a period's 180,000 12 kHz samples
 // to its stdout lines and decoded.txt (WSJT-X at 567ad29ce: lib/jt9a.f90's
 // 41/47/50 sequence, decoder.f90's FT8 branch with its RMS gate, decoded.txt
@@ -36,7 +36,7 @@
 namespace ft8 {
 
 // The params block fields FT8 reads (jt9com.f90's params_block), as the
-// GUI fills them with docs/ft8-decoder.md's settings by default.
+// GUI fills them (blank calls and grids, HHMMSS nutc) by default.
 struct Params {
     int ndepth = 2;
     int nfa = 100, nfb = 3200;
@@ -102,15 +102,15 @@ public:
     const std::string& decoded_text() const { return decoded_text_; }
 
     // Called at the end of each ft8_decode call (after the RMS gate passed
-    // and the call ran), with the decoder's packjt77: phase 2's D lines are
-    // its state then.
+    // and the call ran), with the decoder's packjt77: its state then (the
+    // tests' D lines).
     void set_after_decode(std::function<void(int nutc, int nzhsym, const packjt77::Packjt77&)> f) {
         after_decode_ = std::move(f);
     }
 
     // Stops a decode in progress: looked at between candidates, passes and
     // a7 entries; the call then ends as if nothing more were found. For the
-    // skimmer's watchdog only (a stopped period's output is not jt9's).
+    // caller's watchdog only (a stopped period's output is not jt9's).
     void set_stop(bool v) { stop_.store(v, std::memory_order_relaxed); }
 
     const packjt77::Packjt77& packer() const { return pk_; }
@@ -160,7 +160,7 @@ private:
     std::vector<std::string> allmessages_;
     // ft8_decode's local sync: on the stack, never initialised, so the value
     // the a7 decodes print is whatever the last candidate (or a8) left there
-    // (docs/ft8-decoder.md, Quirks).
+    // (a quirk of the reference, kept).
     float sync_ = 0.0f;
     std::vector<float> sbase_;  // ft8_decode's local sbase(NH1), the last sync8's
     std::vector<float> candidate_;
@@ -172,7 +172,7 @@ private:
     // flat in Fortran's column-major order (i, j, k) at (i-1) + 200*j + 400*k,
     // so indexes past 200 alias the next column (the a7 overflow) and indexes
     // past an array's 800 entries read and write what follows it, as there:
-    // jseq 1's overflow (docs/ft8-decoder.md, Quirks). Offsets from msg0's
+    // jseq 1's overflow (a quirk of the reference, kept). Offsets from msg0's
     // (nm -n -S of ft8_a7.f90.o: msg0 at 0x20, 0x73a0 bytes; jseq 0x73c0;
     // itone_a7 0x73e0; f0 0x7520 and dt0 0x81a0, 0xc80 bytes each; one.2
     // 0x8e20, 0x4800 bytes; the gaps zero). Exact up to 600 saves in a
@@ -223,7 +223,7 @@ bool read_wav(const std::string& path, std::vector<int16_t>& samples, int& rate,
 int nutc_of(const std::string& path);
 
 // The oracle's harness (scripts/ft8-oracle.f90) as a function, for the tests
-// and phase 9's standalone program:
+// and the standalone jt9 -8 (ft8_jt9.h):
 //   -d D WAV...                       the GUI's decoding (jt9a), decoded-calls
 //   --file [jt9 -8 options] WAV...    jt9 -8's file mode
 // and WSJT-X's own "jt9 -a DIR -8 [options] WAV..." (as --file). Paths are

@@ -2,12 +2,12 @@
 // between platforms: carried here, as glibc 2.39 computes them on x86-64
 // (the build WSJT-X 567ad29ce's fixtures were made with), so that every
 // platform gets the reference's bits whatever its own libm and libmvec.
-// Measured on every float (docs/ft8-decoder.md, phase 7): the Pi's glibc
-// 2.41 has CORE-MATH's correctly rounded erff and log10f (they differ from
-// 2.39's in the last bit or two, 0.2-34% of the floats in the ranges
+// Measured on every float: glibc 2.41 (on a Raspberry Pi 5) has
+// CORE-MATH's correctly rounded erff and log10f (they differ from 2.39's
+// in the last bit or two, 0.2-34% of the floats in the ranges
 // tried), and AArch64's libmvec cosf, sinf and log10f are other algorithms
 // (up to 2 ulp, 15% of FT8's table entries). mingw's libm differs again
-// (phase 10: its powf, cosf and sinf), so every maths function the FT8
+// (its powf, cosf and sinf), so every maths function the FT8
 // decode calls is carried: also glibc 2.39's scalar sinf, cosf, sincosf,
 // expf, logf, powf and hypotf. tanhf is ft8_ldpc.h's tanhf_glibc. Left to
 // the platform only what IEEE 754 defines exactly: sqrtf, fabsf, fmodf,

@@ -7,7 +7,7 @@
 // gen_ft8wave, gfsk_pulse and peakup; genft8's get_ft8_tones_from_77bits;
 // ft8_a7.f90's ft8_a7d), giving the reference's numbers to the bit on
 // x86-64. ft8_decode itself (the passes, a7's tables, the 41/47/50
-// sequence) is the driver's (docs/ft8-decoder.md, phase 5); it calls these
+// sequence) is the driver's (ft8.h); it calls these
 // as ft8_decode calls them, with one Frontend as one jt9 process's SAVEd
 // state.
 //
@@ -25,7 +25,7 @@
 // ramps. erff, log10f and those libmvec functions as glibc 2.39 has them on
 // x86-64, carried (ft8_maths.h), so that every platform gets their bits
 // (the Pi's glibc and AArch64's libmvec differ in the last bits; its
-// reference build sends the same elements through _ZGVnN4v_*, phase 7).
+// reference build sends the same elements through _ZGVnN4v_*).
 // FFTs as four2a plans them (FFTW_ESTIMATE_PATIENT, in place;
 // fst4w_frontend.h's cached plans), on buffers aligned as the reference's:
 // subtractft8's refine-dt r2c runs on an array gfortran places 4 bytes past

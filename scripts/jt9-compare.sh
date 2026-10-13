@@ -207,7 +207,7 @@ for a in $(find "$repo/tests/data/ft8/filemode/cases" -name args.txt | sort); do
     add "ft8-filemode/$name|same-bare|$prep|$(cut -d' ' -f2- "$a")"
 done
 # Every recorded period alone at depth 2, both sequences whole at depths 1
-# and 3 (blank calls, the skimmer's band) and with jt9's defaults; every
+# and 3 (blank calls, 100-3200 Hz) and with jt9's defaults; every
 # generated and real period at depth 3 and plain.
 F=recordings/ft8-live
 for f in "$repo"/$F/40m-20261012-1934/*.wav "$repo"/$F/20m-20261012-1934/*.wav; do
