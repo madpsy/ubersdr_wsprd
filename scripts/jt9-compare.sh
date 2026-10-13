@@ -361,7 +361,11 @@ for spec in "${cases[@]}"; do
     [[ -n $only && ! $name =~ $only ]] && continue
     # inputs present?
     skip=
-    for tok in ${spec##*|}; do [[ ($tok == recordings/* || $tok == tests/*) && ! -e $repo/$tok ]] && skip=$tok; done
+    for tok in ${spec##*|}; do
+        [[ ($tok == recordings/* || $tok == tests/*) && ! -e $repo/$tok ]] && skip=$tok
+        # an odd input made from a recording that is not here
+        [[ $tok == @I/* && ! -e $work/inputs/${tok#@I/} ]] && skip=$tok
+    done
     if [[ -n $skip ]]; then echo "SKIP ${name} ($skip missing)" > "$work/results/${name//\//:}"; continue; fi
     selected+=("$spec")
 done
