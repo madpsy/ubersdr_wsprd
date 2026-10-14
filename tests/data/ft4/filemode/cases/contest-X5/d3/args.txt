@@ -1,0 +1,1 @@
+jt9 -a . -5 -d 3 -Q 5 -X 5 recordings/ft4-filemode/contest-261014_131000.wav recordings/ft4-filemode/contest-261014_131007.wav recordings/ft4-filemode/contest-261014_131015.wav recordings/ft4-filemode/contest-261014_131022.wav

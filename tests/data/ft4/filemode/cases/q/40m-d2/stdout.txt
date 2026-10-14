@@ -1,0 +1,10 @@
+191915  23  0.1 1500 +  PD0MDX CT7AXN R+13                      
+191915  -2  0.0  641 +  CQ LZ1DPP KN32                          
+191915   4 -0.2 1644 +  YO4ASD OK1PHM R-07                      
+191915   3  0.0 2245 +  IU3WNU SP9JMZ JO90                      
+191915  -6  0.2 1675 +  CQ IU8WQS JM88                          
+191922   2  0.2  939 +  OK1PHM YO4ASD RR73                      
+191922  24 -0.0 1828 +  CT7AXN PD0MDX RR73                      
+191922   4  0.0 1937 +  R2BIN DM5KN JO30                        
+191922   3  0.0 2245 +  R2BIN EA5FD IM99                        
+191922  -5 -0.1  946 +  OK1PHM M7KEV IO94                       

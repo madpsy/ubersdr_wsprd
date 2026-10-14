@@ -1,0 +1,1 @@
+jt9 -a . -5 -d 3 -c K1ABC -x W9XYZ -g EN37 recordings/ft4-sim/calls-261013_120000.wav recordings/ft4-sim/calls-261013_120007.wav

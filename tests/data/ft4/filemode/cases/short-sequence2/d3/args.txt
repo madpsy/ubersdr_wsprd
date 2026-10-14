@@ -1,0 +1,1 @@
+jt9 -a . -5 -d 3 recordings/ft4-filemode/short-empty-261013_191915.wav recordings/ft4-filemode/short-5s-261013_191922.wav recordings/ft4-filemode/short-72575-261013_191915.wav

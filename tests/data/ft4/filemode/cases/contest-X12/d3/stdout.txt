@@ -1,0 +1,4 @@
+131015 -17  0.1 1500 +  K1ABC W9XYZ 579 MA                    a3
+131015 -10  0.1  600 +  CQ G4AAA IO91                           
+131015 -18  0.1 1000 +  CQ RU W9XYZ EN37                      a1
+<DecodeFinished>   0   3        0

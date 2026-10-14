@@ -16,32 +16,23 @@
 #include <fstream>
 
 #include "fst4w_jt9.h"  // fortran_f, fortran_i
+#include "ft8_fortran.h"  // fix, trim, findex, nint, cmul, db, twkfreq1, isgrid4 (shared with FT4)
 #include "ft8_maths.h"  // log10f_glibc, sincosf_glibc, logf_glibc
 
 namespace ft8 {
 
+using fortran::cmul;
+using fortran::db;
+using fortran::findex;
+using fortran::fix;
+using fortran::isgrid4;
+using fortran::nint;
+using fortran::trim;
+using fortran::twkfreq1;
+
 namespace {
 
 constexpr int MAXCAND = 1000, MAX_EARLY = 200, NPTS = 15 * 12000;
-
-// Fortran's character*n assignment: cut or blank padded.
-std::string fix(std::string s, size_t n) {
-    s.resize(n, ' ');
-    return s;
-}
-
-// trim(s): trailing blanks only (NULs stay).
-std::string trim(const std::string& s) {
-    size_t n = s.size();
-    while (n > 0 && s[n - 1] == ' ') --n;
-    return s.substr(0, n);
-}
-
-// index(s, sub): 1-based, 0 when absent, 1 for an empty sub.
-int findex(const std::string& s, const std::string& sub) {
-    const size_t p = s.find(sub);
-    return p == std::string::npos ? 0 : static_cast<int>(p) + 1;
-}
 
 // s(a:b), 1-based, empty when b < a (b cut to the string's length).
 std::string substr(const std::string& s, int a, int b) {
@@ -49,9 +40,6 @@ std::string substr(const std::string& s, int a, int b) {
     if (b < a) return std::string();
     return s.substr(static_cast<size_t>(a - 1), static_cast<size_t>(b - a + 1));
 }
-
-// Fortran's nint of a default real.
-inline int nint(float x) { return static_cast<int>(std::lround(x)); }
 
 // jt9_input_validation.f90's is_real_token.
 bool real_token(const std::string& t) {
@@ -93,18 +81,6 @@ std::string hex8(float v) {
 
 bool blank(const std::string& s) { return s.find_first_not_of(' ') == std::string::npos; }
 
-// Fortran's complex product (no NaN recovery), as the front end's.
-inline cfloat cmul(cfloat a, cfloat b) {
-    return cfloat(a.real() * b.real() - a.imag() * b.imag(), a.real() * b.imag() + a.imag() * b.real());
-}
-
-// db.f90
-float db(float x) {
-    float d = -99.0f;
-    if (x > 1.259e-10f) d = 10.0f * log10f_glibc(x);
-    return d;
-}
-
 // smo121.f90 on x(1:nz).
 void smo121(float* x, int nz) {
     float x0 = x[0];
@@ -112,25 +88,6 @@ void smo121(float* x, int nz) {
         const float x1 = x[i - 1];
         x[i - 1] = 0.5f * x[i - 1] + 0.25f * (x0 + x[i]);
         x0 = x1;
-    }
-}
-
-// twkfreq1.f90 (ca and cb may be the same array, as ft8_a8d passes them).
-void twkfreq1(const cfloat* ca, int npts, float fsample, const float a[5], cfloat* cb) {
-    const float twopi = 6.283185307f;
-    cfloat w(1.0f, 0.0f);
-    const float x0 = 0.5f * static_cast<float>(npts + 1);
-    const float s = 2.0f / static_cast<float>(npts);
-    for (int i = 1; i <= npts; ++i) {
-        const float x = s * (static_cast<float>(i) - x0);
-        const float p2 = 1.5f * x * x - 0.5f;
-        const float p3 = 2.5f * (x * x * x) - 1.5f * x;
-        const float p4 = 4.375f * ((x * x) * (x * x)) - 3.75f * (x * x) + 0.375f;
-        const float dphi = (a[0] + x * a[1] + p2 * a[2] + p3 * a[3] + p4 * a[4]) * (twopi / fsample);
-        float sn, cs;
-        sincosf_glibc(dphi, &sn, &cs);
-        w = cmul(w, cfloat(cs, sn));
-        cb[i - 1] = cmul(w, ca[i - 1]);
     }
 }
 
@@ -182,13 +139,6 @@ std::string getmsg(int i, const std::string& mycall, const std::string& hiscall,
     }
     if (std::abs(isnr) > 30) msg = std::string(37, ' ');
     return msg;
-}
-
-// isgrid4 (ft8_a7_save's statement function) on g4, its character*4.
-bool isgrid4(const std::string& w) {
-    const std::string g4 = fix(w, 4);
-    return trim(g4).size() == 4 && g4[0] >= 'A' && g4[0] <= 'R' && g4[1] >= 'A' && g4[1] <= 'R' && g4[2] >= '0' &&
-           g4[2] <= '9' && g4[3] >= '0' && g4[3] <= '9';
 }
 
 }  // namespace

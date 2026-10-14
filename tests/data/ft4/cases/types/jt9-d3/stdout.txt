@@ -1,0 +1,29 @@
+100000 -10  0.1  298 +  K1ABC RR73; W9XYZ <...> -08             
+100000 -11  0.2  396 +  WA9XYZ KA1ABC R 16A EMA                 
+100000 -10  0.3  494 +  WA9XYZ KA1ABC 7D EMA                    
+100000 -11  0.4  592 +  WA9XYZ KA1ABC R 32A EMA                 
+100000 -11  0.0  690 +  123456789ABCDEF012                      
+100000 -11  0.1  788 +  K1ABC FN42 37                           
+100000 -11  0.2  886 +  PJ4/K1ABC 37                            
+100000 -11  0.3  984 +  <PJ4/K1ABC> FK52UD                      
+100000 -10  0.4 1082 +  CQ K1ABC FN42                           
+100000 -11 -0.0 1180 +  CQ DX W9XYZ EN37                        
+100000 -10  0.1 1278 +  CQ TEST K1ABC FN42                      
+100000 -10  0.2 1376 +  CQ 123 K1ABC FN42                       
+100000 -10  0.3 1474 +  K1ABC W9XYZ EN37                        
+100000 -10  0.4 1572 +  W9XYZ K1ABC -11                         
+100000 -10 -0.0 1670 +  K1ABC W9XYZ R-09                        
+100000 -10  0.1 1768 +  W9XYZ K1ABC RRR                         
+100000 -10  0.2 1866 +  K1ABC W9XYZ RR73                        
+100000 -10  0.3 1964 +  W9XYZ K1ABC 73                          
+100000 -11  0.4 2062 +  WA9XYZ/R KA1ABC/R R FN42                
+100000 -10 -0.0 2160 +  PA1XYZ/P GM4ABC/P R JO22                
+100000 -11  0.1 2258 +  W9XYZ K1ABC R 579 MA                    
+100000 -11  0.2 2357 +  TU; W9XYZ G8ABC R 559 0013              
+100000 -11  0.3 2454 +  CQ PJ4/K1ABC                            
+100000 -11  0.4 2552 +  <W9XYZ> PJ4/K1ABC RR73                  
+100000 -11 -0.0 2650 +  PJ4/K1ABC <W9XYZ> RRR                   
+100000 -11  0.1 2747 +  <...> <...> 590001 FN20QI               
+100000 -10  0.3 2944 +  CQ YW18FIFA                             
+100000 -10  0.4 3042 +  <YW18FIFA> KA1ABC R-17                  
+<DecodeFinished>   0  28        0

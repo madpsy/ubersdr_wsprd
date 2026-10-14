@@ -43,4 +43,12 @@ struct FileMode {
 int run_files(const FileMode& fm, const std::vector<std::string>& files, const std::string& cwd, std::ostream& out,
               std::ostream& err);
 
+// Shared with FT4's file mode (ft4_jt9.h). A path as jt9 opens it from cwd
+// (absolute ones as they are), dir/name, and decoded.txt as decoder.f90
+// leaves it after a period: absent until a call passes the RMS gate (exists),
+// then created, its lines those of the last call that wrote any.
+std::string jt9_join(const std::string& dir, const std::string& name);
+std::string jt9_at(const std::string& cwd, const std::string& path);
+void jt9_write_decoded(bool exists, const std::string& text, const std::string& path);
+
 }  // namespace ft8

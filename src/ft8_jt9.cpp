@@ -13,21 +13,23 @@
 
 namespace ft8 {
 
-namespace {
-
-std::string join(const std::string& dir, const std::string& name) {
+std::string jt9_join(const std::string& dir, const std::string& name) {
     if (dir.empty() || dir == ".") return name;
     return dir.back() == '/' ? dir + name : dir + "/" + name;
 }
-std::string at(const std::string& cwd, const std::string& path) {
+std::string jt9_at(const std::string& cwd, const std::string& path) {
     // Absolute: /..., and on Windows also C:\..., \\server\... and \...
     if (!path.empty() && (path[0] == '/' || path[0] == '\\')) return path;
     if (path.size() > 1 && path[1] == ':') return path;
-    return join(cwd, path);
+    return jt9_join(cwd, path);
 }
-bool exists(const std::string& path) { return static_cast<bool>(std::ifstream(path)); }
-
-}  // namespace
+void jt9_write_decoded(bool exists, const std::string& text, const std::string& path) {
+    if (!exists) return;
+    if (!text.empty())
+        std::ofstream(path, std::ios::trunc) << text;
+    else if (!std::ifstream(path))
+        std::ofstream(path, std::ios::app);
+}
 
 int run_files(const FileMode& fm, const std::vector<std::string>& files, const std::string& cwd, std::ostream& out,
               std::ostream& err) {
@@ -55,7 +57,7 @@ int run_files(const FileMode& fm, const std::vector<std::string>& files, const s
     p.mycall = mycall;
     p.hiscall = hiscall;
     p.hisgrid = hisgrid;
-    const std::string decoded_path = join(at(cwd, fm.temp_dir), "decoded.txt");
+    const std::string decoded_path = jt9_join(jt9_at(cwd, fm.temp_dir), "decoded.txt");
 
     Decoder dec;
     constexpr long KSTEP = 6912 / 2, LAST = 52 * KSTEP;  // FT8 reads no block ending past 179,712
@@ -63,7 +65,7 @@ int run_files(const FileMode& fm, const std::vector<std::string>& files, const s
     for (const std::string& infile : files) {
         fst4w::Wav wav;
         std::string why;
-        if (!wav.open(at(cwd, infile), why)) {
+        if (!wav.open(jt9_at(cwd, infile), why)) {
             err << fm.program << ": cannot read WAV file " << infile << ": " << why << "\nSTOP 2\n";
             return 2;
         }
@@ -96,12 +98,7 @@ int run_files(const FileMode& fm, const std::vector<std::string>& files, const s
         // gate, so created then; its lines those of the last call that wrote
         // any (a call writing none leaves it as it was, also as it was
         // before the run).
-        if (dec.decoded_exists()) {
-            if (!dec.decoded_text().empty())
-                std::ofstream(decoded_path, std::ios::trunc) << dec.decoded_text();
-            else if (!exists(decoded_path))
-                std::ofstream(decoded_path, std::ios::app);
-        }
+        jt9_write_decoded(dec.decoded_exists(), dec.decoded_text(), decoded_path);
     }
     return 0;
 }

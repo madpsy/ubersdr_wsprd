@@ -1,0 +1,5 @@
+191922   3    2   0.2    939.   0   OK1PHM YO4ASD RR73                    FT4
+191922   4   24  -0.0   1828.   0   CT7AXN PD0MDX RR73                    FT4
+191922   4    4   0.0   1937.   0   R2BIN DM5KN JO30                      FT4
+191922   4    3   0.0   2245.   0   R2BIN EA5FD IM99                      FT4
+191922   4   -5  -0.1    946.   0   OK1PHM M7KEV IO94                     FT4

@@ -1,0 +1,9 @@
+191930   5   23   0.2   1501.   0   PD0MDX CT7AXN 73                      FT4
+191930   4    0   0.0    641.   0   CQ LZ1DPP KN32                        FT4
+191930   3   10  -0.0   1197.   0   OK6AB YO4NF +02                       FT4
+191930   3   10  -0.0   1645.   0   YO4ASD OK1PHM 73                      FT4
+191930   4   19   0.2   1827.   0   PD0MDX I7DGX JN71                     FT4
+191930   3    4   0.1   2246.   0   IU3WNU SP9JMZ JO90                    FT4
+191930   4    3   0.0   1197.   0   CQ PD00DOG                            FT4
+191930   4   -1   0.2   1672.   0   CQ IU8WQS JM88                        FT4
+191930   4    5   0.1   1828.   0   PD0MDX R2BIN -07                      FT4

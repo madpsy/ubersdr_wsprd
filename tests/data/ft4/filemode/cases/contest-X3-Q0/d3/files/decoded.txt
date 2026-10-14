@@ -1,0 +1,3 @@
+131007   3  -17   0.1   1500.   0   K1ABC W9XYZ R 2A EMA                ? FT4
+131007   3  -10   0.1    600.   0   CQ G4AAA IO91                         FT4
+131007   2  -18   0.1   1000.   0   CQ FD W9XYZ EN37                      FT4

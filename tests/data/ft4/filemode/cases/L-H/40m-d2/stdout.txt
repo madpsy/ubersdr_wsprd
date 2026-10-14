@@ -1,0 +1,4 @@
+191915  18  0.1 1501 +  PD0MDX CT7AXN R+13                      
+191915   0 -0.2 1644 +  YO4ASD OK1PHM R-07                      
+191915  -9  0.2 1675 +  CQ IU8WQS JM88                          
+<DecodeFinished>   0   3        0

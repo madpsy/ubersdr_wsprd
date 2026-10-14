@@ -1,7 +1,7 @@
 // jt9's command line (jt9_cli.h): lib/jt9.f90's option loop and checks,
 // lib/options.f90's getopt and print_opt, lib/jt9_input_validation.f90's
 // number checks, at 567ad29ce; then each mode's file mode (FST4W's:
-// fst4w_jt9.h; FT8's: ft8_jt9.h).
+// fst4w_jt9.h; FT8's: ft8_jt9.h; FT4's: ft4_jt9.h).
 #include "jt9_cli.h"
 
 #include <algorithm>
@@ -13,6 +13,7 @@
 #include <string>
 
 #include "fst4w_jt9.h"
+#include "ft4_jt9.h"
 #include "ft8_jt9.h"
 
 namespace jt9_cli {
@@ -39,6 +40,7 @@ const Opt OPTS[] = {
     {"highest", true, 'H', "Highest frequency decoded, default HERTZ=4000", "HERTZ"},
     {"rx-frequency", true, 'f', "Receive frequency offset, default HERTZ=1500", "HERTZ"},
     {"freq-tolerance", true, 'F', "Receive frequency tolerance, default HERTZ=20", "HERTZ"},
+    {"ft4", false, '5', "FT4 mode", ""},
     {"fst4w", false, 'W', "FST4W mode", ""},
     {"fst4w", false, 'Y', "FST4W mode, print hash22 values", ""},
     {"ft8", false, '8', "FT8 mode", ""},
@@ -56,7 +58,7 @@ const Opt OPTS[] = {
      "fast|exact|off"},
 };
 // getopt's option letters, ':' after those taking a value.
-const char* const SHORT = "hva:p:d:f:F:t:L:H:WY8qQ:c:G:x:g:X:";
+const char* const SHORT = "hva:p:d:f:F:t:L:H:5WY8qQ:c:G:x:g:X:";
 
 std::string rtrim(std::string s) {
     while (!s.empty() && s.back() == ' ') s.pop_back();
@@ -247,8 +249,8 @@ void usage(std::ostream& out) {
 int run(const std::vector<std::string>& args, const std::string& cwd, std::ostream& out, std::ostream& err,
         const std::string& version) {
     fst4w::FileMode fm;
-    ft8::FileMode f8;  // what FT8 reads, beside FST4W's
-    int mode = 0;  // jt9's: 241 --fst4w (-W), 242 -Y, 8 -8
+    ft8::FileMode f8;  // what FT8 and FT4 read, beside FST4W's
+    int mode = 0;  // jt9's: 241 --fst4w (-W), 242 -Y, 8 -8, 5 -5
     bool display_help = false, display_version = false;
     Getopt getopt(args);
     Getopt::Got g;
@@ -324,6 +326,7 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
         case 'W': mode = 241; break;
         case 'Y': mode = 242; break;
         case '8': mode = 8; break;
+        case '5': mode = 5; break;
         case 'q': fm.quiet = f8.quiet = true; break;
         case 'c':
         case 'x':
@@ -350,7 +353,7 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
         }
     }
     if (display_version) {
-        out << "jt9 " << version << " (FST4W and FT8: WSJT-X 567ad29ce's decoders)\n";
+        out << "jt9 " << version << " (FST4W, FT8 and FT4: WSJT-X 567ad29ce's decoders)\n";
         return 0;
     }
     if (display_help || g.st < 0 || g.remain < 1) {
@@ -371,7 +374,8 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
         }
         return ft8::run_files(f8, files, cwd, out, err);
     }
-    err << "jt9: no mode given: this jt9 decodes FST4W (--fst4w, -W, or -Y) and FT8 (-8) so far\nSTOP 2\n";
+    if (mode == 5) return ft4::run_files(f8, files, cwd, out, err);
+    err << "jt9: no mode given: this jt9 decodes FST4W (--fst4w, -W, or -Y), FT8 (-8) and FT4 (-5) so far\nSTOP 2\n";
     return 2;
 }
 

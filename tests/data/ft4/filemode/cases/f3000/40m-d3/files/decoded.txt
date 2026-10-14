@@ -1,0 +1,5 @@
+191915   4   -2   0.0    641.   0   CQ LZ1DPP KN32                        FT4
+191915   3   23   0.1   1500.   0   PD0MDX CT7AXN R+13                    FT4
+191915   4    4  -0.2   1644.   0   YO4ASD OK1PHM R-07                    FT4
+191915   5    3   0.0   2245.   0   IU3WNU SP9JMZ JO90                    FT4
+191915   3   -6   0.2   1675.   0   CQ IU8WQS JM88                        FT4

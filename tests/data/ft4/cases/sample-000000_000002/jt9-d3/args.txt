@@ -1,0 +1,1 @@
+jt9 -a . -5 -L 100 -H 3200 -f 1500 -F 100 -c b -x b -d 3 recordings/ft4-real/000000_000002.wav

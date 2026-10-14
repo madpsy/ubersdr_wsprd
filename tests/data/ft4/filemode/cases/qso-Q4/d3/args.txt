@@ -1,0 +1,1 @@
+jt9 -a . -5 -d 3 -Q 4 recordings/ft4-filemode/qso-261014_130000.wav recordings/ft4-filemode/qso-261014_130007.wav recordings/ft4-filemode/qso-261014_130015.wav recordings/ft4-filemode/qso-261014_130022.wav recordings/ft4-filemode/qso-261014_130030.wav recordings/ft4-filemode/qso-261014_130037.wav

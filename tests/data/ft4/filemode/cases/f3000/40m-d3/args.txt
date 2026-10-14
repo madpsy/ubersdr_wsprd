@@ -1,0 +1,1 @@
+jt9 -a . -5 -d 3 -f 3000 -c b -x b recordings/ft4-live/40m-20261013-1919/261013_191915.wav

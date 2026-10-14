@@ -1,0 +1,18 @@
+000002   4  -10  -0.2    296.   0   N1TRK N4FKH 569 VA                    FT4
+000002   4   -9  -0.4    422.   0   N1TRK KB7RUQ RR73                     FT4
+000002   3   -7  -0.1    560.   0   CQ RU AB5XS EM12                      FT4
+000002   3  -13   0.1    727.   0   NZ7P WA7JAY 589 CA                    FT4
+000002   4   16   0.3   1148.   0   KB0VHA KA1YQC R 539 MA                FT4
+000002   4   -3  -0.2   1640.   0   CQ RU N9OY EN43                       FT4
+000002   4  -11   0.2   1910.   0   K1JT WB4HXE 559 GA                    FT4
+000002   4    5   0.3   2067.   0   VE3LON K7RL R 549 WA                  FT4
+000002   4   -2   0.2   2310.   0   WD9IGY KX1X 73                        FT4
+000002   2  -18  -0.4   2413.   0   W7BOB KJ7G RR73                       FT4
+000002   4   -7  -0.3   2566.   0   NI6G W7DRW 569 AZ                     FT4
+000002   4    2  -0.3   2725.   0   K4SQC VE3RX RR73                      FT4
+000002   4   -6  -0.4   2813.   0   CQ RU W1QA FN32                       FT4
+000002   4    0   0.0   2995.   0   CQ RU WS4WW FM17                      FT4
+000002   4   14   0.2   3158.   0   HB9BUN KG4W R 549 VA                  FT4
+000002   4  -10  -0.3    520.   0   W9JA PY2APK RRR                       FT4
+000002   2  -15   0.2   2299.   0   AC6BW KR9A R 559 WI                   FT4
+000002   3  -13  -0.3   2560.   0   CQ RU W0FRC DM79                      FT4

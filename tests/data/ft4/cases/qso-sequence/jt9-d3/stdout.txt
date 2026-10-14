@@ -1,0 +1,36 @@
+110000 -11 -0.0  399 +  CQ K1AAA FN42                           
+110000 -11  0.1  699 +  K1AAA W2BBB EN37                        
+110000  -8  0.2 1000 +  CQ G3CCC IO91                           
+110000 -13 -0.0 1300 +  G3CCC DL4DDD JO62                       
+110000  -9  0.3 1599 +  CQ PJ4/K1ABC                            
+110000 -13  0.0 1900 +  CQ JA5EEE PM95                          
+110000 -11  0.1 2200 +  VK6FFF ZL7GGG -11                       
+110000  -9 -0.0 2500 +  CQ YW18FIFA                             
+110000 -11  0.2 2800 +  CQ PY8HHH GG66                          
+<DecodeFinished>   0   9        0
+110007 -10 -0.0  420 +  W2BBB K1AAA -11                         
+110007  -9  0.1 1020 +  DL4DDD G3CCC -08                        
+110007 -10 -0.0 1620 +  <PJ4/K1ABC> W9XYZ                       
+110007 -12  0.0 2220 +  ZL7GGG VK6FFF R-05                      
+110007 -11  0.1 2520 +  <YW18FIFA> KA1ABC                       
+110007 -10  0.0 2700 +  <...> W9XYZ -10                         
+<DecodeFinished>   0   6        0
+110015 -15  0.1  700 +  K1AAA W2BBB R-09                        
+110015 -10  0.2 1006 +  CQ G3CCC IO91                           
+110015 -10  0.3 1600 +  W9XYZ <PJ4/K1ABC> -10                   
+110015 -18  0.1 2200 +  VK6FFF ZL7GGG 73                        
+110015 -17  0.2 2799 +  CQ PY8HHH GG66                          
+<DecodeFinished>   0   5        0
+110022 -16  0.1 1020 +  DL4DDD G3CCC RR73                       
+110022 -10 -0.0 1620 +  <PJ4/K1ABC> W9XYZ R-08                  
+110022 -11  0.1 2520 +  <YW18FIFA> KA1ABC 73                    
+110022 -10 -0.0 2700 +  <...> W9XYZ RR73                        
+<DecodeFinished>   0   4        0
+110030 -12  0.1  700 +  K1AAA W2BBB 73                          
+110030 -10  0.3 1599 +  W9XYZ <PJ4/K1ABC> RR73                  
+110030 -17  0.0 1899 +  CQ JA5EEE PM95                        a1
+110030 -10  0.0 2500 +  CQ YW18FIFA                             
+<DecodeFinished>   0   4        0
+110037 -17  0.1 1020 +  DL4DDD G3CCC 73                         
+110037 -11  0.1 2520 +  <YW18FIFA> KA1ABC RR73                  
+<DecodeFinished>   0   2        0

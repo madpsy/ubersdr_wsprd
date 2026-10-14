@@ -1,0 +1,53 @@
+191915  23  0.1 1500 +  PD0MDX CT7AXN R+13                      
+191915  -2  0.0  641 +  CQ LZ1DPP KN32                          
+191915   4 -0.2 1644 +  YO4ASD OK1PHM R-07                      
+191915   2  0.0 2246 +  IU3WNU SP9JMZ JO90                      
+191915  -6  0.2 1675 +  CQ IU8WQS JM88                          
+<DecodeFinished>   0   5        0
+191922   2  0.2  939 +  OK1PHM YO4ASD RR73                      
+191922  23 -0.0 1828 +  CT7AXN PD0MDX RR73                      
+191922   4  0.0 1937 +  R2BIN DM5KN JO30                        
+191922   3  0.0 2245 +  R2BIN EA5FD IM99                        
+191922  -5 -0.1  946 +  OK1PHM M7KEV IO94                       
+<DecodeFinished>   0   5        0
+191930  23  0.2 1501 +  PD0MDX CT7AXN 73                        
+191930   0  0.0  641 +  CQ LZ1DPP KN32                          
+191930  10 -0.0 1197 +  OK6AB YO4NF +02                         
+191930  10 -0.0 1645 +  YO4ASD OK1PHM 73                        
+191930  18  0.2 1828 +  PD0MDX I7DGX JN71                       
+191930   4  0.1 2246 +  IU3WNU SP9JMZ JO90                      
+191930   3  0.0 1197 +  CQ PD00DOG                              
+191930  -1  0.2 1672 +  CQ IU8WQS JM88                          
+191930   5  0.1 1828 +  PD0MDX R2BIN -07                        
+<DecodeFinished>   0   9        0
+191937  -8 -0.1  946 +  OK1PHM M7KEV IO94                       
+191937  20 -0.0 1828 +  R2BIN PD0MDX R+15                       
+191937   9  0.0 1937 +  R2BIN DM5KN JO30                        
+191937   5 -0.1 2245 +  SP9JMZ IU3WNU +00                       
+191937  -2  0.0 2245 +  R2BIN EA5FD IM99                        
+<DecodeFinished>   0   5        0
+191945  -5  0.0  641 +  CQ LZ1DPP KN32                          
+191945   0  0.0 1197 +  CQ PD00DOG                              
+191945   6 -0.1 1644 +  CQ OK1PHM JN79                          
+191945   8  0.1 1828 +  PD0MDX R2BIN RR73                       
+191945   2  0.0 2245 +  IU3WNU SP9JMZ R+03                      
+191945  -3  0.2 1673 +  CQ IU8WQS JM88                          
+<DecodeFinished>   0   6        0
+191952  -5 -0.0  945 +  OK1PHM M7KEV IO94                       
+191952  18 -0.0 1828 +  R2BIN PD0MDX 73                         
+191952  10  0.0 1937 +  IU8WQS DM5KN JO30                       
+191952   3 -0.1 2244 +  SP9JMZ IU3WNU RR73                      
+<DecodeFinished>   0   4        0
+192000   3  0.0  642 +  CQ LZ1DPP KN32                          
+192000  -3  0.0 1197 +  CQ PD00DOG                              
+192000   6 -0.0 1644 +  M7KEV OK1PHM -07                        
+192000   2  0.0 2246 +  IU3WNU SP9JMZ 73                        
+192000  -3  0.2 1673 +  DM5KN IU8WQS -05                        
+<DecodeFinished>   0   5        0
+192007  21  0.1 1501 +  <PD00DOG> CT7AXN IM59                   
+192007   5  0.2  445 +  OK1PHM IZ3ZRD JN55                      
+192007  -3 -0.1  945 +  OK1PHM M7KEV R-08                       
+192007   5 -0.1 1673 +  IU8WQS IU3WNU -12                       
+192007  23 -0.0 1828 +  I7DGX PD0MDX +29                        
+192007   3  0.0 1937 +  IU8WQS DM5KN R-13                       
+<DecodeFinished>   0   6        0

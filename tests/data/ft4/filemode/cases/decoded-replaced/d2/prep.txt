@@ -1,0 +1,1 @@
+seed:tests/data/ft4/cases/40m-sequence/d1/decoded.txt>decoded.txt

@@ -1,0 +1,4 @@
+192930   5    0   0.0    641.   0   CQ LZ1DPP KN32                        FT4
+192930   4   18   0.2   1373.   0   IU3WNU I7DGX JN71                     FT4
+192930   2  -14  -0.0   1547.   0   F5SJC PD4PJH RR73                     FT4
+192930   3    0   0.2   1672.   0   PD0MDX IU8WQS 73                      FT4

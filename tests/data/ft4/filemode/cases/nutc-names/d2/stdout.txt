@@ -1,0 +1,12 @@
+001919  23  0.1 1500 +  PD0MDX CT7AXN R+13                      
+001919  -2  0.0  641 +  CQ LZ1DPP KN32                          
+001919   4 -0.2 1644 +  YO4ASD OK1PHM R-07                      
+001919   3  0.0 2245 +  IU3WNU SP9JMZ JO90                      
+001919  -6  0.2 1675 +  CQ IU8WQS JM88                          
+<DecodeFinished>   0   5        0
+000000  23  0.1 1500 +  PD0MDX CT7AXN R+13                      
+000000  -2  0.0  641 +  CQ LZ1DPP KN32                          
+000000   4 -0.2 1644 +  YO4ASD OK1PHM R-07                      
+000000   3  0.0 2245 +  IU3WNU SP9JMZ JO90                      
+000000  -6  0.2 1675 +  CQ IU8WQS JM88                          
+<DecodeFinished>   0   5        0

@@ -118,7 +118,7 @@ public:
     // The memory it holds now, bytes: itself (packjt77's tables, the a7
     // tables and the front end's fixed arrays) and its buffers on the heap,
     // plus the two sample copies period() makes while it runs; FFTW's plans
-    // not counted. For the Resources tab, between periods (not thread-safe).
+    // not counted. Between periods (not thread-safe).
     size_t memory() const;
 
     // The oracle trace's lines this decoder can tell (scripts/ft8-trace-patch.py:

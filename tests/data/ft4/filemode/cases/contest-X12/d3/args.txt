@@ -1,0 +1,1 @@
+jt9 -a . -5 -d 3 -Q 5 -X 12 recordings/ft4-filemode/contest-261014_131015.wav

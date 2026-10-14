@@ -1,0 +1,1 @@
+jt9 -a . -5 -L 300 -H 3000 -f 1500 -F 100 -c b -x b -d 2 recordings/ft4-sim/types-261013_100000.wav

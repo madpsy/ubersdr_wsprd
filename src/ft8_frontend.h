@@ -158,7 +158,7 @@ public:
                  const std::string& grid4, float& xdt, float& f1, float xbase, int& nharderrors, float& dmin,
                  std::string& msg37, float& xsnr, Codec& codec);
 
-    // Its buffers on the heap now, bytes (the Resources tab; FFTW's plans
+    // Its buffers on the heap now, bytes (FFTW's plans
     // not counted). Not while it runs.
     size_t heap_bytes() const;
 

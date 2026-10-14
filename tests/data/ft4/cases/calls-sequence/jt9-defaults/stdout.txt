@@ -1,0 +1,5 @@
+120000 -16  0.0  600 +  K1ABC JA5EEE 73                         
+120000 -17 -0.0 1901 +  K1ABC DL4DDD R-07                       
+120000 -17  0.3 2400 +  CQ W9XYZ EN37                           
+<DecodeFinished>   0   3        0
+<DecodeFinished>   0   0        0

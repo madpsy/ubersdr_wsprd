@@ -1,0 +1,2 @@
+ EOF on input file recordings/ft4-filemode/short-1000-261013_191915.wav
+<DecodeFinished>   0   0        0

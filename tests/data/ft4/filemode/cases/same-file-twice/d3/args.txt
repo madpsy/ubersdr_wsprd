@@ -1,0 +1,1 @@
+jt9 -a . -5 -d 3 recordings/ft4-live/40m-20261013-1919/261013_191915.wav recordings/ft4-live/40m-20261013-1919/261013_191915.wav

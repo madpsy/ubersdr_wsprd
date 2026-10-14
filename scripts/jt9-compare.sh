@@ -5,9 +5,10 @@
 # they print and write: stdout, stderr, the exit status, and the files left
 # in the run's directories, subdirectories too (fst4_decodes.dat,
 # decoded.txt, fst4w_calls.txt, fort.52; not timer.out or jt9_wisdom.dat,
-# the clock's and FFTW's, which NEW does not write). FST4W's cases and
-# FT8's (jt9 -8: the oracle's jt9 cases, every file-mode fixture case,
-# every FT8 recording and generated period, odd WAVs and the command line).
+# the clock's and FFTW's, which NEW does not write). FST4W's cases, FT8's
+# (jt9 -8: the oracle's jt9 cases, every file-mode fixture case, every FT8
+# recording and generated period, odd WAVs and the command line) and FT4's
+# the same way (jt9 -5: case names ft4-*).
 #
 #   scripts/jt9-compare.sh NEW_JT9 STOCK_JT9 [--docker IMAGE]
 #
@@ -270,6 +271,64 @@ for o in "-d 0" "-d 7" "-F 0" "-f 0" "-f 4000" "-L 4000" "-H 0" "-p 0.5" "-p 180
          "-c K1ABC/P" "-c 'K1ABC/P'" "-x ,W9XYZ" "-c b -x W9XYZ" "-g EN" "-g 'EN37XX99'" "-c 'ABCDEFGHIJKLMNOP'" "-G ,FN20" \
          "-t ." "-a . -a ."; do
     n=$((n + 1)); add "ft8-cli/opt$n${o//[^A-Za-z0-9.-]/}|same-bare|-|-8 -d 2 $o $L4/261012_193500.wav"
+done
+
+# 5. FT4 (jt9 -5). The FT4 oracle's jt9 cases and every file-mode fixture
+# case (scripts/ft8-filemode-oracle.sh --mode ft4).
+for a in $(find "$repo/tests/data/ft4/cases" -path '*/jt9-*' -name args.txt | sort); do
+    d=$(dirname "$a"); name=${d#"$repo/tests/data/ft4/cases/"}
+    add "ft4-oracle/$name|same-bare|-|$(cut -d' ' -f2- "$a")"
+done
+for a in $(find "$repo/tests/data/ft4/filemode/cases" -name args.txt | sort); do
+    d=$(dirname "$a"); name=${d#"$repo/tests/data/ft4/filemode/cases/"}
+    prep=$(cat "$d/prep.txt"); [[ $prep == - ]] || prep="steps:$prep"
+    add "ft4-filemode/$name|same-bare|$prep|$(cut -d' ' -f2- "$a")"
+done
+# Every recorded period alone at depth 2, both sequences whole at depth 3
+# (blank calls, 100-3200 Hz) and with jt9's defaults; every generated and
+# real period at depth 3 and plain.
+F4=recordings/ft4-live
+for f in "$repo"/$F4/40m-20261013-1919/*.wav "$repo"/$F4/20m-20261013-1919/*.wav; do
+    [[ -f $f ]] || continue
+    r=${f#"$repo"/} b=$(basename "$(dirname "$f")" | cut -c1-3)-$(basename "$f" .wav)
+    add "ft4-live/$b/d2|same-bare|-|-5 -d 2 $r"
+done
+for band in 40m 20m; do
+    seq=$(cd "$repo" && ls $F4/$band-20261013-1919/*.wav 2>/dev/null | tr '\n' ' ')
+    [[ -n $seq ]] || continue
+    add "ft4-live/$band-sequence/d3|same-bare|-|-5 -L 100 -H 3200 -c b -x b -d 3 $seq"
+    add "ft4-live/$band-sequence/defaults|same-bare|-|-5 $seq"
+done
+for f in "$repo"/recordings/ft4-sim/*.wav "$repo"/recordings/ft4-real/*.wav; do
+    [[ -f $f ]] || continue
+    r=${f#"$repo"/} b=$(basename "$f" .wav)
+    add "ft4-matrix/$b/d3|same-bare|-|-5 -d 3 $r"
+    add "ft4-matrix/$b/plain|same-bare|-|-5 $r"
+done
+# Odd inputs, several files and the command line with -5.
+k5="-5 -d 1" P5=$F4/40m-20261013-1919/261013_191915.wav
+for f in rate11025 stereo bits8 header short tiny text list odd data-first long-data short-fmt tone30; do
+    for w in "$work"/inputs/$f-*.wav; do [[ -f $w ]] && add "ft4-cli/wav-$f|same-bare|-|$k5 @I/$(basename "$w")"; done
+done
+add "ft4-cli/not-wav-name|same-bare|-|$k5 @I/notes.txt"
+add "ft4-cli/nonexistent|same-bare|-|$k5 nothere-261013_191915.wav"
+add "ft4-cli/bad-rate-second|same-bare|-|-5 -d 2 $P5 @I/rate11025-261012_1200.wav"
+add "ft4-cli/empty-arg|same-bare|-|$k5 ''"
+add "ft4-cli/several-odd|same-bare|-|-5 -d 2 @I/header-261012_1200.wav @I/tiny-261012_1200.wav $P5 @I/short-261012_1200.wav"
+add "ft4-cli/long-ft4|same-bare|-|--ft4 -d 2 $P5"
+add "ft4-cli/long-options|same-bare|-|-5 --lowest 500 x --highest 2500 y --QSOprog 2 z --my-grid FN20 w --his-grid EN37 v -d 2 $P5"
+add "ft4-cli/W-then-5|same-bare|-|-W -p 15 -5 -d 2 $P5"
+add "ft4-cli/8-then-5|same-bare|-|-8 -5 -d 2 $P5"
+add "ft4-cli/5-then-8|same-bare|-|-5 -8 -d 2 $P5"
+for o in -c -x -G -g; do add "ft4-cli/empty$o|ioerror-bare|-|-5 -d 2 $o '' $P5"; done
+for o in "-Q 6" "-Q 1.5" "-L x" "-H 1e3" "-p 1801" "-p 0" "-d 3.0" "-f +" "-X 1x"; do
+    add "ft4-cli/bad${o// /}|same-bare|-|-5 $o $P5"
+done
+for o in "-d" "-Q" "-c"; do add "ft4-cli/missing$o|usage|-|-5 $o"; done
+add "ft4-cli/f-negative|usage|-|-5 -f -50 $P5"
+n=0
+for o in "-X 8" "-X 15" "-X 6 -Q 5" "-Q 5 -d 1" "-c K1ABC/P" "-x ,W9XYZ" "-c 'ABCDEFGHIJKLMNOP'" "-t ." "-a . -a ." "-p 15" "-f 4000"; do
+    n=$((n + 1)); add "ft4-cli/opt$n${o//[^A-Za-z0-9.-]/}|same-bare|-|-5 -d 2 $o $P5"
 done
 
 # ---------------------------------------------------------------- running

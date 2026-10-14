@@ -1,0 +1,1 @@
+jt9 -a . -5 -L 100 -H 5000 -f 1500 -F 100 -c b -x b -d 2 recordings/ft4-sim/over-261013_130007.wav
