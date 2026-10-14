@@ -1068,16 +1068,18 @@ void Frontend::st_make_filter() {
 }
 
 // four2a's plan for sqf's x (as fst4w's: FFTW_ESTIMATE_PATIENT, in place,
-// only the planner's own wisdom), made once on the first trial.
+// the decoders' wisdom, fft.h), made once on the first trial.
 void Frontend::st_plan_r2c(float* x) {
     constexpr int NFFT = NMAX;
     if (!st_plan_) {
         std::lock_guard<std::mutex> lock(skimmer::fft_planner_lock());
         char* const saved = fftwf_export_wisdom_to_string();
         fftwf_forget_wisdom();
+        skimmer::decoder_wisdom_before_plan();
         std::vector<float> keep(x, x + NFFT + 2);
         st_plan_ = fftwf_plan_dft_r2c_1d(NFFT, x, reinterpret_cast<fftwf_complex*>(x), FFTW_ESTIMATE_PATIENT);
         std::copy(keep.begin(), keep.end(), x);
+        skimmer::decoder_wisdom_after_plan();
         fftwf_forget_wisdom();
         if (saved) {
             fftwf_import_wisdom_from_string(saved);

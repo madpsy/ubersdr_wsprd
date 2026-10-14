@@ -110,7 +110,7 @@ set_source_files_properties(${FT4_SOURCES} PROPERTIES COMPILE_OPTIONS "${FT8_FP_
 # WSJT-X improved 3.2.0 runs FT2, built as FT4's files are.
 set(FT2_SOURCES src/ft2_sync.cpp src/ft2.cpp src/ft2_jt9.cpp)
 set_source_files_properties(${FT2_SOURCES} PROPERTIES COMPILE_OPTIONS "${FT8_FP_OPTIONS}")
-add_executable(jt9 src/jt9_main.cpp src/jt9_cli.cpp ${FST4W_SOURCES} ${FT8_SOURCES} ${FT4_SOURCES} ${FT2_SOURCES}
+add_executable(jt9 src/jt9_main.cpp src/jt9_cli.cpp src/jt9_shm.cpp ${FST4W_SOURCES} ${FT8_SOURCES} ${FT4_SOURCES} ${FT2_SOURCES}
   src/ft8_maths.cpp src/ft8_jt9.cpp
   src/wsprd_osd.cpp src/fft.cpp src/fft_wisdom.cpp)
 target_include_directories(jt9 PRIVATE src)

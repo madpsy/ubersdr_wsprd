@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# jt9.exe under wine against WSJT-X's own jt9: every case in
+# jt9.exe under wine (or a native jt9: a path not ending .exe, run as it is:
+# the quick --check of build.sh and export-wsprd.sh) against WSJT-X's own
+# jt9's stored outputs, no WSJT-X built: every case in
 # tests/data/fst4w/cases whose inputs are here (recordings/fst4w-sim and
 # -real come from scripts/fst4w-oracle.sh --sim-only), run as the case was,
 # its stdout, fst4_decodes.dat, decoded.txt and fst4w_calls.txt compared
@@ -30,10 +32,13 @@ repo=$(cd "$(dirname "$0")/.." && pwd)
 work=$(realpath -m "${2:-$(mktemp -d "${TMPDIR:-/tmp}/jt9-wine.XXXXXX")}")
 export WINEPREFIX=$work/prefix WINEDEBUG=-all
 mkdir -p "$work"
+native=false; [[ $exe == *.exe ]] || native=true
+# The jt9 run: under wine, or as it is.
+jt9() { if $native; then "$exe" "$@"; else wine "$exe" "$@"; fi; }
 # Make the prefix first: wine says so on stderr when it creates one, which
 # would land in the first case's stderr (FST4W's cases, run first, used to
 # hide it; with JT9_WINE_ONLY they may not run).
-wineboot --init > /dev/null 2>&1 || true
+$native || wineboot --init > /dev/null 2>&1 || true
 pass=0 fail=0 skip=0
 while IFS= read -r a; do
     d=$(dirname "$a"); name=${d#"$repo/tests/data/fst4w/cases/"}
@@ -50,7 +55,7 @@ while IFS= read -r a; do
     rm -rf "$run"; mkdir -p "$run"
     [[ -f $d/fst4w_calls.in ]] && cp "$d/fst4w_calls.in" "$run/fst4w_calls.txt"
     grep -qs bare "$d/flags.txt" || touch "$run/plotspec" "$run/decdata"
-    (cd "$run" && wine "$exe" "${argv[@]}" 2> /dev/null | tr -d '\r' > stdout.txt)
+    (cd "$run" && jt9 "${argv[@]}" 2> /dev/null | tr -d '\r' > stdout.txt)
     bad=
     cmp -s "$run/stdout.txt" "$d/stdout.txt" || bad+=" stdout"
     for f in fst4_decodes.dat decoded.txt fst4w_calls.txt; do
@@ -102,8 +107,8 @@ run_ft8() {  # case dir
     for t in $(cut -d' ' -f2- "$d/args.txt"); do
         case $t in recordings/*|tests/*) argv+=("$repo/$t") ;; *) argv+=("$t") ;; esac
     done
-    (cd "$run/cwd" && wine "$exe" "${argv[@]}" > ../stdout 2> ../stderr < /dev/null; echo $? > ../status)
-    rm -f "$run/cwd/timer.out" "$run/cwd/jt9_wisdom.dat"
+    (cd "$run/cwd" && jt9 "${argv[@]}" > ../stdout 2> ../stderr < /dev/null; echo $? > ../status)
+    find "$run/cwd" \( -name timer.out -o -name jt9_wisdom.dat \) -delete
 }
 jobs_max=${JT9_WINE_JOBS:-$(nproc)} running=0
 for d in "${ft8[@]}"; do
@@ -133,5 +138,6 @@ for d in "${ft8[@]}"; do
     if [[ -z $bad ]]; then pass=$((pass + 1)); else fail=$((fail + 1)); echo "differs: $name:$bad"; fi
 done
 
-echo "jt9.exe under wine: $pass cases as WSJT-X's jt9 ($((${#ft8[@]} - nft4 - nft2)) of them FT8, $nft4 FT4, $nft2 FT2), $fail differing, $skip without their inputs"
+label="jt9.exe under wine"; $native && label="$(basename "$exe")"
+echo "$label: $pass cases as WSJT-X's jt9 ($((${#ft8[@]} - nft4 - nft2)) of them FT8, $nft4 FT4, $nft2 FT2), $fail differing, $skip without their inputs"
 (( fail == 0 && pass > 0 ))

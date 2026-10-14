@@ -10,16 +10,23 @@
 #                         build/dist/wsprd-windows-x86_64.exe, checked under
 #                         wine when it is installed
 #   ./build.sh --check    the same as ./build.sh, then this wsprd and jt9
-#                         compared with WSJT-X's own, byte for byte, on every
-#                         option and recording (scripts/wsprd-compare.sh,
-#                         scripts/jt9-compare.sh)
+#                         against WSJT-X's own's stored outputs, byte for byte
+#                         (scripts/wsprd-stored-check.sh, scripts/jt9-wine-check.sh
+#                         run natively; about four minutes, nothing of WSJT-X
+#                         built)
+#   ./build.sh --deep-check
+#                         the same as ./build.sh, then this wsprd and jt9
+#                         run beside WSJT-X's own, built here, on every option
+#                         and recording (scripts/wsprd-compare.sh,
+#                         scripts/jt9-compare.sh; longer)
 #   ./build.sh --version TAG
 #                         built as release TAG (wsprd --version, jt9 -v); otherwise
 #                         dev-<commit>
 #
 # Releases (the maintainer's):
 #   ./build.sh --release [TAG]
-#                         --check and --windows, then release both as TAG on
+#                         --check and --windows (--deep-check too when given),
+#                         then release both as TAG on
 #                         GitHub (default vYYYY.MM.DD, with -2, -3... if that
 #                         is taken), and as the release "latest" (its tag
 #                         moved to TAG's commit, its files replaced): the
@@ -32,7 +39,7 @@
 #                         release TAG, and to "latest" while that is TAG: an
 #                         arm64 build from a Pi, for one
 #
-# The check needs WSJT-X's source at the decoder's commit (WSJTX, default
+# The deep check needs WSJT-X's source at the decoder's commit (WSJTX, default
 # ~/repos/wsjtx, at 567ad29ce; scripts/wsprd-oracle.sh --build-only builds its
 # wsprd with WSJT-X's Release flags; scripts/fst4w-oracle.sh builds its jt9
 # with WSJT-X's own CMake in Docker, and makes jt9's inputs) and takes some
@@ -42,7 +49,7 @@
 # released is a commit on GitHub; Windows needs Docker.
 #
 # Debian or Ubuntu: cmake, g++, pkg-config and libfftw3-dev (and gfortran and
-# Docker for the check).
+# Docker for the deep check).
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -52,6 +59,7 @@ build=$root/build
 release=false
 windows=false
 check=false
+deep=false
 added=""
 tag=""
 version=""
@@ -63,6 +71,7 @@ while [ $# -gt 0 ]; do
             ;;
         --windows) windows=true ;;
         --check) check=true ;;
+        --deep-check) deep=true ;;
         --version)
             [ $# -gt 1 ] || { echo "--version needs the release's tag" >&2; exit 2; }
             version=$2
@@ -75,7 +84,7 @@ while [ $# -gt 0 ]; do
             shift 2
             ;;
         -h|--help)
-            sed -n '2,45p' "$0" | sed 's/^# \{0,1\}//'
+            sed -n '2,52p' "$0" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *)
@@ -240,13 +249,23 @@ done
 echo "$version" > "$dist/version"
 echo "built: $dist/wsprd-linux-$arch, $dist/jt9-linux-$arch ($version)"
 
-# --- the check: WSJT-X's own wsprd, every option and recording ---------------
+# --- the check: WSJT-X's own's stored outputs ---------------------------------
 if $check && [ "${WSPRD_SKIP_COMPARE:-0}" != 1 ]; then
+    say "checking wsprd against WSJT-X's wsprd's stored outputs"
+    "$root/scripts/wsprd-stored-check.sh" "$build/wsprd" "$build/stored-wsprd"
+fi
+if $check && [ "${JT9_SKIP_COMPARE:-0}" != 1 ]; then
+    say "checking jt9 against WSJT-X's jt9's stored outputs"
+    "$root/scripts/jt9-wine-check.sh" "$build/jt9" "$build/stored-jt9"
+fi
+
+# --- the deep check: WSJT-X's own wsprd, every option and recording -----------
+if $deep && [ "${WSPRD_SKIP_COMPARE:-0}" != 1 ]; then
     say "comparing with WSJT-X's wsprd"
     WSPRD_ORACLE_WORK=$build/stock "$root/scripts/wsprd-oracle.sh" --build-only
     WSPRD_COMPARE_WORK=$build/compare "$root/scripts/wsprd-compare.sh" "$build/wsprd" "$build/stock/bin/wsprd-release"
 fi
-if $check && [ "${JT9_SKIP_COMPARE:-0}" != 1 ]; then
+if $deep && [ "${JT9_SKIP_COMPARE:-0}" != 1 ]; then
     say "comparing with WSJT-X's jt9"
     # WSJT-X's jt9 (built in Docker, image wsjtx-oracle) and the inputs.
     FST4W_ORACLE_WORK=$build/stock-jt9 "$root/scripts/fst4w-oracle.sh" --sim-only
@@ -298,7 +317,8 @@ if command -v wine >/dev/null; then
     done
     echo "wsprd.exe decodes as Linux's does"
     # jt9.exe: every case of WSJT-X's jt9 whose inputs are here (FST4W's
-    # made by --check) printed and written as WSJT-X's.
+    # made by --deep-check, or kept from an earlier one) printed and written
+    # as WSJT-X's.
     say "checking jt9.exe under wine"
     "$root/scripts/jt9-wine-check.sh" "$wbuild/jt9-windows-x86_64.exe" "$build/wine-jt9"
 else

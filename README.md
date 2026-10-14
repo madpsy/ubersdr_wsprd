@@ -36,10 +36,13 @@ for FT4. FT2, which only WSJT-X improved has, is `jt9 --ft2 ... file.wav`
 as improved's `jt9` runs it: improved's FT2 code on the FT4 decoder above,
 in a quarter to a sixth of improved's CPU on x86-64 (about a third on a
 Pi 5). FST4W, FT8, FT4 and FT2 so far, more
-of `jt9`'s modes to follow. Linux (x86-64, arm64) and Windows. It does not
-replace WSJT-X's own `jt9` inside WSJT-X, which runs it for every mode
-through shared memory: see [jt9: FST4W](#jt9-fst4w), [jt9: FT8](#jt9-ft8),
-[jt9: FT4](#jt9-ft4) and [jt9: FT2](#jt9-ft2).
+of `jt9`'s modes to follow. Linux (x86-64, arm64) and Windows. For FT8,
+FT4 and FT2 it also runs as a back end over shared memory (`jt9 -s KEY`),
+as WSJT-X 2.7 and WSJT-X improved run their `jt9`, so a program driving
+`jt9` that way (jt9-decode, for one) can use it: see
+[jt9 -s](#jt9--s-shared-memory). It does not replace `jt9` inside WSJT-X
+itself, which runs it for every mode: see [jt9: FST4W](#jt9-fst4w),
+[jt9: FT8](#jt9-ft8), [jt9: FT4](#jt9-ft4) and [jt9: FT2](#jt9-ft2).
 
 Originally designed for UberSDR Skimmer.
 
@@ -286,12 +289,42 @@ checks its options, and odd WAV files it reads that this one refuses as
 WSJT-X's does. No FT2 was heard on the air while this was made, so its
 tests are generated FT2 periods and recorded 40 m periods without any.
 
-The other modes of WSJT-X's `jt9` (JT65, Q65, MSK144...), its
-shared-memory mode (`-s`, how WSJT-X itself runs it) and its stdin stream
-are not here yet: they are unknown options to this one, so do not put it in
-place of WSJT-X's `jt9` inside WSJT-X. Run it where `jt9 --fst4w`,
-`jt9 -8`, `jt9 -5` or `jt9 --ft2` is run on files. Not written: `timer.out` and
-`jt9_wisdom.dat` (WSJT-X's timings and FFTW's plans).
+The other modes of WSJT-X's `jt9` (JT65, Q65, MSK144...) and its stdin
+stream are not here yet: they are unknown options to this one, so do not put
+it in place of WSJT-X's `jt9` inside WSJT-X. Run it where `jt9 --fst4w`,
+`jt9 -8`, `jt9 -5` or `jt9 --ft2` is run on files, or where `jt9 -s` is run
+for FT8, FT4 or FT2 (below). `jt9_wisdom.dat` is kept as WSJT-X's `jt9`
+keeps it (FFTW's plans, read from `-a`'s directory at the start and written
+back at a normal end, so a second run starts at once); `timer.out` is not
+written.
+
+## jt9 -s: shared memory
+
+```
+jt9 -s KEY [-w patience] [-m threads] [-e path] [-a path] [-t path] [-r path]
+```
+
+As WSJT-X 2.7 and WSJT-X improved run their `jt9`: the program that starts
+it makes Qt's shared memory under `KEY` (Qt 5's System V memory and
+semaphore on Linux, named objects on Windows), laid out as their `dec_data`,
+puts each period's 12 kHz samples in `d2` and the decode's parameters in
+`params`, and sets `ipc[1]` to 1. `jt9` prints each decode's line and
+`<DecodeFinished>` on stdout (and writes `decoded.txt` in `-t`'s directory),
+then waits for `ipc[2]` to be 1 before the next; `ipc[1]` 999 ends it. FT8
+with `ndiskdat` set gets jt9's early passes (at 41 and 47 half-symbols, then
+50); without it, one pass at `nzhsym`, as WSJT-X's live decodes. `-w`, `-m`,
+`-e` and `-r` are read but change nothing (FFTW's planning is the
+decoders' own).
+
+FT8 (`nmode` 8), FT4 (5) and FT2 (52) only. A request for another mode,
+or for FT8's multithreaded decoder (`lmultift8`), its Fox or SuperFox mode or
+an EME delay, is said once on stderr and answered with `<DecodeFinished>`
+and no decodes, so the caller never waits. WSJT-X 3.x's newer
+shared-memory protocol is not taken.
+
+Run by jt9-decode, against WSJT-X 3.1.0's own `jt9` run by it on the same
+recorded periods (FT8 and FT4 at every depth: 27 periods, 1,135 decodes), every
+decode line was the same.
 
 ## Its CPU
 
@@ -390,10 +423,9 @@ tables above):
 | Raspberry Pi 5, depth 2 | 3.97 s | 1.90 s | 2.1x |
 | Raspberry Pi 5, depth 3 | 7.26 s | 2.22 s | 3.3x |
 
-Run on files, `jt9 -5` plans its FFTs afresh each run (WSJT-X's reads them
-back from its `jt9_wisdom.dat`), about half a second on x86-64: over many
-files in one run it takes 2.6x less CPU than WSJT-X's at depth 2 and 3.8x
-less at depth 3, but a single short run can take longer.
+Like WSJT-X's, `jt9 -5` reads its FFTs' plans back from `jt9_wisdom.dat`
+(in `-a`'s directory); its first run there plans them afresh, about half a
+second on x86-64, and every run after starts at once.
 
 FT2 the same way (one decoder call a 3.75 s period, as improved's GUI
 makes it), against WSJT-X improved 3.2.0's own `jt9` built with its
@@ -482,9 +514,22 @@ the reference's.
 ## Checking it against WSJT-X's own
 
 ```
+./build.sh --check
+```
+
+checks the build against WSJT-X's own outputs stored in `tests/data`,
+nothing of WSJT-X built, in a few minutes: `scripts/wsprd-stored-check.sh`
+runs `wsprd` on every case in `tests/data/wsprd/cases` as WSJT-X's was run
+(stdout, the files written and the exit statuses byte for byte), and
+`scripts/jt9-wine-check.sh` runs `jt9` on every stored FST4W, FT8, FT4 and
+FT2 case whose inputs are here (the same script checks `jt9.exe` under
+wine). The deep check builds WSJT-X's own programs and runs them beside
+these on every option and recording:
+
+```
 sudo apt install gfortran
 git clone https://github.com/wsjtx/wsjtx ~/repos/wsjtx && git -C ~/repos/wsjtx checkout 567ad29ce
-./build.sh --check
+./build.sh --deep-check
 ```
 
 `scripts/wsprd-oracle.sh --build-only` builds WSJT-X's `wsprd` from its
@@ -528,7 +573,7 @@ recorded 40 m periods; a-priori decoding at every QSO progress, the
 contest modes, short WAVs, sequences, the command line with `-5`). FT2's
 reference is not WSJT-X's `jt9` but the hybrid `ft2-jt9` (improved
 3.2.0's FT2 code built into the `567ad29ce` tree, [jt9: FT2](#jt9-ft2)),
-which `--check` does not build: the 19 `jt9 --ft2` cases of
+which `--deep-check` does not build: the 19 `jt9 --ft2` cases of
 `tests/data/ft2` (generated FT2 periods and twenty recorded 40 m
 periods: sequences, a-priori decoding with calls, the defaults, short,
 late and quiet periods, the band's edges) are checked against its outputs
@@ -536,7 +581,7 @@ stored there, and FT2's other cases (every generated period at each
 depth, odd WAVs and cuts around the 34,560 samples read, the command line
 with `--ft2`) run only with that `jt9` given as `scripts/jt9-compare.sh`'s
 second program, and are skipped otherwise (230 of them). Over 650
-cases run by `--check`, every one identical on x86-64 Linux (25 FT8 cases
+cases run by `--deep-check`, every one identical on x86-64 Linux (25 FT8 cases
 that need recorded periods not included here are skipped). Against the
 hybrid itself all 468 of FT2's cases, with 239 recorded 40 m periods, were
 identical. On

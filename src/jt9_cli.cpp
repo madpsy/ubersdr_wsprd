@@ -17,6 +17,8 @@
 #include "ft2_jt9.h"
 #include "ft4_jt9.h"
 #include "ft8_jt9.h"
+#include "fft.h"  // decoder_wisdom_*
+#include "jt9_shm.h"
 
 namespace jt9_cli {
 
@@ -36,13 +38,17 @@ struct Opt {
 const Opt OPTS[] = {
     {"help", false, 'h', "Display this help message", ""},
     {"version", false, 'v', "Display version and build revision", ""},
+    {"shmem", true, 's', "Use shared memory for sample data", "KEY"},
     {"tr-period", true, 'p', "Tx/Rx period, default SECONDS=60", "SECONDS"},
+    {"executable-path", true, 'e', "Location of subordinate executables, default PATH=\".\"", "PATH"},
     {"data-path", true, 'a', "Location of writeable data files, default PATH=\".\"", "PATH"},
     {"temp-path", true, 't', "Temporary files path, default PATH=\".\"", "PATH"},
     {"lowest", true, 'L', "Lowest frequency decoded (JT65), default HERTZ=200", "HERTZ"},
     {"highest", true, 'H', "Highest frequency decoded, default HERTZ=4000", "HERTZ"},
     {"rx-frequency", true, 'f', "Receive frequency offset, default HERTZ=1500", "HERTZ"},
     {"freq-tolerance", true, 'F', "Receive frequency tolerance, default HERTZ=20", "HERTZ"},
+    {"patience", true, 'w', "FFTW3 planing patience (0-4), default PATIENCE=1", "PATIENCE"},
+    {"fft-threads", true, 'm', "Number of threads to process large FFTs, default THREADS=1", "THREADS"},
     {"ft2", false, '2', "FT2 mode", ""},
     {"ft4", false, '5', "FT4 mode", ""},
     {"fst4w", false, 'W', "FST4W mode", ""},
@@ -64,7 +70,9 @@ const Opt OPTS[] = {
 // getopt's option letters, ':' after those taking a value. No '2':
 // improved's getopt string has none, so only --ft2 selects FT2 and "-2" is
 // an unrecognised option there (the usage, status 0), as here.
-const char* const SHORT = "hva:p:d:f:F:t:L:H:5WY8qQ:c:G:x:g:X:";
+// -s, -e, -r, -m and -w as 567ad29ce's getopt string has them (-r, its
+// share path, is not in its list of options).
+const char* const SHORT = "hvs:e:a:r:m:p:d:f:F:w:t:L:H:5WY8qQ:c:G:x:g:X:";
 
 std::string rtrim(std::string s) {
     while (!s.empty() && s.back() == ' ') s.pop_back();
@@ -245,19 +253,56 @@ void usage(std::ostream& out) {
     out << " Usage: jt9 [OPTIONS] file1 [file2 ...]\n";
     out << "        Reads data from *.wav files.\n";
     out << " \n";
+    out << "        jt9 -s <key> [-w patience] [-m threads] [-e path] [-a path] [-t path] [-r path]\n";
+    out << "        Gets data from shared memory region with key==<key>\n";
+    out << " \n";
     out << " OPTIONS:\n";
     out << " \n";
     for (const Opt& o : OPTS) print_opt(out, o);
 }
 
+// What jt9.f90 does once its options are read: -s, or each mode's files.
+int decode(bool read_files, const std::string& shm_key, int mode, fst4w::FileMode& fm, ft8::FileMode& f8,
+           const std::vector<std::string>& args, const Getopt::Got& g, const std::string& cwd, std::ostream& out,
+           std::ostream& err, std::ostream* live_err) {
+    if (!read_files) {
+        jt9_shm::Options so;
+        so.key = shm_key;
+        so.temp_dir = f8.temp_dir;
+        return jt9_shm::run(so, cwd, out, live_err ? *live_err : err);
+    }
+    std::vector<std::string> files(args.begin() + g.offset, args.begin() + g.offset + g.remain);
+    // The modes so far.
+    if (mode == 241 || mode == 242) {
+        fm.hash22 = mode == 242;
+        return fst4w::run_files(fm, files, cwd, out, err);
+    }
+    if (mode == 8) {
+        // Fox (ncontest 6) writes houndcallers.txt, which this jt9 does not.
+        if ((f8.nexp_decode & 7) == 6) {
+            err << "jt9: -X " << f8.nexp_decode << ": FT8's Fox mode (ncontest 6) is not taken by this jt9\nSTOP 2\n";
+            return 2;
+        }
+        return ft8::run_files(f8, files, cwd, out, err);
+    }
+    if (mode == 5) return ft4::run_files(f8, files, cwd, out, err);
+    if (mode == 52) return ft2::run_files(f8, files, cwd, out, err);
+    err << "jt9: no mode given: this jt9 decodes FST4W (--fst4w, -W, or -Y), FT8 (-8), FT4 (-5) and FT2 (--ft2) so "
+           "far\nSTOP 2\n";
+    return 2;
+}
+
 }  // namespace
 
 int run(const std::vector<std::string>& args, const std::string& cwd, std::ostream& out, std::ostream& err,
-        const std::string& version) {
+        const std::string& version, std::ostream* live_err) {
     fst4w::FileMode fm;
     ft8::FileMode f8;  // what FT8, FT4 and FT2 read, beside FST4W's
     int mode = 0;  // jt9's: 241 --fst4w (-W), 242 -Y, 8 -8, 5 -5, 52 --ft2 (improved's)
     bool display_help = false, display_version = false;
+    bool read_files = true;  // false: -s
+    std::string shm_key;
+    int nthreads = 1, npatience = 1;  // -m, -w: read (FFTW's, which ours plan for themselves)
     Getopt getopt(args);
     Getopt::Got g;
     // jt9.f90's invalid_option: said, status 2.
@@ -293,6 +338,18 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
         switch (g.chr) {
         case 'h': display_help = true; break;
         case 'v': display_version = true; break;
+        case 's':
+            read_files = false;
+            shm_key = v;
+            break;
+        case 'e': break;  // exe_dir: no subordinate programs here
+        case 'r': break;  // share_dir: no shipped data read here
+        case 'm':
+            if (!integer('m', v, nthreads)) return invalid('m', v, "must be an integer");
+            break;
+        case 'w':
+            if (!integer('w', v, npatience)) return invalid('w', v, "must be an integer");
+            break;
         case 'a': fm.data_dir = f8.data_dir = v; break;
         case 't': fm.temp_dir = f8.temp_dir = v; break;
         case 'p': {
@@ -364,29 +421,19 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
             << " (FST4W, FT8 and FT4: WSJT-X 567ad29ce's decoders; FT2: WSJT-X improved 3.2.0's FT2 on that FT4)\n";
         return 0;
     }
-    if (display_help || g.st < 0 || g.remain < 1) {
+    if (display_help || g.st < 0 || (!read_files && g.remain > 0) || (read_files && g.remain < 1)) {
         usage(out);
         return 0;
     }
-    std::vector<std::string> files(args.begin() + g.offset, args.begin() + g.offset + g.remain);
-    // The modes so far.
-    if (mode == 241 || mode == 242) {
-        fm.hash22 = mode == 242;
-        return fst4w::run_files(fm, files, cwd, out, err);
-    }
-    if (mode == 8) {
-        // Fox (ncontest 6) writes houndcallers.txt, which this jt9 does not.
-        if ((f8.nexp_decode & 7) == 6) {
-            err << "jt9: -X " << f8.nexp_decode << ": FT8's Fox mode (ncontest 6) is not taken by this jt9\nSTOP 2\n";
-            return 2;
-        }
-        return ft8::run_files(f8, files, cwd, out, err);
-    }
-    if (mode == 5) return ft4::run_files(f8, files, cwd, out, err);
-    if (mode == 52) return ft2::run_files(f8, files, cwd, out, err);
-    err << "jt9: no mode given: this jt9 decodes FST4W (--fst4w, -W, or -Y), FT8 (-8), FT4 (-5) and FT2 (--ft2) so "
-           "far\nSTOP 2\n";
-    return 2;
+    // jt9.f90: FFTW's wisdom imported from <data_dir>/jt9_wisdom.dat
+    // before decoding, exported to it at the end; a STOP (status 2) on the
+    // way ends jt9 without exporting it.
+    const std::string wisfile = ft8::jt9_join(ft8::jt9_at(cwd, f8.data_dir), "jt9_wisdom.dat");
+    skimmer::decoder_wisdom_on(wisfile);
+    const int status = decode(read_files, shm_key, mode, fm, f8, args, g, cwd, out, err, live_err);
+    if (status == 0) skimmer::decoder_wisdom_export(wisfile);
+    skimmer::decoder_wisdom_off();
+    return status;
 }
 
 std::string stderr_as_file(const std::string& err) {

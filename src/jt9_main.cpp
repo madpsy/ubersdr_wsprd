@@ -1,5 +1,6 @@
 // jt9: WSJT-X's jt9 run on WAV files, a mode at a time (jt9_cli.h; FST4W,
-// FT8, FT4 and FT2 so far), its command line, output and files as jt9's.
+// FT8, FT4 and FT2 so far), its command line, output and files as jt9's;
+// or with -s as a back end over shared memory (jt9_shm.h).
 #include <sys/stat.h>
 
 #include <iostream>
@@ -17,7 +18,7 @@ int main(int argc, char** argv) {
     std::ios::sync_with_stdio(false);
     const std::vector<std::string> args(argv + 1, argv + argc);
     std::ostringstream err;
-    const int status = jt9_cli::run(args, ".", std::cout, err, JT9_VERSION);
+    const int status = jt9_cli::run(args, ".", std::cout, err, JT9_VERSION, &std::cerr);
     std::cout.flush();
     // gfortran's order on stderr: a regular file gets "STOP 2" first.
     struct stat st;

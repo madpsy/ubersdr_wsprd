@@ -54,19 +54,21 @@ int maxloc(int lo, int hi, F at) {
 constexpr int NSMALL = 16385;
 constexpr unsigned PATIENCE = FFTW_ESTIMATE_PATIENT;
 
-// four2a's planning: in place, FFTW_ESTIMATE_PATIENT, only the planner's
-// own wisdom (the process's set aside and put back after). Planning at this
-// patience reads no data, but four2a keeps up to NSMALL values across it
-// anyway: so do we.
+// four2a's planning: in place, FFTW_ESTIMATE_PATIENT, with the decoders'
+// wisdom (fft.h: none in the skimmer, jt9_wisdom.dat's in jt9), the
+// process's set aside and put back after. Planning at this patience reads
+// no data, but four2a keeps up to NSMALL values across it anyway: so do we.
 template <typename Plan>
 fftwf_plan make_plan(void* data, size_t keep_bytes, Plan make) {
     std::lock_guard<std::mutex> lock(skimmer::fft_planner_lock());
     char* const saved = fftwf_export_wisdom_to_string();
     fftwf_forget_wisdom();
+    skimmer::decoder_wisdom_before_plan();
     std::vector<char> aa;
     if (keep_bytes) aa.assign(static_cast<char*>(data), static_cast<char*>(data) + keep_bytes);
     fftwf_plan p = make();
     if (keep_bytes) std::memcpy(data, aa.data(), keep_bytes);
+    skimmer::decoder_wisdom_after_plan();
     fftwf_forget_wisdom();
     if (saved) {
         fftwf_import_wisdom_from_string(saved);

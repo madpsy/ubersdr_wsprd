@@ -5,7 +5,8 @@
 # they print and write: stdout, stderr, the exit status, and the files left
 # in the run's directories, subdirectories too (fst4_decodes.dat,
 # decoded.txt, fst4w_calls.txt, fort.52; not timer.out or jt9_wisdom.dat,
-# the clock's and FFTW's, which NEW does not write). FST4W's cases, FT8's
+# the clock's and FFTW's: NEW writes no timer.out, and its wisdom is its
+# FFTW build's). FST4W's cases, FT8's
 # (jt9 -8: the oracle's jt9 cases, every file-mode fixture case, every FT8
 # recording and generated period, odd WAVs and the command line) and FT4's
 # the same way (jt9 -5: case names ft4-*). FT2's (jt9 --ft2: case names

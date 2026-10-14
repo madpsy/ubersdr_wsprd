@@ -9,6 +9,10 @@
 // treats an option it does not know).
 //
 //   jt9 [OPTIONS] file1 [file2 ...]
+//   jt9 -s <key> [-w patience] [-m threads] [-e path] [-a path] [-t path] [-r path]
+//
+// The second as a back end over shared memory: jt9_shm.h (FT8, FT4 and
+// FT2, WSJT-X 2.7.0's protocol, as jt9-decode runs jt9).
 //
 // The command line is read as WSJT-X's jt9 reads it (lib/options.f90's
 // getopt and jt9.f90's checks), its quirks too: an option and its value are
@@ -28,8 +32,10 @@
 // exact for WSJT-X's byte for byte; a long option alone, taking its one
 // value); -v's line. Still apart: FST4W's -c and -x only standard calls
 // (WSJT-X's takes any: fst4w_unpack.h); FT8's Fox mode (-X with ncontest
-// 6: houndcallers.txt) refused; no timer.out or jt9_wisdom.dat written (its
-// timings and FFTW wisdom).
+// 6: houndcallers.txt) refused; no timer.out written (its timings).
+// jt9_wisdom.dat as jt9 keeps it: FFTW's wisdom imported from the data dir
+// (-a) before decoding, exported there on a normal end (fft.h's decoders'
+// wisdom).
 //
 // jt9.f90, options.f90, jt9_input_validation.f90: Joe Taylor, K1JT, and the
 // WSJT-X developers (GNU GPL v3), and so is this.
@@ -43,8 +49,10 @@ namespace jt9_cli {
 
 // argv without the program name; cwd as fst4w::run_files() takes it.
 // version: what -v prints after "jt9 ". Returns the exit status.
+// live_err: where -s (shared memory, jt9_shm.h), which runs until told to
+// quit, says things as they happen; null: err.
 int run(const std::vector<std::string>& args, const std::string& cwd, std::ostream& out, std::ostream& err,
-        const std::string& version = "dev");
+        const std::string& version = "dev", std::ostream* live_err = nullptr);
 
 // What jt9's stderr holds when it is a regular file: gfortran buffers a
 // unit connected to a regular file (only), and STOP writes "STOP 2"

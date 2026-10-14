@@ -2,8 +2,10 @@
 
 #include <fftw3.h>
 
+#include <cstdlib>
 #include <mutex>
 #include <new>
+#include <string>
 
 namespace skimmer {
 
@@ -17,6 +19,64 @@ std::mutex& planner_lock() {
 }  // namespace
 
 std::mutex& fft_planner_lock() { return planner_lock(); }
+
+namespace {
+
+bool decoder_wisdom_enabled = false;
+std::string decoder_wisdom;  // FFTW's text; "" none
+
+// The process's wisdom set aside while fn runs on the decoders' alone.
+template <typename Fn>
+void with_decoder_wisdom(Fn fn) {
+    char* const saved = fftwf_export_wisdom_to_string();
+    fftwf_forget_wisdom();
+    if (!decoder_wisdom.empty()) fftwf_import_wisdom_from_string(decoder_wisdom.c_str());
+    fn();
+    fftwf_forget_wisdom();
+    if (saved) {
+        fftwf_import_wisdom_from_string(saved);
+        std::free(saved);
+    }
+}
+
+std::string wisdom_now() {
+    char* w = fftwf_export_wisdom_to_string();
+    std::string s = w ? w : "";
+    std::free(w);
+    return s;
+}
+
+}  // namespace
+
+void decoder_wisdom_on(const std::string& import_file) {
+    std::lock_guard<std::mutex> lock(planner_lock());
+    decoder_wisdom.clear();
+    decoder_wisdom_enabled = true;
+    with_decoder_wisdom([&] {
+        if (fftwf_import_wisdom_from_filename(import_file.c_str())) decoder_wisdom = wisdom_now();
+    });
+}
+
+bool decoder_wisdom_export(const std::string& file) {
+    std::lock_guard<std::mutex> lock(planner_lock());
+    bool ok = false;
+    with_decoder_wisdom([&] { ok = fftwf_export_wisdom_to_filename(file.c_str()) != 0; });
+    return ok;
+}
+
+void decoder_wisdom_off() {
+    std::lock_guard<std::mutex> lock(planner_lock());
+    decoder_wisdom_enabled = false;
+    decoder_wisdom.clear();
+}
+
+void decoder_wisdom_before_plan() {
+    if (decoder_wisdom_enabled && !decoder_wisdom.empty()) fftwf_import_wisdom_from_string(decoder_wisdom.c_str());
+}
+
+void decoder_wisdom_after_plan() {
+    if (decoder_wisdom_enabled) decoder_wisdom = wisdom_now();
+}
 
 Fft::Fft(size_t n, bool quick) : n_(n) {
     std::lock_guard<std::mutex> lock(planner_lock());
