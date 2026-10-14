@@ -1,0 +1,1 @@
+ft2-jt9 -a . --ft2 -L 100 -H 5000 -f 1500 -F 100 -c b -x b -d 3 recordings/ft2-sim/wide-261014_130000.wav

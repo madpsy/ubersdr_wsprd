@@ -2,9 +2,11 @@
 // run on WAV files: a mode at a time, each decoding as WSJT-X's jt9 does (at
 // 567ad29ce), its command line, files and output the same, so it can stand
 // in for WSJT-X's jt9 file for file. So far FST4W (--fst4w, -W, or -Y:
-// fst4w_jt9.h, fst4w.h), FT8 (-8 or --ft8: ft8_jt9.h, ft8.h) and FT4 (-5 or
-// --ft4: ft4_jt9.h, ft4.h), with the options those modes read; other modes and their options are not taken
-// yet (unknown to it, as WSJT-X's jt9 treats an option it does not know).
+// fst4w_jt9.h, fst4w.h), FT8 (-8 or --ft8: ft8_jt9.h, ft8.h), FT4 (-5 or
+// --ft4: ft4_jt9.h, ft4.h) and FT2 (--ft2 alone, as WSJT-X improved 3.2.0's
+// jt9 takes it: ft2_jt9.h, ft2.h), with the options those modes read; other
+// modes and their options are not taken yet (unknown to it, as WSJT-X's jt9
+// treats an option it does not know).
 //
 //   jt9 [OPTIONS] file1 [file2 ...]
 //

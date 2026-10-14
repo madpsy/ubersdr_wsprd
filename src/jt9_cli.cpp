@@ -1,7 +1,8 @@
 // jt9's command line (jt9_cli.h): lib/jt9.f90's option loop and checks,
 // lib/options.f90's getopt and print_opt, lib/jt9_input_validation.f90's
-// number checks, at 567ad29ce; then each mode's file mode (FST4W's:
-// fst4w_jt9.h; FT8's: ft8_jt9.h; FT4's: ft4_jt9.h).
+// number checks, at 567ad29ce, with WSJT-X improved 3.2.0's --ft2; then
+// each mode's file mode (FST4W's: fst4w_jt9.h; FT8's: ft8_jt9.h; FT4's:
+// ft4_jt9.h; FT2's: ft2_jt9.h).
 #include "jt9_cli.h"
 
 #include <algorithm>
@@ -13,6 +14,7 @@
 #include <string>
 
 #include "fst4w_jt9.h"
+#include "ft2_jt9.h"
 #include "ft4_jt9.h"
 #include "ft8_jt9.h"
 
@@ -28,8 +30,9 @@ struct Opt {
     const char* argname;
 };
 
-// jt9's own options that the modes so far read, in jt9's order and words,
-// and ours.
+// jt9's own options that the modes so far read, in jt9's order and words
+// (improved 3.2.0's --ft2 where its jt9 lists it: before q65, so before
+// ft4 here), and ours.
 const Opt OPTS[] = {
     {"help", false, 'h', "Display this help message", ""},
     {"version", false, 'v', "Display version and build revision", ""},
@@ -40,6 +43,7 @@ const Opt OPTS[] = {
     {"highest", true, 'H', "Highest frequency decoded, default HERTZ=4000", "HERTZ"},
     {"rx-frequency", true, 'f', "Receive frequency offset, default HERTZ=1500", "HERTZ"},
     {"freq-tolerance", true, 'F', "Receive frequency tolerance, default HERTZ=20", "HERTZ"},
+    {"ft2", false, '2', "FT2 mode", ""},
     {"ft4", false, '5', "FT4 mode", ""},
     {"fst4w", false, 'W', "FST4W mode", ""},
     {"fst4w", false, 'Y', "FST4W mode, print hash22 values", ""},
@@ -57,7 +61,9 @@ const Opt OPTS[] = {
      "bit for bit) or off (none)",
      "fast|exact|off"},
 };
-// getopt's option letters, ':' after those taking a value.
+// getopt's option letters, ':' after those taking a value. No '2':
+// improved's getopt string has none, so only --ft2 selects FT2 and "-2" is
+// an unrecognised option there (the usage, status 0), as here.
 const char* const SHORT = "hva:p:d:f:F:t:L:H:5WY8qQ:c:G:x:g:X:";
 
 std::string rtrim(std::string s) {
@@ -249,8 +255,8 @@ void usage(std::ostream& out) {
 int run(const std::vector<std::string>& args, const std::string& cwd, std::ostream& out, std::ostream& err,
         const std::string& version) {
     fst4w::FileMode fm;
-    ft8::FileMode f8;  // what FT8 and FT4 read, beside FST4W's
-    int mode = 0;  // jt9's: 241 --fst4w (-W), 242 -Y, 8 -8, 5 -5
+    ft8::FileMode f8;  // what FT8, FT4 and FT2 read, beside FST4W's
+    int mode = 0;  // jt9's: 241 --fst4w (-W), 242 -Y, 8 -8, 5 -5, 52 --ft2 (improved's)
     bool display_help = false, display_version = false;
     Getopt getopt(args);
     Getopt::Got g;
@@ -327,6 +333,7 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
         case 'Y': mode = 242; break;
         case '8': mode = 8; break;
         case '5': mode = 5; break;
+        case '2': mode = 52; break;  // --ft2 only (getopt refuses -2)
         case 'q': fm.quiet = f8.quiet = true; break;
         case 'c':
         case 'x':
@@ -353,7 +360,8 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
         }
     }
     if (display_version) {
-        out << "jt9 " << version << " (FST4W, FT8 and FT4: WSJT-X 567ad29ce's decoders)\n";
+        out << "jt9 " << version
+            << " (FST4W, FT8 and FT4: WSJT-X 567ad29ce's decoders; FT2: WSJT-X improved 3.2.0's FT2 on that FT4)\n";
         return 0;
     }
     if (display_help || g.st < 0 || g.remain < 1) {
@@ -375,7 +383,9 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
         return ft8::run_files(f8, files, cwd, out, err);
     }
     if (mode == 5) return ft4::run_files(f8, files, cwd, out, err);
-    err << "jt9: no mode given: this jt9 decodes FST4W (--fst4w, -W, or -Y), FT8 (-8) and FT4 (-5) so far\nSTOP 2\n";
+    if (mode == 52) return ft2::run_files(f8, files, cwd, out, err);
+    err << "jt9: no mode given: this jt9 decodes FST4W (--fst4w, -W, or -Y), FT8 (-8), FT4 (-5) and FT2 (--ft2) so "
+           "far\nSTOP 2\n";
     return 2;
 }
 

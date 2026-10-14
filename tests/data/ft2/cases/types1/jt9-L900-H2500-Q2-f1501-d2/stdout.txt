@@ -1,0 +1,9 @@
+100000 -14 -0.0 1530 *  K1ABC FN42 37                           
+100000 -13  0.0  975 *  WA9XYZ KA1ABC 7D EMA                    
+100000 -13  0.1 1160 *  WA9XYZ KA1ABC R 32A EMA                 
+100000 -14  0.2 1344 *  123456789ABCDEF012                      
+100000 -14  0.1 1714 *  PJ4/K1ABC 37                            
+100000 -14  0.2 1899 *  <PJ4/K1ABC> FK52UD                      
+100000 -15 -0.0 2085 *  CQ K1ABC FN42                           
+100000 -14  0.1 2270 *  CQ DX W9XYZ EN37                        
+<DecodeFinished>   0   8        0

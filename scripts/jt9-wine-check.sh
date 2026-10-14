@@ -12,8 +12,10 @@
 # written byte for byte (line ends aside, and the repository's directory
 # in the paths printed). Then FT4's (jt9 -5) the same way: the FT4
 # oracle's jt9 cases (tests/data/ft4/cases/*/jt9-*) and its file-mode
-# cases (tests/data/ft4/filemode/cases). FT8's and FT4's run several at
-# once (JT9_WINE_JOBS, default nproc), each in its own directory.
+# cases (tests/data/ft4/filemode/cases). Then FT2's (jt9 --ft2): the FT2
+# oracle's jt9 cases (tests/data/ft2/cases/*/jt9-*, made by the hybrid
+# ft2-jt9). FT8's, FT4's and FT2's run several at once (JT9_WINE_JOBS,
+# default nproc), each in its own directory.
 # JT9_WINE_ONLY=REGEX keeps only the cases whose name (the path under
 # tests/data, e.g. ft4/filemode/cases/bad-second/d2 or fst4w/cases/...)
 # matches.
@@ -72,15 +74,15 @@ PY
     if [[ -z $bad ]]; then pass=$((pass + 1)); else fail=$((fail + 1)); echo "differs: $name:$bad"; fi
 done < <(find "$repo/tests/data/fst4w/cases" -name args.txt | sort)
 
-# FT8 and FT4: run every case whose inputs are here, then compare.
-ft8=() nft4=0
+# FT8, FT4 and FT2: run every case whose inputs are here, then compare.
+ft8=() nft4=0 nft2=0
 while IFS= read -r a; do
     missing=
     for t in $(cut -d' ' -f2- "$a"); do [[ $t == recordings/* && ! -f $repo/$t ]] && missing=$t; done
     d=$(dirname "$a")
     [[ -n ${JT9_WINE_ONLY:-} && ! ${d#"$repo/tests/data/"} =~ $JT9_WINE_ONLY ]] && continue
-    if [[ -n $missing ]]; then skip=$((skip + 1)); else ft8+=("$d"); [[ $d == */ft4/* ]] && nft4=$((nft4 + 1)); fi
-done < <(for m in ft8 ft4; do
+    if [[ -n $missing ]]; then skip=$((skip + 1)); else ft8+=("$d"); [[ $d == */ft4/* ]] && nft4=$((nft4 + 1)); [[ $d == */ft2/* ]] && nft2=$((nft2 + 1)); fi
+done < <(for m in ft8 ft4 ft2; do
              find "$repo/tests/data/$m/cases" -path '*/jt9-*' -name args.txt 2> /dev/null | sort
              find "$repo/tests/data/$m/filemode/cases" -name args.txt 2> /dev/null | sort
          done)
@@ -131,5 +133,5 @@ for d in "${ft8[@]}"; do
     if [[ -z $bad ]]; then pass=$((pass + 1)); else fail=$((fail + 1)); echo "differs: $name:$bad"; fi
 done
 
-echo "jt9.exe under wine: $pass cases as WSJT-X's jt9 ($((${#ft8[@]} - nft4)) of them FT8, $nft4 FT4), $fail differing, $skip without their inputs"
+echo "jt9.exe under wine: $pass cases as WSJT-X's jt9 ($((${#ft8[@]} - nft4 - nft2)) of them FT8, $nft4 FT4, $nft2 FT2), $fail differing, $skip without their inputs"
 (( fail == 0 && pass > 0 ))

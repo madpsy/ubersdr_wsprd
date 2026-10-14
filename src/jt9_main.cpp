@@ -1,5 +1,5 @@
 // jt9: WSJT-X's jt9 run on WAV files, a mode at a time (jt9_cli.h; FST4W,
-// FT8 and FT4 so far), its command line, output and files as jt9's.
+// FT8, FT4 and FT2 so far), its command line, output and files as jt9's.
 #include <sys/stat.h>
 
 #include <iostream>

@@ -1,0 +1,1 @@
+ft2-jt9 -a . --ft2 recordings/ft2-sim/calls-261014_120000.wav recordings/ft2-sim/calls-261014_120003.wav

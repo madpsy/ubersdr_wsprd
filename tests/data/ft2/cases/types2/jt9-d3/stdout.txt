@@ -1,0 +1,15 @@
+100003 -14 -0.0 1530 *  W9XYZ K1ABC R 579 MA                    
+100003 -14  0.0  421 *  K1ABC W9XYZ R-09                        
+100003 -14  0.1  605 *  W9XYZ K1ABC RRR                         
+100003 -14  0.2  789 *  K1ABC W9XYZ RR73                        
+100003 -14  0.0  975 *  W9XYZ K1ABC 73                          
+100003 -14  0.1 1160 *  WA9XYZ/R KA1ABC/R R FN42                
+100003 -15  0.2 1345 *  PA1XYZ/P GM4ABC/P R JO22                
+100003 -14  0.1 1715 *  TU; W9XYZ G8ABC R 559 0013              
+100003 -14  0.2 1900 *  CQ PJ4/K1ABC                            
+100003 -14  0.0 2084 *  <W9XYZ> PJ4/K1ABC RR73                  
+100003 -15  0.1 2269 *  PJ4/K1ABC <W9XYZ> RRR                   
+100003 -15  0.2 2454 *  <...> <...> 590001 FN20QI               
+100003 -15  0.1 2825 *  CQ YW18FIFA                             
+100003 -14  0.2 3011 *  <YW18FIFA> KA1ABC R-17                  
+<DecodeFinished>   0  14        0

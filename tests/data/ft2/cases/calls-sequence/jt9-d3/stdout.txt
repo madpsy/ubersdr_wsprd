@@ -1,0 +1,7 @@
+120000 -18 -0.1 1504 *  K1ABC W9XYZ -15                         
+120000 -17  0.0 2099 *  K1ABC DL4DDD R-07                       
+120000 -18 -0.3 2599 *  CQ W9XYZ EN37                       ? a1
+120000 -18 -0.2  900 *  K1ABC G3CCC IO91                        
+<DecodeFinished>   0   4        0
+120003 -19 -0.3 2601 *  CQ W9XYZ EN37                         a1
+<DecodeFinished>   0   1        0

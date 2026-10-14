@@ -1,0 +1,16 @@
+100000 -14  0.0 1530 *  K1ABC FN42 37                           
+100000 -14 -0.0  419 *  TNX BOB 73 GL                           
+100000 -14  0.1  604 *  K1ABC RR73; W9XYZ <...> -08             
+100000 -14  0.2  790 *  WA9XYZ KA1ABC R 16A EMA                 
+100000 -14 -0.0  974 *  WA9XYZ KA1ABC 7D EMA                    
+100000 -13  0.1 1160 *  WA9XYZ KA1ABC R 32A EMA                 
+100000 -14  0.2 1345 *  123456789ABCDEF012                      
+100000 -14  0.1 1713 *  PJ4/K1ABC 37                            
+100000 -14  0.2 1900 *  <PJ4/K1ABC> FK52UD                      
+100000 -15 -0.0 2085 *  CQ K1ABC FN42                           
+100000 -15  0.1 2270 *  CQ DX W9XYZ EN37                        
+100000 -16  0.2 2455 *  CQ TEST K1ABC FN42                      
+100000 -15 -0.0 2640 *  CQ 123 K1ABC FN42                       
+100000 -15  0.1 2824 *  K1ABC W9XYZ EN37                        
+100000 -14  0.2 3009 *  W9XYZ K1ABC -11                         
+<DecodeFinished>   0  15        0

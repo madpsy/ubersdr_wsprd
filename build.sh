@@ -319,7 +319,7 @@ notes="Built from $commit.
 
 WSJT-X's \`wsprd\` (567ad29ce's decoder), a drop-in for it: the same options, output and files, byte for byte, in a tenth of its CPU on x86-64 and a sixth on a Raspberry Pi 5. One option more, \`-n\`: no search for a drifting signal, and each ALL_WSPR.TXT line ending in the signal's spread in Hz. \`wsprd --version\` gives this release.
 
-And WSJT-X's \`jt9\` for FST4W (FST4W-120 to -1800, and 15, 30 and 60 s), FT8 (\`jt9 -8\`) and FT4 (\`jt9 -5\`), run on WAV files: the same command line, output and files, byte for byte, in about a seventh of its CPU for FST4W, 2.1 to 2.9 times less for FT8 and 2.9 to 4.3 times less for FT4 (x86-64, depths 1 to 3). One option more, \`--spread fast|exact|off\` (FST4W). FST4W, FT8 and FT4 only so far: keep WSJT-X's own \`jt9\` for WSJT-X and its other modes. \`jt9 -v\` gives this release.
+And WSJT-X's \`jt9\` for FST4W (FST4W-120 to -1800, and 15, 30 and 60 s), FT8 (\`jt9 -8\`) and FT4 (\`jt9 -5\`), run on WAV files: the same command line, output and files, byte for byte, in about a seventh of its CPU for FST4W, 2.1 to 2.9 times less for FT8 and 2.9 to 4.3 times less for FT4 (x86-64, depths 1 to 3). And FT2 (\`jt9 --ft2\`) as WSJT-X improved 3.2.0's \`jt9\` runs it: improved's FT2 code on the FT4 decoder above, in 4.2 to 6.0 times less CPU than improved's \`jt9\` (x86-64, depths 1 to 3). One option more, \`--spread fast|exact|off\` (FST4W). FST4W, FT8, FT4 and FT2 only so far: keep WSJT-X's own \`jt9\` for WSJT-X and its other modes. \`jt9 -v\` gives this release.
 
 - \`wsprd-linux-x86_64\`, \`wsprd-linux-aarch64\`, \`jt9-linux-x86_64\`, \`jt9-linux-aarch64\`: Linux.
 - \`wsprd-windows-x86_64.exe\`, \`jt9-windows-x86_64.exe\`: Windows."

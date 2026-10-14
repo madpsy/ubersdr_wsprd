@@ -1,7 +1,8 @@
 # wsprd and jt9
 
-WSJT-X's WSPR decoder, `wsprd`, and its `jt9` for FST4W, FT8 and FT4, rewritten
-in C++ to take a fraction of the CPU.
+WSJT-X's WSPR decoder, `wsprd`, and its `jt9` for FST4W, FT8 and FT4 (and
+FT2, as WSJT-X improved decodes it), rewritten in C++ to take a fraction of
+the CPU.
 
 **A drop-in replacement for WSJT-X's `wsprd`.** It takes exactly the same
 arguments, plus one more (`-n`), and gives the same output and files, byte
@@ -25,16 +26,20 @@ this one, with nothing to change.
 It decodes what WSJT-X's `wsprd` decodes, WSPR-2 and WSPR-15. FST4W is
 `jt9`'s (below).
 
-**And `jt9` for FST4W, FT8 and FT4.** WSJT-X decodes FST4W (FST4W-120 to
--1800), FT8 and FT4 with its `jt9`; this `jt9` does the same from WAV files,
-as `jt9 -p 120 --fst4w ... file.wav`, `jt9 -8 ... file.wav` and
+**And `jt9` for FST4W, FT8, FT4 and FT2.** WSJT-X decodes FST4W (FST4W-120
+to -1800), FT8 and FT4 with its `jt9`; this `jt9` does the same from WAV
+files, as `jt9 -p 120 --fst4w ... file.wav`, `jt9 -8 ... file.wav` and
 `jt9 -5 ... file.wav` do: the same command line, the same output and files
 (`fst4_decodes.dat`, `decoded.txt`, `fst4w_calls.txt`), byte for byte, in
 about a seventh of the CPU for FST4W, under half for FT8 and about a third
-for FT4. FST4W, FT8 and FT4 so far, more of `jt9`'s modes to follow. Linux
-(x86-64, arm64) and Windows. It does not replace WSJT-X's own `jt9` inside
-WSJT-X, which runs it for every mode through shared memory: see
-[jt9: FST4W](#jt9-fst4w), [jt9: FT8](#jt9-ft8) and [jt9: FT4](#jt9-ft4).
+for FT4. FT2, which only WSJT-X improved has, is `jt9 --ft2 ... file.wav`
+as improved's `jt9` runs it: improved's FT2 code on the FT4 decoder above,
+in a quarter to a sixth of improved's CPU on x86-64 (about a third on a
+Pi 5). FST4W, FT8, FT4 and FT2 so far, more
+of `jt9`'s modes to follow. Linux (x86-64, arm64) and Windows. It does not
+replace WSJT-X's own `jt9` inside WSJT-X, which runs it for every mode
+through shared memory: see [jt9: FST4W](#jt9-fst4w), [jt9: FT8](#jt9-ft8),
+[jt9: FT4](#jt9-ft4) and [jt9: FT2](#jt9-ft2).
 
 Originally designed for UberSDR Skimmer.
 
@@ -49,9 +54,9 @@ your operating system and CPU from the
 | `wsprd-linux-x86_64` | Linux on an x86-64 CPU with AVX2 |
 | `wsprd-linux-aarch64` | Linux on 64-bit ARM (NEON): a Raspberry Pi 3, 4, 5 or Zero 2 W on a 64-bit OS, for one |
 | `wsprd-windows-x86_64.exe` | 64-bit Windows 10 or 11 on an x86-64 CPU with AVX2; nothing else to install |
-| `jt9-linux-x86_64` | `jt9` (FST4W, FT8 and FT4) for Linux on an x86-64 CPU with AVX2 |
-| `jt9-linux-aarch64` | `jt9` (FST4W, FT8 and FT4) for Linux on 64-bit ARM |
-| `jt9-windows-x86_64.exe` | `jt9` (FST4W, FT8 and FT4) for 64-bit Windows 10 or 11 on an x86-64 CPU with AVX2 |
+| `jt9-linux-x86_64` | `jt9` (FST4W, FT8, FT4 and FT2) for Linux on an x86-64 CPU with AVX2 |
+| `jt9-linux-aarch64` | `jt9` (FST4W, FT8, FT4 and FT2) for Linux on 64-bit ARM |
+| `jt9-windows-x86_64.exe` | `jt9` (FST4W, FT8, FT4 and FT2) for 64-bit Windows 10 or 11 on an x86-64 CPU with AVX2 |
 
 **The CPU: the prebuilt binaries need AVX2 on x86-64 (Linux and Windows)
 and NEON on ARM.** The decoder's searches run eight lanes at a time with
@@ -249,11 +254,43 @@ the reference's on x86-64 Linux and Windows; on arm64 FFTW's NEON code
 moves the last bits of its sums, but no printed line of the decoder's 82
 test cases differed.
 
+## jt9: FT2
+
+Run it as WSJT-X improved's `jt9` is run on WAV files, for FT2:
+
+```
+jt9 -a DIR --ft2 -d 2 YYMMDD_HHMMSS.wav [more.wav ...]
+```
+
+`--ft2` FT2 (only the long option: improved's `jt9` lists `-2` but does
+not take it, and neither does this one), with FT4's options above. Each
+file is one 3.75 s period (10 blocks of 3456 samples, 34,560 in all,
+whatever `-p` says, `EOF on input file` when a file is shorter); several
+files are a sequence of periods, the hash tables kept across them.
+
+WSJT-X itself has no FT2; WSJT-X improved 3.2.0 decodes it with its FT4
+decoder on the audio stretched to twice its length, with FT2's own sizes,
+sync threshold, frequency range and output line. That FT2 code is
+improved's, line for line; the FT4 decoder under it is the one above
+(WSJT-X 3.2.0-rc1, commit `567ad29ce`), not improved's, which added to its
+FT4 (an extra a-priori pass, more bit metrics, a slightly different front
+end). So the reference is a hybrid: improved's FT2 code built on
+`567ad29ce`'s FT4, as a `jt9` of its own (`ft2-jt9`). Against it,
+everything is byte for byte on x86-64 Linux and Windows (stdout and its
+`*` lines, `decoded.txt`, the messages, the exit status), and no printed
+line differed on arm64. Against improved 3.2.0's own `jt9 --ft2`, most
+output is the same (every recorded period's); where it differs, it is
+improved's FT4 or its older command line and WAV reader: a decode more or
+less, `-0.0` for `0.0`, 1 Hz or 1 dB apart, runtime errors where this one
+checks its options, and odd WAV files it reads that this one refuses as
+WSJT-X's does. No FT2 was heard on the air while this was made, so its
+tests are generated FT2 periods and recorded 40 m periods without any.
+
 The other modes of WSJT-X's `jt9` (JT65, Q65, MSK144...), its
 shared-memory mode (`-s`, how WSJT-X itself runs it) and its stdin stream
 are not here yet: they are unknown options to this one, so do not put it in
 place of WSJT-X's `jt9` inside WSJT-X. Run it where `jt9 --fst4w`,
-`jt9 -8` or `jt9 -5` is run on files. Not written: `timer.out` and
+`jt9 -8`, `jt9 -5` or `jt9 --ft2` is run on files. Not written: `timer.out` and
 `jt9_wisdom.dat` (WSJT-X's timings and FFTW's plans).
 
 ## Its CPU
@@ -358,6 +395,29 @@ back from its `jt9_wisdom.dat`), about half a second on x86-64: over many
 files in one run it takes 2.6x less CPU than WSJT-X's at depth 2 and 3.8x
 less at depth 3, but a single short run can take longer.
 
+FT2 the same way (one decoder call a 3.75 s period, as improved's GUI
+makes it), against WSJT-X improved 3.2.0's own `jt9` built with its
+Release flags on each machine: sixteen recorded 40 m periods (with no FT2
+in them), four of a crowded generated band and five weak, faded or empty
+generated ones, at each depth (improved's FT4 finds a few decodes more or
+less on them; the hybrid reference above, every decode the same, takes
+3.6x, 3.4x and 5.6x this one's CPU on x86-64, 2.6x, 2.4x and 4.4x on the
+Pi):
+
+| CPU for 25 periods | improved's jt9 | this | |
+|---|---:|---:|---:|
+| x86-64 (Ryzen 9 3900X), depth 1 | 1.34 s | 0.32 s | 4.2x |
+| x86-64, depth 2 | 2.29 s | 0.54 s | 4.2x |
+| x86-64, depth 3 | 4.22 s | 0.70 s | 6.0x |
+| Raspberry Pi 5, depth 1 | 2.52 s | 0.85 s | 3.0x |
+| Raspberry Pi 5, depth 2 | 4.29 s | 1.48 s | 2.9x |
+| Raspberry Pi 5, depth 3 | 8.68 s | 1.84 s | 4.7x |
+
+Run on files (`jt9 --ft2`, each program's whole run, no wisdom file for
+either), 239 recorded 40 m periods in one run take 3.5 s against
+improved's 14.2 s at depth 2 (4.0x) and 4.4 s against 28.6 s at depth 3
+(6.5x); a single file, mostly FFTW's planning, 0.51 s against 0.69 s.
+
 ## Building it
 
 Most users only need a prebuilt binary from
@@ -407,10 +467,11 @@ They land in `build/dist/wsprd-windows-x86_64.exe` and
 `jt9-windows-x86_64.exe`, and when `wine` is installed they are checked:
 `wsprd.exe` decodes as the Linux build does, and `jt9.exe` prints and writes
 what WSJT-X's `jt9` does on every case of `tests/data/fst4w`,
-`tests/data/ft8` and `tests/data/ft4` whose inputs are there
-(`scripts/jt9-wine-check.sh`; `fort.52`, the spread's debug spectrum, to
-within its last printed digit: Windows' maths library and FFTW's build round
-differently). FT8's and FT4's are byte for byte; FFTW for Windows is built
+`tests/data/ft8`, `tests/data/ft4` and `tests/data/ft2` (the hybrid's, for
+FT2) whose inputs are there (`scripts/jt9-wine-check.sh`; `fort.52`, the
+spread's debug spectrum, to within its last printed digit: Windows' maths
+library and FFTW's build round differently). FT8's, FT4's and FT2's are
+byte for byte; FFTW for Windows is built
 with Ubuntu's SIMD set (SSE2 and AVX) for that.
 
 Build with the settings in `CMakeLists.txt`: the decoder's files are
@@ -464,9 +525,21 @@ and broken WAV files, calls and grids as Fortran reads them, several files
 in a run). For FT4 likewise (`tests/data/ft4` and every FT4 recording in
 `recordings/`: generated periods, WSJT-X's own FT4 sample and eight
 recorded 40 m periods; a-priori decoding at every QSO progress, the
-contest modes, short WAVs, sequences, the command line with `-5`). Over
-600 cases in all, every one identical on x86-64 Linux (25 FT8 cases that
-need recorded periods not included here are skipped). On
+contest modes, short WAVs, sequences, the command line with `-5`). FT2's
+reference is not WSJT-X's `jt9` but the hybrid `ft2-jt9` (improved
+3.2.0's FT2 code built into the `567ad29ce` tree, [jt9: FT2](#jt9-ft2)),
+which `--check` does not build: the 19 `jt9 --ft2` cases of
+`tests/data/ft2` (generated FT2 periods and twenty recorded 40 m
+periods: sequences, a-priori decoding with calls, the defaults, short,
+late and quiet periods, the band's edges) are checked against its outputs
+stored there, and FT2's other cases (every generated period at each
+depth, odd WAVs and cuts around the 34,560 samples read, the command line
+with `--ft2`) run only with that `jt9` given as `scripts/jt9-compare.sh`'s
+second program, and are skipped otherwise (230 of them). Over 650
+cases run by `--check`, every one identical on x86-64 Linux (25 FT8 cases
+that need recorded periods not included here are skipped). Against the
+hybrid itself all 468 of FT2's cases, with 239 recorded 40 m periods, were
+identical. On
 arm64 FFTW's NEON code rounds the spread's debug spectrum (`fort.52`)
 differently in its last printed digit, and a few FT8 decodes near a
 threshold (see [jt9: FT8](#jt9-ft8)); everything else is the same.
@@ -486,10 +559,11 @@ in any case.
 | `src/fst4w*.cpp` | jt9's FST4W decoder: WSJT-X's `fst4_decode.f90` and what it calls (`get_fst4_bitmetrics`, `decode240_74`, `osd240_74`, `packjt77`'s unpacking, `gen_fst4wave`...) |
 | `src/ft8*.cpp`, `packjt77.cpp` | jt9's FT8 decoder: WSJT-X's `ft8_decode.f90` and what it calls (`sync8`, `ft8b`, `decode174_91`, `osd174_91`, `subtractft8`, `ft8_a7`, `ft8_a8`, `packjt77`), and the maths library's functions it uses (`ft8_maths.cpp`) |
 | `src/ft4*.cpp` | jt9's FT4 decoder: WSJT-X's `ft4_decode.f90` and what it calls (`getcandidates4`, `sync4d`, `get_ft4_bitmetrics`, `subtractft4`, `gen_ft4wave`), on FT8's LDPC decoder, `packjt77` and maths |
-| `src/jt9_cli.cpp`, `fst4w_jt9.cpp`, `ft8_jt9.cpp`, `ft4_jt9.cpp`, `jt9_main.cpp` | jt9's command line, files and output: `jt9.f90`, `decoder.f90`, `options.f90` |
+| `src/ft2*.cpp` | WSJT-X improved's FT2: its decoder's FT2 branch (the audio stretched 2x, FT2's sizes and threshold) and `ft2_decoded`'s output, on the FT4 decoder |
+| `src/jt9_cli.cpp`, `fst4w_jt9.cpp`, `ft8_jt9.cpp`, `ft4_jt9.cpp`, `ft2_jt9.cpp`, `jt9_main.cpp` | jt9's command line, files and output: `jt9.f90`, `decoder.f90`, `options.f90` |
 | `scripts/` | the comparisons with WSJT-X's `wsprd` and `jt9`, and the synthetic periods' generators |
-| `tests/data/wsprd`, `tests/data/fst4w`, `tests/data/ft8`, `tests/data/ft4` | WSJT-X's `wsprd`'s and `jt9`'s outputs, case by case, and wsprd's synthetic inputs |
-| `recordings/` | the six real WSPR periods, and FT8's and FT4's inputs |
+| `tests/data/wsprd`, `tests/data/fst4w`, `tests/data/ft8`, `tests/data/ft4`, `tests/data/ft2` | WSJT-X's `wsprd`'s and `jt9`'s outputs (the hybrid's for FT2), case by case, and wsprd's synthetic inputs |
+| `recordings/` | the six real WSPR periods, and FT8's, FT4's and FT2's inputs |
 
 ## Credits and licence
 
@@ -502,7 +576,8 @@ Steven Franke, K9AN, and Joe Taylor, K1JT; FT8's `ft8_decode.f90`,
 `sync8.f90`, `ft8b.f90`, `decode174_91.f90`, `osd174_91.f90` and
 `subtractft8.f90`, and FT4's `ft4_decode.f90` and its routines, Joe
 Taylor, K1JT, and Steven Franke, K9AN;
-`packjt77.f90`, Joe Taylor, Steven Franke and the WSJT-X developers. The
+`packjt77.f90`, Joe Taylor, Steven Franke and the WSJT-X developers; FT2's
+code, WSJT-X improved 3.2.0, Uwe Risse, DG2YCB, and the WSJT-X developers. The
 maths functions in `src/ft8_maths.cpp` are the GNU C Library's (LGPL 2.1
 or later).
 

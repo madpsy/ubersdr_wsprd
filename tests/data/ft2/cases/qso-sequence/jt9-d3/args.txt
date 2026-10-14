@@ -1,0 +1,1 @@
+ft2-jt9 -a . --ft2 -L 100 -H 3200 -f 1500 -F 100 -c b -x b -d 3 recordings/ft2-sim/qso-261014_110000.wav recordings/ft2-sim/qso-261014_110003.wav recordings/ft2-sim/qso-261014_110007.wav recordings/ft2-sim/qso-261014_110011.wav recordings/ft2-sim/qso-261014_110015.wav recordings/ft2-sim/qso-261014_110018.wav

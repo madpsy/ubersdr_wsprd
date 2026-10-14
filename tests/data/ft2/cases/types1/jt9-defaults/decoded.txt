@@ -1,0 +1,15 @@
+100000   3  -14  -0.0   1529.   0   K1ABC FN42 37                         FT2
+100000   3  -14  -0.0    420.   0   TNX BOB 73 GL                         FT2
+100000   3  -14   0.1    605.   0   K1ABC RR73; W9XYZ <...> -08           FT2
+100000   3  -14   0.2    790.   0   WA9XYZ KA1ABC R 16A EMA               FT2
+100000   3  -13   0.0    975.   0   WA9XYZ KA1ABC 7D EMA                  FT2
+100000   3  -13   0.1   1159.   0   WA9XYZ KA1ABC R 32A EMA               FT2
+100000   3  -14   0.2   1344.   0   123456789ABCDEF012                    FT2
+100000   3  -14   0.1   1714.   0   PJ4/K1ABC 37                          FT2
+100000   3  -14   0.2   1899.   0   <PJ4/K1ABC> FK52UD                    FT2
+100000   3  -15  -0.0   2085.   0   CQ K1ABC FN42                         FT2
+100000   3  -14   0.1   2269.   0   CQ DX W9XYZ EN37                      FT2
+100000   3  -15   0.2   2454.   0   CQ TEST K1ABC FN42                    FT2
+100000   3  -13  -0.0   2639.   0   CQ 123 K1ABC FN42                     FT2
+100000   3  -14   0.1   2825.   0   K1ABC W9XYZ EN37                      FT2
+100000   3  -12   0.2   3009.   0   W9XYZ K1ABC -11                       FT2

@@ -50,8 +50,15 @@ using cfloat_ = std::complex<float>;
 [[maybe_unused]] const float PI = bitsf(0x40490FDBu);     // 4.0*atan(1.0)
 [[maybe_unused]] const float TWOPI = bitsf(0x40C90FDBu);  // 8.0*atan(1.0)
 
-// Fortran's nint of a default real.
-inline int nint(float x) { return static_cast<int>(std::lround(x)); }
+// Fortran's nint of a default real: half away from zero. Not
+// std::lround: mingw-w64's lroundf adds 0.5 and truncates, so
+// +-0.49999997 become +-1. x - trunc(x) is exact, so this equals glibc's
+// lroundf on every float an int holds.
+inline int nint(float x) {
+    const float t = std::trunc(x);
+    const float f = x - t;
+    return static_cast<int>(f >= 0.5f ? t + 1.0f : f <= -0.5f ? t - 1.0f : t);
+}
 
 // gfortran's maxloc over at(lo..hi): the first maximum; NaNs never win
 // unless all are NaN (then the first).

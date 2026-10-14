@@ -8,7 +8,18 @@
 # the clock's and FFTW's, which NEW does not write). FST4W's cases, FT8's
 # (jt9 -8: the oracle's jt9 cases, every file-mode fixture case, every FT8
 # recording and generated period, odd WAVs and the command line) and FT4's
-# the same way (jt9 -5: case names ft4-*).
+# the same way (jt9 -5: case names ft4-*). FT2's (jt9 --ft2: case names
+# ft2-*) run against the FT2 reference's own jt9, the hybrid ft2-jt9
+# (tests/data/ft2/README.md: improved 3.2.0's FT2-own code on 567ad29ce's
+# FT4), not 567ad29ce's, which has no FT2: give it as STOCK with
+# JT9_COMPARE_ONLY='^ft2-' (the hybrid refuses -5, its FT4 being FT2's).
+# With a STOCK whose usage has no --ft2 (567ad29ce's jt9), FT2's cases are
+# skipped but for the FT2 oracle's 19 jt9 --ft2 cases (ft2-oracle/*),
+# which NEW runs alone and which are checked against the hybrid's outputs
+# stored with them (stdout, the status, decoded.txt; stderr empty), as
+# scripts/jt9-wine-check.sh checks jt9.exe.
+# Improved 3.2.0's own jt9 as STOCK on the same cases is an A/B only: its
+# FT4 differs from 567ad29ce's (an a-priori pass, bit metrics, its front end).
 #
 #   scripts/jt9-compare.sh NEW_JT9 STOCK_JT9 [--docker IMAGE]
 #
@@ -39,7 +50,11 @@
 #   ioerror (an empty -c, -x, -G or -g: Fortran's list read ends): STOCK
 #           says "At line N of file DIR/jt9.f90", the runtime error and a
 #           backtrace, NEW the two lines without DIR: compared but for DIR,
-#           and the status
+#           and the status. ioerror-ft2: the same, against the hybrid
+#           ft2-jt9, whose jt9.f90 has improved's three --ft2 lines (its
+#           option and its case) above the reads: its line N is NEW's
+#           N + 3 (NEW numbers them as 567ad29ce's jt9.f90, which every
+#           other mode is compared with)
 # Prints PASS/FAIL/SKIP a case, a diff under each FAIL; exits 1 on any FAIL.
 set -uo pipefail
 
@@ -102,6 +117,15 @@ if os.path.exists(src):
     b = open(src, "rb").read()
     i = b.index(b"data")
     wav("cut13-261012_193515.wav", data=b[i + 8:i + 8 + 2 * 13 * 12000])
+# FT2: a generated FT2 period cut around jt9 --ft2's 34,560 samples (10
+# blocks of 3456): one short, exactly, one over, a block and a half, one
+# block.
+src = os.environ.get("JT9_COMPARE_REPO", ".") + "/recordings/ft2-sim/types1-261014_100000.wav"
+if os.path.exists(src):
+    b = open(src, "rb").read()
+    i = b.index(b"data")
+    for n in (34559, 34560, 34561, 5184, 3456):
+        wav(f"ft2cut{n}-261014_100000.wav", data=b[i + 8:i + 8 + 2 * n])
 open(f"{out}/notes.txt", "w").write("not a wav\n")
 EOF
 
@@ -231,7 +255,7 @@ done
 # Odd inputs and several files.
 k8="-8 -d 1"
 for f in rate11025 stereo bits8 header short tiny text list odd data-first long-data short-fmt tone30 cut13; do
-    for w in "$work"/inputs/$f-*.wav; do [[ -f $w ]] && add "ft8-cli/wav-$f|same-bare|-|$k8 @I/$(basename "$w")"; done
+    for w in "$work"/inputs/$f-[0-9]*.wav; do [[ -f $w ]] && add "ft8-cli/wav-$f|same-bare|-|$k8 @I/$(basename "$w")"; done
 done
 L4=recordings/ft8-live/40m-20261012-1934
 # Without the recorded 40 m periods (a copy of the decoder without them), the
@@ -308,7 +332,7 @@ done
 # Odd inputs, several files and the command line with -5.
 k5="-5 -d 1" P5=$F4/40m-20261013-1919/261013_191915.wav
 for f in rate11025 stereo bits8 header short tiny text list odd data-first long-data short-fmt tone30; do
-    for w in "$work"/inputs/$f-*.wav; do [[ -f $w ]] && add "ft4-cli/wav-$f|same-bare|-|$k5 @I/$(basename "$w")"; done
+    for w in "$work"/inputs/$f-[0-9]*.wav; do [[ -f $w ]] && add "ft4-cli/wav-$f|same-bare|-|$k5 @I/$(basename "$w")"; done
 done
 add "ft4-cli/not-wav-name|same-bare|-|$k5 @I/notes.txt"
 add "ft4-cli/nonexistent|same-bare|-|$k5 nothere-261013_191915.wav"
@@ -330,6 +354,69 @@ n=0
 for o in "-X 8" "-X 15" "-X 6 -Q 5" "-Q 5 -d 1" "-c K1ABC/P" "-x ,W9XYZ" "-c 'ABCDEFGHIJKLMNOP'" "-t ." "-a . -a ." "-p 15" "-f 4000"; do
     n=$((n + 1)); add "ft4-cli/opt$n${o//[^A-Za-z0-9.-]/}|same-bare|-|-5 -d 2 $o $P5"
 done
+
+# 6. FT2 (jt9 --ft2), against the hybrid ft2-jt9 (above). The FT2 oracle's
+# jt9 --ft2 cases; every recorded 40 m period alone at depth 2, the
+# 239-period sequence at depth 3 (blank calls, 100-3200 Hz) and with jt9's
+# defaults; every generated period at depths 1, 2 and 3 and plain.
+for a in $(find "$repo/tests/data/ft2/cases" -path '*/jt9-*' -name args.txt | sort); do
+    d=$(dirname "$a"); name=${d#"$repo/tests/data/ft2/cases/"}
+    add "ft2-oracle/$name|same-bare|-|$(cut -d' ' -f2- "$a")"
+done
+F2=recordings/ft2-live/40m-20261014-0226
+for f in "$repo"/$F2/*.wav; do
+    [[ -f $f ]] || continue
+    r=${f#"$repo"/} b=40m-$(basename "$f" .wav)
+    add "ft2-live/$b/d2|same-bare|-|--ft2 -d 2 $r"
+done
+seq=$(cd "$repo" && ls $F2/*.wav 2>/dev/null | tr '\n' ' ')
+if [[ -n $seq ]]; then
+    add "ft2-live/40m-sequence/d3|same-bare|-|--ft2 -L 100 -H 3200 -c b -x b -d 3 $seq"
+    add "ft2-live/40m-sequence/defaults|same-bare|-|--ft2 $seq"
+fi
+for f in "$repo"/recordings/ft2-sim/*.wav; do
+    [[ -f $f ]] || continue
+    r=${f#"$repo"/} b=$(basename "$f" .wav)
+    for d in 1 2 3; do add "ft2-matrix/$b/d$d|same-bare|-|--ft2 -L 100 -H 3200 -c b -x b -d $d $r"; done
+    add "ft2-matrix/$b/plain|same-bare|-|--ft2 $r"
+done
+# Odd inputs, the read length, several files and the command line with --ft2.
+k2="--ft2 -d 1" S2=recordings/ft2-sim P2=recordings/ft2-sim/types1-261014_100000.wav
+for f in rate11025 stereo bits8 header short tiny text list odd data-first long-data short-fmt tone30 \
+         ft2cut34559 ft2cut34560 ft2cut34561 ft2cut5184 ft2cut3456; do
+    for w in "$work"/inputs/$f-[0-9]*.wav; do [[ -f $w ]] && add "ft2-cli/wav-$f|same-bare|-|$k2 @I/$(basename "$w")"; done
+done
+add "ft2-cli/not-wav-name|same-bare|-|$k2 @I/notes.txt"
+add "ft2-cli/nonexistent|same-bare|-|$k2 nothere-261014_100000.wav"
+add "ft2-cli/nonexistent-second|same-bare|-|--ft2 -d 2 $P2 nothere-261014_100003.wav"
+add "ft2-cli/bad-rate-second|same-bare|-|--ft2 -d 2 $P2 @I/rate11025-261012_1200.wav"
+add "ft2-cli/empty-arg|same-bare|-|$k2 ''"
+add "ft2-cli/several-odd|same-bare|-|--ft2 -d 2 @I/header-261012_1200.wav @I/tiny-261012_1200.wav $P2 @I/short-261012_1200.wav"
+add "ft2-cli/same-file-thrice|same-bare|-|--ft2 -d 3 $P2 $P2 $P2"
+add "ft2-cli/decoded-kept|same-bare|-|--ft2 -d 2 $P2 $S2/silence-261014_100056.wav $S2/noise-261014_100052.wav"
+add "ft2-cli/decoded-replaced|same-bare|-|--ft2 -d 2 $P2 $S2/types2-261014_100003.wav"
+add "ft2-cli/dash2|usage|-|-2 -d 2 $P2"
+add "ft2-cli/dash2-after|usage|-|--ft2 -2 $P2"
+add "ft2-cli/L-negative|usage|-|--ft2 -L -400 $P2"
+add "ft2-cli/f-negative|usage|-|--ft2 -f -50 $P2"
+add "ft2-cli/long-options|same-bare|-|--ft2 --lowest 500 x --highest 2500 y --QSOprog 2 z --my-grid FN20 w --his-grid EN37 v -d 2 $P2"
+add "ft2-cli/W-then-ft2|same-bare|-|-W -p 15 --ft2 -d 2 $P2"
+add "ft2-cli/8-then-ft2|same-bare|-|-8 --ft2 -d 2 $P2"
+add "ft2-cli/ft2-then-8|same-bare|-|--ft2 -8 -d 2 $P2"
+for o in -c -x -G -g; do add "ft2-cli/empty$o|ioerror-ft2-bare|-|--ft2 -d 2 $o '' $P2"; done
+for o in "-Q 6" "-Q 1.5" "-L x" "-H 1e3" "-p 1801" "-p 0" "-d 3.0" "-f +" "-X 1x"; do
+    add "ft2-cli/bad${o// /}|same-bare|-|--ft2 $o $P2"
+done
+for o in "-d" "-Q" "-c"; do add "ft2-cli/missing$o|usage|-|--ft2 $o"; done
+n=0
+for o in "-X 1" "-X 2" "-X 3" "-X 4" "-X 5" "-X 6" "-X 7" "-X 8" "-X 15" "-Q 5 -c K1ABC -x W9XYZ" "-Q 2 -c K1ABC" \
+         "-c K1ABC/P" "-c 'PJ4/K1ABC'" "-x ,W9XYZ" "-c 'ABCDEFGHIJKLMNOP'" "-c b -x W9XYZ" "-t ." "-a . -a ." \
+         "-p 15" "-p 3.75" "-f 4000" "-f 0" "-L 4000" "-H 0" "-L 3000 -H 1000" "-H 6001" "-L 1 -H 3 -f 1" "-d 0" "-d 4" "-q" \
+         "-F 0"; do
+    n=$((n + 1)); add "ft2-cli/opt$n${o//[^A-Za-z0-9.-]/}|same-bare|-|--ft2 -d 2 $o $P2"
+done
+add "ft2-cli/t-subdir|same-bare|steps:mkdir:tmp|--ft2 -d 2 -t tmp $P2"
+add "ft2-cli/t-missing|same-bare|-|--ft2 -d 2 -t nodir $P2"
 
 # ---------------------------------------------------------------- running
 run_one() {  # side spec
@@ -383,7 +470,18 @@ compare() {  # spec -> results/<name>
     local n=$work/new/$name s=$work/stock/$name out=$work/results/${name//\//:}
     local bad=0 report=
     cp "$n/stderr" "$n/stderr.cmp"
-    if [[ $kind == usage* || $kind == version ]]; then
+    if [[ $kind == stored* ]]; then
+        # against the FT2 oracle case's stored outputs (the repository's
+        # directory taken out of the paths printed, as the oracle kept them)
+        local d=$repo/tests/data/ft2/cases/${name#ft2-oracle/} f
+        cmp -s <(sed "s|$repo/||g" "$n/stdout") "$d/stdout.txt" ||
+            { bad=1; report+="stdout:"$'\n'$(diff "$d/stdout.txt" <(sed "s|$repo/||g" "$n/stdout") | head -20)$'\n'; }
+        cmp -s "$n/status" "$d/status.txt" || { bad=1; report+="status: jt9 $(cat "$d/status.txt"), jt9 $(cat "$n/status")"$'\n'; }
+        [[ -s $n/stderr ]] && { bad=1; report+="stderr:"$'\n'$(head -5 "$n/stderr")$'\n'; }
+        for f in $( (cd "$n/cwd" && find . -type f; [[ -f $d/decoded.txt ]] && echo ./decoded.txt) | sort -u); do
+            cmp -s "$n/cwd/$f" "$d/$f" 2> /dev/null || { bad=1; report+="$f:"$'\n'$(diff "$d/$f" "$n/cwd/$f" 2>&1 | head -10)$'\n'; }
+        done
+    elif [[ $kind == usage* || $kind == version ]]; then
         cmp -s "$n/stderr.cmp" "$s/stderr" || { bad=1; report+=$(diff "$s/stderr" "$n/stderr.cmp")$'\n'; }
         if [[ $kind == version ]]; then
             grep -q '^jt9 ' "$n/stdout" && grep -q '^jt9 ' "$s/stdout" || { bad=1; report+="no version"$'\n'; }
@@ -397,7 +495,10 @@ compare() {  # spec -> results/<name>
         if [[ $kind == crash* ]]; then
             head -2 "$s/stderr" | cmp -s - "$n/stderr.cmp" || { bad=1; report+="stderr:"$'\n'$(diff <(head -2 "$s/stderr") "$n/stderr.cmp")$'\n'; }
         elif [[ $kind == ioerror* ]]; then
-            head -2 "$s/stderr" | sed '1s|of file .*/jt9\.f90$|of file jt9.f90|' | cmp -s - "$n/stderr.cmp" ||
+            local lshift=0
+            [[ $kind == *ft2* ]] && lshift=3
+            head -2 "$s/stderr" | sed '1s|of file .*/jt9\.f90$|of file jt9.f90|' |
+                awk -v s=$lshift 'NR == 1 && $1 == "At" && $2 == "line" { $3 -= s } { print }' | cmp -s - "$n/stderr.cmp" ||
                 { bad=1; report+="stderr:"$'\n'$(diff <(head -2 "$s/stderr") "$n/stderr.cmp")$'\n'; }
         else
             cmp -s "$n/stderr.cmp" "$s/stderr" || { bad=1; report+="stderr:"$'\n'$(diff "$s/stderr" "$n/stderr.cmp" | head -20)$'\n'; }
@@ -414,10 +515,27 @@ compare() {  # spec -> results/<name>
     if (( bad )); then { echo "FAIL $name"; echo "$report"; } > "$out"; else echo "PASS $name" > "$out"; fi
 }
 
+# Is STOCK the FT2 reference (above)? Its usage names --ft2.
+stock_ft2=0
+if [[ -n $image ]]; then
+    docker run --rm --network none -v "$(dirname "$stock"):$(dirname "$stock"):ro" "$image" "$stock" -h 2> /dev/null
+else
+    "$stock" -h 2> /dev/null
+fi | grep -q -- '--ft2' && stock_ft2=1
+(( stock_ft2 )) || echo "jt9-compare: STOCK has no --ft2: FT2's oracle cases checked against their stored outputs, its others skipped" >&2
+
 selected=()
 for spec in "${cases[@]}"; do
     name=${spec%%|*}
     [[ -n $only && ! $name =~ $only ]] && continue
+    if [[ $name == ft2-* ]] && (( ! stock_ft2 )); then
+        if [[ $name == ft2-oracle/* ]]; then
+            IFS='|' read -r _ kind seed args <<< "$spec"
+            spec="$name|stored-bare|$seed|$args"
+        else
+            echo "SKIP ${name} (STOCK has no --ft2)" > "$work/results/${name//\//:}"; continue
+        fi
+    fi
     # inputs present?
     skip=
     for tok in ${spec##*|}; do
@@ -431,6 +549,7 @@ done
 running=0
 for spec in "${selected[@]}"; do
     for side in new stock; do
+        [[ $side == stock && $spec == *'|stored-bare|'* ]] && continue
         if (( running >= jobs_max )); then wait -n; running=$((running - 1)); fi
         run_one "$side" "$spec" &
         running=$((running + 1))
