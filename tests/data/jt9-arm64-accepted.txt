@@ -1,0 +1,33 @@
+# jt9's accepted differences on arm64 (aarch64, the Pi 5), for
+# scripts/jt9-wine-check.sh run on a native jt9 there (wsprd/build.sh
+# --check and the release's pi5 step): each line a case (its path under
+# tests/data), a file and the sha256 of the arm64 output accepted for it,
+# as the script compares it (CRs dropped, the repository's path taken out).
+# The script counts these "accepted", not differing; any other difference,
+# or another output for a case listed here, still fails it.
+#
+# Why: FFTW's NEON codelets round differently from the AVX ones the stored
+# outputs were made with (accepted by the user 2026-10-13; docs/ft8-decoder.md
+# phase 7, tests/data/ft8/arm64-fftw.txt for the in-process decoder). Every
+# release's arm64 jt9 has shown exactly these (v2026.10.14-2 and -3 checked
+# 2026-10-14):
+#   fort.52 (FST4W's spread's debug spectrum): its last printed digits,
+#     more than the script's 1e-5 tolerance on these three periods;
+#   FT8's short file-mode periods: one weak decode fewer (RW9QA DL9AN -14 at
+#     997 Hz) and a neighbour's SNR 1 dB apart, so <DecodeFinished> one less.
+#
+# To add one: understand it first, then run the script with
+# JT9_CHECK_PRINT_ACCEPT=1 and copy its "accept-line:" line here.
+fst4w/cases/f2-fade/d1 fort.52 0968e2d7b2cd86c52921341473264265d91e8774d1e5d82f52e1752fab5815e7
+fst4w/cases/f2-fade/d2 fort.52 0968e2d7b2cd86c52921341473264265d91e8774d1e5d82f52e1752fab5815e7
+fst4w/cases/f2-fade/d3 fort.52 0968e2d7b2cd86c52921341473264265d91e8774d1e5d82f52e1752fab5815e7
+fst4w/cases/f2-sweep/d1 fort.52 7aea64070b3944322b508068a20f54ae82e80c67f90d25b5ddc93179b1b68a4d
+fst4w/cases/f2-sweep/d2 fort.52 7aea64070b3944322b508068a20f54ae82e80c67f90d25b5ddc93179b1b68a4d
+fst4w/cases/f2-sweep/d3 fort.52 7aea64070b3944322b508068a20f54ae82e80c67f90d25b5ddc93179b1b68a4d
+fst4w/cases/p15-mix/d1 fort.52 4a79764bc0db77c8115c50e474769fdbd2d657b025bf7bb255451422a26aa3ea
+fst4w/cases/p15-mix/d3 fort.52 4a79764bc0db77c8115c50e474769fdbd2d657b025bf7bb255451422a26aa3ea
+ft8/filemode/cases/p10-short/d2 stdout e9c64f061865b22ef667a22239f48f914a0fd8e92b2724f8450ecabf2533ce8f
+ft8/filemode/cases/p10-short/d2 decoded.txt afedef0b023df4aadf90ca1b0b6b8df6b4b5ff71c6211705ccd9dd82b4a9805c
+ft8/filemode/cases/short-100000/d2 stdout e9c64f061865b22ef667a22239f48f914a0fd8e92b2724f8450ecabf2533ce8f
+ft8/filemode/cases/short-100000/d2 decoded.txt afedef0b023df4aadf90ca1b0b6b8df6b4b5ff71c6211705ccd9dd82b4a9805c
+ft8/filemode/cases/short-sequence2/d3 stdout 17c9b46d6f453b8049300034782d80bfa13aa5186306f0b245b77930482b5949

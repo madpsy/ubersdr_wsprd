@@ -18,6 +18,15 @@
 # oracle's jt9 cases (tests/data/ft2/cases/*/jt9-*, made by the hybrid
 # ft2-jt9). FT8's, FT4's and FT2's run several at once (JT9_WINE_JOBS,
 # default nproc), each in its own directory.
+# A native jt9 off x86-64 (aarch64: the Pi) may differ where
+# tests/data/jt9-arm64-accepted.txt says it does: FFTW's NEON codelets round
+# differently from the AVX ones the stored outputs were made with (user
+# 2026-10-13, docs/ft8-decoder.md phase 7; tests/data/ft8/arm64-fftw.txt).
+# Each line there is a case, a file and the sha256 of the arm64 output
+# accepted for it: those are counted "accepted", not differing; any other
+# difference, or another output for a listed one, still fails.
+# JT9_CHECK_PRINT_ACCEPT=1 prints such a line for each difference (to add
+# to the list once a difference is understood and accepted).
 # JT9_WINE_ONLY=REGEX keeps only the cases whose name (the path under
 # tests/data, e.g. ft4/filemode/cases/bad-second/d2 or fst4w/cases/...)
 # matches.
@@ -33,13 +42,24 @@ work=$(realpath -m "${2:-$(mktemp -d "${TMPDIR:-/tmp}/jt9-wine.XXXXXX")}")
 export WINEPREFIX=$work/prefix WINEDEBUG=-all
 mkdir -p "$work"
 native=false; [[ $exe == *.exe ]] || native=true
+# (the fixtures' stdout and stderr name inputs by their paths in the
+# repository, as scripts/ft8-filemode-oracle.sh keeps them)
+nocr() { tr -d '\r' < "$1" 2> /dev/null | sed "s|$repo/||g"; }
+accepted_list=$repo/tests/data/jt9-arm64-accepted.txt
+may_accept=false; $native && [[ $(uname -m) != x86_64 && -f $accepted_list ]] && may_accept=true
+# accepted CASE FILE GOT: GOT's output (as compared) listed for CASE's FILE.
+accepted() {
+    local sha; sha=$(nocr "$3" | sha256sum | cut -d' ' -f1)
+    [[ ${JT9_CHECK_PRINT_ACCEPT:-} == 1 ]] && echo "accept-line: $1 $2 $sha" >&2
+    $may_accept && grep -q "^$1 $2 $sha\b" "$accepted_list"
+}
 # The jt9 run: under wine, or as it is.
 jt9() { if $native; then "$exe" "$@"; else wine "$exe" "$@"; fi; }
 # Make the prefix first: wine says so on stderr when it creates one, which
 # would land in the first case's stderr (FST4W's cases, run first, used to
 # hide it; with JT9_WINE_ONLY they may not run).
 $native || wineboot --init > /dev/null 2>&1 || true
-pass=0 fail=0 skip=0
+pass=0 fail=0 skip=0 accept=0
 while IFS= read -r a; do
     d=$(dirname "$a"); name=${d#"$repo/tests/data/fst4w/cases/"}
     [[ -n ${JT9_WINE_ONLY:-} && ! fst4w/cases/$name =~ $JT9_WINE_ONLY ]] && continue
@@ -56,15 +76,19 @@ while IFS= read -r a; do
     [[ -f $d/fst4w_calls.in ]] && cp "$d/fst4w_calls.in" "$run/fst4w_calls.txt"
     grep -qs bare "$d/flags.txt" || touch "$run/plotspec" "$run/decdata"
     (cd "$run" && jt9 "${argv[@]}" 2> /dev/null | tr -d '\r' > stdout.txt)
-    bad=
-    cmp -s "$run/stdout.txt" "$d/stdout.txt" || bad+=" stdout"
+    bad= acc= cname=fst4w/cases/$name
+    differs() {  # FILE GOT
+        if accepted "$cname" "$1" "$2"; then acc+=" $1"; else bad+=" $1"; fi
+    }
+    cmp -s "$run/stdout.txt" "$d/stdout.txt" || differs stdout "$run/stdout.txt"
     for f in fst4_decodes.dat decoded.txt fst4w_calls.txt; do
         if [[ -f $d/$f || -f $run/$f ]]; then
-            cmp -s <(tr -d '\r' < "$run/$f" 2> /dev/null) "$d/$f" 2> /dev/null || bad+=" $f"
+            cmp -s <(tr -d '\r' < "$run/$f" 2> /dev/null) "$d/$f" 2> /dev/null || differs "$f" "$run/$f"
         fi
     done
     if [[ -f $d/fort.52.gz ]]; then
-        python3 -I - "$run/fort.52" "$d/fort.52.gz" <<'PY' || bad+=" fort.52"
+        python3 -I - "$run/fort.52" "$d/fort.52.gz" <<'PY'
+
 import gzip, sys
 try:
     a = [l.split() for l in open(sys.argv[1]).read().replace("\r", "").splitlines()]
@@ -75,8 +99,11 @@ same = len(a) == len(b) and all(
     len(x) == len(y) and all(abs(float(p) - float(q)) <= 1e-5 for p, q in zip(x, y)) for x, y in zip(a, b))
 sys.exit(0 if same else 1)
 PY
+        [[ $? == 0 ]] || differs fort.52 "$run/fort.52"
     fi
-    if [[ -z $bad ]]; then pass=$((pass + 1)); else fail=$((fail + 1)); echo "differs: $name:$bad"; fi
+    if [[ -n $bad ]]; then fail=$((fail + 1)); echo "differs: $cname:$bad"
+    elif [[ -n $acc ]]; then accept=$((accept + 1)); echo "accepted (arm64, FFTW's NEON rounding): $cname:$acc"
+    else pass=$((pass + 1)); fi
 done < <(find "$repo/tests/data/fst4w/cases" -name args.txt | sort)
 
 # FT8, FT4 and FT2: run every case whose inputs are here, then compare.
@@ -117,27 +144,30 @@ for d in "${ft8[@]}"; do
     running=$((running + 1))
 done
 wait
-# (the fixtures' stdout and stderr name inputs by their paths in the
-# repository, as scripts/ft8-filemode-oracle.sh keeps them)
-nocr() { tr -d '\r' < "$1" 2> /dev/null | sed "s|$repo/||g"; }
 for d in "${ft8[@]}"; do
-    name=${d#"$repo/tests/data/"}; run=$work/run/$name bad=
+    name=${d#"$repo/tests/data/"}; run=$work/run/$name bad= acc=
+    differs() {  # FILE GOT
+        if accepted "$name" "$1" "$2"; then acc+=" $1"; else bad+=" $1"; fi
+    }
     exp_out=$d/stdout.txt
     if [[ -f $d/stdout.txt.gz ]]; then gzip -dc "$d/stdout.txt.gz" > "$run/stdout.expected"; exp_out=$run/stdout.expected; fi
-    cmp -s <(nocr "$run/stdout") "$exp_out" || bad+=" stdout"
+    cmp -s <(nocr "$run/stdout") "$exp_out" || differs stdout "$run/stdout"
     cmp -s "$run/status" "$d/status.txt" || bad+=" status($(cat "$run/status"))"
     [[ -f $d/stderr.txt ]] && { cmp -s <(nocr "$run/stderr") "$d/stderr.txt" || bad+=" stderr"; }
     # the files written: filemode's under files/, the oracle's beside args.txt
     if [[ -d $d/files || $d == */filemode/* ]]; then
         for f in $( (cd "$d/files" 2> /dev/null && find . -type f; cd "$run/cwd" && find . -type f) | sort -u); do
-            cmp -s <(nocr "$run/cwd/$f") "$d/files/$f" 2> /dev/null || bad+=" ${f#./}"
+            cmp -s <(nocr "$run/cwd/$f") "$d/files/$f" 2> /dev/null || differs "${f#./}" "$run/cwd/$f"
         done
     else
-        cmp -s <(nocr "$run/cwd/decoded.txt") "$d/decoded.txt" || bad+=" decoded.txt"
+        cmp -s <(nocr "$run/cwd/decoded.txt") "$d/decoded.txt" || differs decoded.txt "$run/cwd/decoded.txt"
     fi
-    if [[ -z $bad ]]; then pass=$((pass + 1)); else fail=$((fail + 1)); echo "differs: $name:$bad"; fi
+    if [[ -n $bad ]]; then fail=$((fail + 1)); echo "differs: $name:$bad"
+    elif [[ -n $acc ]]; then accept=$((accept + 1)); echo "accepted (arm64, FFTW's NEON rounding): $name:$acc"
+    else pass=$((pass + 1)); fi
 done
 
 label="jt9.exe under wine"; $native && label="$(basename "$exe")"
-echo "$label: $pass cases as WSJT-X's jt9 ($((${#ft8[@]} - nft4 - nft2)) of them FT8, $nft4 FT4, $nft2 FT2), $fail differing, $skip without their inputs"
+acc_note=; (( accept )) && acc_note=", $accept as accepted for arm64 (tests/data/jt9-arm64-accepted.txt)"
+echo "$label: $pass cases as WSJT-X's jt9 ($((${#ft8[@]} - nft4 - nft2)) of them FT8, $nft4 FT4, $nft2 FT2)$acc_note, $fail differing, $skip without their inputs"
 (( fail == 0 && pass > 0 ))

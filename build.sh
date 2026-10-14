@@ -13,7 +13,10 @@
 #                         against WSJT-X's own's stored outputs, byte for byte
 #                         (scripts/wsprd-stored-check.sh, scripts/jt9-wine-check.sh
 #                         run natively; about four minutes, nothing of WSJT-X
-#                         built)
+#                         built). On arm64 jt9's known differences (FFTW's
+#                         NEON rounding: tests/data/jt9-arm64-accepted.txt)
+#                         print as "accepted" and pass; only "differs:"
+#                         fails
 #   ./build.sh --deep-check
 #                         the same as ./build.sh, then this wsprd and jt9
 #                         run beside WSJT-X's own, built here, on every option
@@ -84,7 +87,7 @@ while [ $# -gt 0 ]; do
             shift 2
             ;;
         -h|--help)
-            sed -n '2,52p' "$0" | sed 's/^# \{0,1\}//'
+            sed -n '2,55p' "$0" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *)

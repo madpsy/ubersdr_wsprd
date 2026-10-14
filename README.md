@@ -523,7 +523,12 @@ runs `wsprd` on every case in `tests/data/wsprd/cases` as WSJT-X's was run
 (stdout, the files written and the exit statuses byte for byte), and
 `scripts/jt9-wine-check.sh` runs `jt9` on every stored FST4W, FT8, FT4 and
 FT2 case whose inputs are here (the same script checks `jt9.exe` under
-wine). The deep check builds WSJT-X's own programs and runs them beside
+wine). On 64-bit ARM a few of jt9's outputs differ in known ways, FFTW's
+NEON code rounding differently from its AVX code the stored outputs were
+made with (the spread's debug spectrum, `fort.52`, in its last digits; one
+weak FT8 decode in three short periods): each is listed with its exact ARM
+output in `tests/data/jt9-arm64-accepted.txt`, and the check counts those
+as accepted, not as failures; any other difference still fails it. The deep check builds WSJT-X's own programs and runs them beside
 these on every option and recording:
 
 ```
