@@ -145,6 +145,18 @@ The date and time of each decode come from the file's name (`YYMMDD_HHMM`),
 as with WSJT-X's. WSPR-2 and WSPR-15 (`-m`) only, as WSJT-X's `wsprd`:
 FST4W's periods go to WSJT-X's `jt9`.
 
+**32-bit float `.wav` files too.** A mono file of 32-bit IEEE float samples
+(`WAVE_FORMAT_IEEE_FLOAT`, or `WAVE_FORMAT_EXTENSIBLE` with that subformat,
+its chunks read wherever they are, as sox and ka9q-radio's `radiod` write
+them) is decoded from its samples as they are, at full scale 1.0, with no
+rounding to 16 bits and no need to normalize it first: a 16-bit sample `s`
+is `s/32768` of that scale, so a float file of the same samples decodes byte
+for byte as the 16-bit file does (`scripts/float-input-check.sh`). The level
+does not matter: an SDR's unscaled output, its noise at -135 dBFS, decodes
+as it would at any other level. Any other file is read as WSJT-X's `wsprd`
+reads it, 16-bit samples after a 44-byte header, whatever its header says.
+`-0` (streaming) stays 16-bit.
+
 ### `-n`: no drift, and the signal's spread
 
 With `-n` the decoder does not search for a drifting signal (each candidate's
@@ -191,6 +203,16 @@ decodes) and several times cheaper; `exact` is WSJT-X's own, to the bit; `off`
 measures none.
 
 `-c` and `-x` take standard calls only for FST4W.
+
+`jt9 --fst4w` takes a mono 32-bit float `.wav` as well, as `wsprd` does
+(above): its samples are decoded as they are, scaled to the 16-bit full
+scale, with nothing rounded or clipped, and a float file of the same samples
+as a 16-bit one decodes byte for byte as it does. Two things differ for a
+float file because its level is its own: only an all-zero file counts as
+silent (a 16-bit file whose first 15 s have an RMS under 0.5 is skipped, but
+an unscaled SDR's quiet band sits far below that), and the noise blanker's
+histogram puts |x| of 32768 and over in its top bin, which no 16-bit sample
+reaches. FT8, FT4 and FT2 take 16-bit files only.
 
 ## jt9: FT8
 
@@ -523,7 +545,9 @@ runs `wsprd` on every case in `tests/data/wsprd/cases` as WSJT-X's was run
 (stdout, the files written and the exit statuses byte for byte), and
 `scripts/jt9-wine-check.sh` runs `jt9` on every stored FST4W, FT8, FT4 and
 FT2 case whose inputs are here (the same script checks `jt9.exe` under
-wine). On 64-bit ARM a few of jt9's outputs differ in known ways, FFTW's
+wine). `scripts/float-input-check.sh` writes each 16-bit recording
+again as 32-bit float, the same samples, and requires `wsprd` (under four
+option sets) and `jt9 --fst4w` to leave the same files from it, byte for byte. On 64-bit ARM a few of jt9's outputs differ in known ways, FFTW's
 NEON code rounding differently from its AVX code the stored outputs were
 made with (the spread's debug spectrum, `fort.52`, in its last digits; one
 weak FT8 decode in three short periods): each is listed with its exact ARM

@@ -210,7 +210,13 @@ struct Plans {
 //***************************************************************************
 // readwavfile() from its buffer on: buf2 the file's samples, npoints of them
 // (zero past what the file had).
-unsigned long readwavfile(const short int* buf2, size_t npoints, int ntrmin, float* idat, float* qdat, Plans& plans)
+// A sample at full scale 1.0: a 16-bit one as wsprd scales it (/32768.0),
+// a 32-bit float one as it is.
+inline float wav_sample(short int s) { return s/32768.0; }
+inline float wav_sample(float s) { return s; }
+
+template <class Sample>
+unsigned long readwavfile(const Sample* buf2, size_t npoints, int ntrmin, float* idat, float* qdat, Plans& plans)
 {
     size_t i, j;
     int nfft1, nfft2, nh2, i0;
@@ -236,7 +242,7 @@ unsigned long readwavfile(const short int* buf2, size_t npoints, int ntrmin, flo
     fftwf_complex *fftin, *fftout = plans.fftout1;
 
     for (i=0; i<npoints; i++) {
-        realin[i]=buf2[i]/32768.0;
+        realin[i]=wav_sample(buf2[i]);
     }
 
     for (i=npoints; i<(size_t)nfft1; i++) {
@@ -1780,6 +1786,7 @@ struct Decoder::Impl {
     std::vector<float> ps;          // ps[512][nffts]
     std::vector<snode> stack;       // -J
     std::vector<int16_t> wav;       // readwavfile's buf2
+    std::vector<float> wavf;        // readwavfile's buf2, from a float .wav
     SubScratch sub;                 // subtract_signal2's arrays
     SpreadScratch spread;           // decode_spread's FFT (not wsprd's)
     OsdTables osd_tables;           // osdwspr's boxit/fetchit tables
@@ -2551,6 +2558,7 @@ void Decoder::release() {
     std::vector<float>().swap(m.ps);
     std::vector<snode>().swap(m.stack);
     std::vector<int16_t>().swap(m.wav);
+    std::vector<float>().swap(m.wavf);
     for (auto* v : {&m.sub.refi, &m.sub.refq, &m.sub.ci, &m.sub.cq, &m.sub.cfi, &m.sub.cfq}) std::vector<float>().swap(*v);
     m.osd_tables.reset();
     m.spread.fft.reset();
@@ -2560,7 +2568,8 @@ void Decoder::release() {
 size_t Decoder::memory() const {
     const Impl& m = *impl_;
     size_t n = (m.idat.capacity() + m.qdat.capacity() + m.ps.capacity()) * sizeof(float) +
-               m.stack.capacity() * sizeof(snode) + m.wav.capacity() * sizeof(int16_t) + m.plan_bytes;
+               m.stack.capacity() * sizeof(snode) + m.wav.capacity() * sizeof(int16_t) +
+               m.wavf.capacity() * sizeof(float) + m.plan_bytes;
     for (const auto* v : {&m.sub.refi, &m.sub.refq, &m.sub.ci, &m.sub.cq, &m.sub.cfi, &m.sub.cfq})
         n += v->capacity() * sizeof(float);
     if (m.spread.fft) n += m.spread.fft->size() * sizeof(std::complex<float>);
@@ -2604,6 +2613,26 @@ void Decoder::carry_timings() {
 }
 
 Result Decoder::decode_wav(const int16_t* samples, size_t n, const std::string& date, const std::string& time) {
+    return decode_samples(samples, n, date, time);
+}
+
+Result Decoder::decode_wav(const float* samples, size_t n, const std::string& date, const std::string& time) {
+    return decode_samples(samples, n, date, time);
+}
+
+namespace {
+// readwavfile's buf2 for the samples' type: Impl's wav (16-bit) or wavf.
+template <class Sample> struct WavBuffer;
+template <> struct WavBuffer<int16_t> {
+    static std::vector<int16_t>& of(std::vector<int16_t>& wav, std::vector<float>&) { return wav; }
+};
+template <> struct WavBuffer<float> {
+    static std::vector<float>& of(std::vector<int16_t>&, std::vector<float>& wavf) { return wavf; }
+};
+}  // namespace
+
+template <class Sample>
+Result Decoder::decode_samples(const Sample* samples, size_t n, const std::string& date, const std::string& time) {
     Result res;
     const int wspr_type = opt_.wspr_type;
     carry_timings();
@@ -2627,11 +2656,12 @@ Result Decoder::decode_wav(const int16_t* samples, size_t n, const std::string& 
         clock_t t0 = cpu_clock();
         Impl& m = *impl_;
         m.plan_bytes = sizeof(float) * nfft1 + sizeof(fftwf_complex) * (nfft1 / 2 + 1 + 2 * nfft2 + 2 * 512);
-        m.wav.assign(npoints, 0);
-        std::memcpy(m.wav.data(), samples, sizeof(int16_t) * (n < npoints ? n : npoints));
+        std::vector<Sample>& wav = WavBuffer<Sample>::of(m.wav, m.wavf);
+        wav.assign(npoints, 0);
+        std::memcpy(wav.data(), samples, sizeof(Sample) * (n < npoints ? n : npoints));
         std::fill(m.idat.begin(), m.idat.end(), 0.0f);
         std::fill(m.qdat.begin(), m.qdat.end(), 0.0f);
-        const unsigned int np = readwavfile(m.wav.data(), npoints, wspr_type, m.idat.data(), m.qdat.data(), plans);
+        const unsigned int np = readwavfile(wav.data(), npoints, wspr_type, m.idat.data(), m.qdat.data(), plans);
         timings_.treadwav += (float)(cpu_clock()-t0+plans.plan12)/CLOCKS_PER_SEC;
         const double dialfreq = opt_.dialfreq - (opt_.dialfreq_error*1.0e-06);
         Hashtable scratch_table;

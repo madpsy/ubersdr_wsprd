@@ -239,6 +239,10 @@ public:
     // kept, as wsprd's fixed fields hold). Refused (status 1) as wsprd
     // refuses it: no samples, or a type other than 2 or 15.
     Result decode_wav(const int16_t* samples, size_t n, const std::string& date, const std::string& time);
+    // The same from a 32-bit float .wav's samples, full scale 1.0 (a 16-bit
+    // sample s is s/32768 of it): decoded as the 16-bit samples are from
+    // the FFT on, without their rounding to 16 bits.
+    Result decode_wav(const float* samples, size_t n, const std::string& date, const std::string& time);
     // A .c2 file's samples (readc2file), its own dial and type. Refused
     // (status 1) with fewer than 45000 of either, as wsprd refuses a short
     // file.
@@ -247,6 +251,8 @@ public:
 private:
     struct Impl;
     struct Kept;
+    template <class Sample>
+    Result decode_samples(const Sample* samples, size_t n, const std::string& date, const std::string& time);
     Options opt_;
     Hashtable hashtable_;
     std::string wisdom_;

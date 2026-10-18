@@ -93,6 +93,10 @@ public:
     // list (the reference rewrites fst4w_calls.txt then).
     void decode(int16_t* iwave, int nutc, const Options& o, const std::function<void(const Result&)>& on_result,
                 bool* calls_changed);
+    // The same on float samples at the 16-bit scale (full scale 32768), as
+    // from a 32-bit float .wav: no rounding to 16 bits, nor clipping.
+    void decode(float* iwave, int nutc, const Options& o, const std::function<void(const Result&)>& on_result,
+                bool* calls_changed);
 
     // The callsign hash table (fst4w_unpack.h's Unpacker::save/load): kept
     // across runs, it goes on resolving type 3 messages as one jt9 running

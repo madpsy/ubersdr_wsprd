@@ -140,10 +140,11 @@ int run_files(const FileMode& fm, const std::vector<std::string>& files, const s
     Decoder dec;
     bool first = true;
     std::vector<int16_t> id2(static_cast<size_t>(NTMAX) * 12000);
+    std::vector<float> id2f;  // a float .wav's samples (at id2's scale)
     for (const std::string& infile : files) {
         Wav wav;
         std::string why;
-        if (!wav.open(at(cwd, infile), why)) {
+        if (!wav.open(at(cwd, infile), why, true)) {
             err << fm.program << ": cannot read WAV file " << infile << ": " << why << "\nSTOP 2\n";
             return 2;
         }
@@ -154,12 +155,17 @@ int run_files(const FileMode& fm, const std::vector<std::string>& files, const s
         const int nutc = jt9_nutc(infile);
         const long npts = static_cast<long>(trperiod * 12000.0);
         const long kstep = 6912 / 2;
-        std::fill(id2.begin(), id2.end(), 0);
+        // (A float period needs only its own npts: the decode reads
+        // ntrperiod*12000 samples, and zeroing NTMAX's 86 MB costs more
+        // than the decode of a quiet period.)
+        if (wav.is_float) id2f.assign(static_cast<size_t>(npts), 0.0f);
+        else std::fill(id2.begin(), id2.end(), 0);
         const long nblocks = npts / kstep;
         for (long iblk = 1; iblk <= nblocks; ++iblk) {
             const long k0 = (iblk - 1) * kstep;
             const long k = std::min(iblk * kstep, npts);
-            const long got = wav.read(&id2[static_cast<size_t>(k0)], k - k0);
+            const long got = wav.is_float ? wav.read(&id2f[static_cast<size_t>(k0)], k - k0)
+                                          : wav.read(&id2[static_cast<size_t>(k0)], k - k0);
             if (got == 0) {
                 out << " EOF on input file " << infile << "\n";
                 break;
@@ -174,11 +180,14 @@ int run_files(const FileMode& fm, const std::vector<std::string>& files, const s
         int ndecoded = 0;
         float sum = 0.0f;
         for (int i = 0; i < 180000; ++i) {
-            const float x = static_cast<float>(id2[static_cast<size_t>(i)]);
+            const float x = wav.is_float ? id2f[static_cast<size_t>(i)] : static_cast<float>(id2[static_cast<size_t>(i)]);
             sum = sum + x * x;
         }
         const float rms = std::sqrt(sum / 180000.0f);
-        if (!(rms < 0.5f)) {
+        // A float file's level is its own (radiod's are not normalized: a
+        // quiet band's RMS is -100 dBFS, 0.3 at the 16-bit scale), so only
+        // silence (all zero) stops its decode.
+        if (wav.is_float ? rms > 0.0f : !(rms < 0.5f)) {
             // decoded.txt: open(status='unknown') creates it empty, or keeps
             // it as it was until a line is written, which makes it the
             // file's first.
@@ -223,7 +232,7 @@ int run_files(const FileMode& fm, const std::vector<std::string>& files, const s
 #endif
             }
             try {
-            dec.decode(id2.data(), nutc, o, [&](const Result& r) {
+            auto on_result = [&](const Result& r) {
                 if (o.spread == Options::Spread::Both && r.fmid != -999.0f) {
                     std::string m = r.msg;
                     while (!m.empty() && m.back() == ' ') m.pop_back();
@@ -260,7 +269,9 @@ int run_files(const FileMode& fm, const std::vector<std::string>& files, const s
                             << fortran_f(r.xdt, 6, 1) << fortran_f(r.fsig, 8, 0) << fortran_i(0, 4) << "   "
                             << decoded0 << " FST4\n";
                 ++ndecoded;
-            }, &calls_changed);
+            };
+            if (wav.is_float) dec.decode(id2f.data(), nutc, o, on_result, &calls_changed);
+            else dec.decode(id2.data(), nutc, o, on_result, &calls_changed);
             } catch (const std::invalid_argument& e) {
                 // Not jt9's: -c or -x not a standard call (fst4w_unpack.h).
                 err << fm.program << ": " << e.what() << "\n";

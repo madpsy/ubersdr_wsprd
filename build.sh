@@ -13,7 +13,8 @@
 #                         against WSJT-X's own's stored outputs, byte for byte
 #                         (scripts/wsprd-stored-check.sh, scripts/jt9-wine-check.sh
 #                         run natively; about four minutes, nothing of WSJT-X
-#                         built). On arm64 jt9's known differences (FFTW's
+#                         built), and their 32-bit float input against the same
+#                         samples as 16-bit (scripts/float-input-check.sh). On arm64 jt9's known differences (FFTW's
 #                         NEON rounding: tests/data/jt9-arm64-accepted.txt)
 #                         print as "accepted" and pass; only "differs:"
 #                         fails
@@ -260,6 +261,10 @@ fi
 if $check && [ "${JT9_SKIP_COMPARE:-0}" != 1 ]; then
     say "checking jt9 against WSJT-X's jt9's stored outputs"
     "$root/scripts/jt9-wine-check.sh" "$build/jt9" "$build/stored-jt9"
+fi
+if $check && [ "${WSPRD_SKIP_COMPARE:-0}" != 1 ] && [ "${JT9_SKIP_COMPARE:-0}" != 1 ]; then
+    say "checking wsprd and jt9 on 32-bit float input against the same samples as 16-bit"
+    "$root/scripts/float-input-check.sh" "$build/wsprd" "$build/jt9" "$build/float-input"
 fi
 
 # --- the deep check: WSJT-X's own wsprd, every option and recording -----------

@@ -386,6 +386,48 @@ void blanker(int16_t* iwave, int nz, int ndropmax, int npct, float* c_bigfft) {
     }
 }
 
+void blanker(float* iwave, int nz, int ndropmax, int npct, float* c_bigfft) {
+    static thread_local std::vector<int> hist;
+    hist.assign(32769, 0);
+    const float fblank = 0.01f * static_cast<float>(npct);
+    for (int i = 0; i < nz; ++i) {
+        const float a = std::fabs(iwave[i]);
+        const int n = a >= 32768.0f ? 32768 : static_cast<int>(a);
+        hist[n] = hist[n] + 1;
+    }
+    int n = 0, i;
+    const int target =
+        static_cast<int>(std::lround(static_cast<float>(nz) * fblank / static_cast<float>(ndropmax)));
+    for (i = 32768; i >= 0; --i) {
+        n = n + hist[i];
+        if (n >= target) break;
+    }
+    // An int sample's |i0| > nthresh. The top bin holds |x| >= 32768 here,
+    // which no int sample reaches: nthresh 32768 (npct 0) blanks nothing.
+    const float nthresh = i >= 32768 ? std::numeric_limits<float>::infinity() : static_cast<float>(i);
+    int ndrop = 0;
+    float xx = 0.0f;
+    for (int ii = 1; ii <= nz; ++ii) {
+        float i0 = iwave[ii - 1];
+        if (ndrop > 0) {
+            i0 = 0.0f;
+            ndrop = ndrop - 1;
+        }
+        // Start to apply blanking (an int sample's |i0| > nthresh is |i0| >= nthresh+1)
+        if (std::fabs(i0) >= nthresh + 1.0f) {
+            i0 = 0.0f;
+            ndrop = ndropmax;
+        }
+        if ((ii & 1) == 1) {
+            xx = i0;
+        } else {
+            const int j = ii / 2 - 1;
+            c_bigfft[2 * j] = xx;
+            c_bigfft[2 * j + 1] = i0;
+        }
+    }
+}
+
 void* fftw_alloc_bytes(size_t n) { return fftwf_malloc(n); }
 void fftw_free_bytes(void* p) { fftwf_free(p); }
 

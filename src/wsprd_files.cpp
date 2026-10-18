@@ -491,6 +491,50 @@ int frame_read(const Io& io, FILE *fp, unsigned char *type, void **body, uint32_
     return 0;
 }
 
+// A RIFF/WAVE file of 32-bit IEEE float samples (WAVE_FORMAT_IEEE_FLOAT, or
+// WAVE_FORMAT_EXTENSIBLE with that subformat), as radiod and sox write them:
+// true, with its data chunk's offset and length in bytes, when fp is one
+// (mono). Any other file is false and read as wsprd reads it: 16-bit
+// samples after a 44-byte header, whatever its header says.
+bool wav_float_data(FILE* fp, long& offset, long& length, int& channels) {
+    unsigned char h[12];
+    if (fseek(fp, 0, SEEK_SET) != 0 || fread(h, 1, 12, fp) != 12) return false;
+    if (memcmp(h, "RIFF", 4) != 0 || memcmp(h + 8, "WAVE", 4) != 0) return false;
+    auto u16 = [](const unsigned char* b) { return (unsigned)b[0] | ((unsigned)b[1] << 8); };
+    auto u32 = [](const unsigned char* b) {
+        return (unsigned long)b[0] | ((unsigned long)b[1] << 8) | ((unsigned long)b[2] << 16) |
+               ((unsigned long)b[3] << 24);
+    };
+    bool is_float = false;
+    long pos = 12;
+    for (;;) {
+        unsigned char c[8];
+        if (fseek(fp, pos, SEEK_SET) != 0 || fread(c, 1, 8, fp) != 8) return false;
+        const unsigned long size = u32(c + 4);
+        if (memcmp(c, "fmt ", 4) == 0) {
+            unsigned char f[40] = {};
+            if (size < 16 || fread(f, 1, size < 40 ? size : 40, fp) < 16) return false;
+            unsigned tag = u16(f);
+            channels = (int)u16(f + 2);
+            const unsigned bits = u16(f + 14);
+            if (tag == 0xFFFE && size >= 40) tag = u16(f + 24);  // the subformat GUID's first two bytes
+            is_float = tag == 3 && bits == 32;
+            if (!is_float) return false;
+        } else if (memcmp(c, "data", 4) == 0) {
+            if (!is_float) return false;
+            offset = pos + 8;
+            // A writer that never came back to fill in the size (0, or
+            // 0xFFFFFFFF while it streams) or one larger than the file: its
+            // samples run to the end of the file.
+            long end = offset;
+            if (fseek(fp, 0, SEEK_END) == 0) end = ftell(fp);
+            length = (size == 0 || size == 0xFFFFFFFFul || offset + (long)size > end) ? end - offset : (long)size;
+            return true;
+        }
+        pos += 8 + (long)size + (long)(size & 1);
+    }
+}
+
 // pcm_to_iq()'s checks; its FFTs are Decoder::decode_wav's. Returns the
 // samples to decode (expected_npcm), or 0.
 size_t pcm_check(const Io& io, size_t npcm, int ntrmin) {
@@ -861,6 +905,7 @@ int run(const std::vector<std::string>& argv, const Io& io)
 
     enum { NONE, WAV, C2IN } kind = NONE;
     std::vector<int16_t> pcm;
+    std::vector<float> pcmf;  // a float .wav's samples (pcm then unused)
     size_t npcm = 0;
     C2 c2;
     if (opt.stream_mode) {
@@ -890,6 +935,32 @@ int run(const std::vector<std::string>& argv, const Io& io)
             close_files();
             return 1;
         }
+        long data_offset = 0, data_length = 0;
+        int channels = 0;
+        if (wav_float_data(fp, data_offset, data_length, channels)) {
+            if (channels != 1) {
+                io.err(format("Float .wav file '%s' has %d channels, not 1\n", ptr_to_infile, channels));
+                fclose(fp);
+                close_files();
+                return 1;
+            }
+            pcmf.assign(npoints, 0.0f);
+            size_t want = (size_t)data_length / sizeof(float);
+            if (want > npoints) want = npoints;
+            size_t nr = 0;
+            if (fseek(fp, data_offset, SEEK_SET) == 0) nr = fread(pcmf.data(), sizeof(float), want, fp);
+            fclose(fp);
+            if( nr == 0 ) {
+                io.err(format("No data in file '%s'\n", ptr_to_infile));
+                close_files();
+                return 1;
+            }
+            npcm = npoints;
+            tm.treadwav += (float)(detail::cpu_clock()-t0)/CLOCKS_PER_SEC;
+            parse_date();
+            kind = WAV;
+        } else {
+        fseek(fp, 0, SEEK_SET);
         // As calloc and glibc's fread leave buf2: the header's 22 shorts
         // where the data does not reach, and the low byte of a last, half
         // sample (fread stores it but does not count it). Read as bytes so
@@ -908,6 +979,7 @@ int run(const std::vector<std::string>& argv, const Io& io)
         tm.treadwav += (float)(detail::cpu_clock()-t0)/CLOCKS_PER_SEC;
         parse_date();
         kind = WAV;
+        }
     } else if ( strstr(ptr_to_infile,".c2") !=0 )  {
         ptr_to_infile_suffix=strstr(ptr_to_infile,".c2");
         if (!read_c2_as(infile_path, ptr_to_infile, &c2, &error)) {
@@ -943,7 +1015,9 @@ int run(const std::vector<std::string>& argv, const Io& io)
         fclose(fhash);
     }
 
-    Result res = kind == WAV ? decoder.decode_wav(pcm.data(), npcm, date, uttime) : decoder.decode_c2(c2, date, uttime);
+    Result res = kind != WAV    ? decoder.decode_c2(c2, date, uttime)
+                 : pcmf.empty() ? decoder.decode_wav(pcm.data(), npcm, date, uttime)
+                                : decoder.decode_wav(pcmf.data(), npcm, date, uttime);
 
     // run() refuses what the Decoder would (as wsprd does) before here.
     if (res.status == 1) {
