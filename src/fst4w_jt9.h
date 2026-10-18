@@ -65,8 +65,10 @@ std::string calls_file(const std::vector<std::string>& calls);
 struct Wav {
     std::ifstream f;
     int rate = 0, channels = 0, bits = 0;
+    bool is_float = false;  // 32-bit IEEE float samples (not readwav.f90's)
     long remaining = 0;  // bytes of data left
-    bool open(const std::string& path, std::string& why) {
+    // allow_float: a 32-bit float file too (FST4W's file mode alone).
+    bool open(const std::string& path, std::string& why, bool allow_float = false) {
         f.open(path, std::ios::binary);
         if (!f) {
             why = "cannot open file";
@@ -99,8 +101,8 @@ struct Wav {
             const int64_t nextpos = filepos + size + (size % 2);
             if (std::memcmp(id, "fmt ", 4) == 0) {
                 if (size < 16) return fail("fmt chunk is too short");
-                char b[16];
-                if (!f.read(b, 16)) return fail("cannot read fmt chunk");
+                char b[40] = {};
+                if (!f.read(b, size < 40 ? size : 40)) return fail("cannot read fmt chunk");
                 int16_t fmt_tag, ch, bps;
                 int32_t sr;
                 std::memcpy(&fmt_tag, &b[0], 2);
@@ -110,7 +112,10 @@ struct Wav {
                 rate = sr;
                 channels = ch;
                 bits = bps;
-                if (fmt_tag != 1 || ch != 1 || bps != 16) return fail("unsupported WAV format; expected mono 16-bit PCM");
+                uint16_t tag = static_cast<uint16_t>(fmt_tag);
+                if (tag == 0xFFFE && size >= 40) std::memcpy(&tag, &b[24], 2);  // the subformat GUID's first two bytes
+                is_float = allow_float && tag == 3 && bps == 32 && ch == 1;
+                if (!is_float && (fmt_tag != 1 || ch != 1 || bps != 16)) return fail("unsupported WAV format; expected mono 16-bit PCM");
                 if (sr != 11025 && sr != 12000) return fail("unsupported WAV sample rate");
                 format_found = true;
             } else if (std::memcmp(id, "data", 4) == 0) {
@@ -122,6 +127,16 @@ struct Wav {
             if (nextpos > filesize + 1) return fail("WAV chunk extends beyond end of file");
             filepos = nextpos;
         }
+    }
+    // Up to n float samples, scaled to the 16-bit samples' full scale
+    // (x 32768); how many were read.
+    long read(float* out, long n) {
+        const long want = std::min(n, remaining / 4);
+        f.read(reinterpret_cast<char*>(out), want * 4);
+        const long got = static_cast<long>(f.gcount()) / 4;
+        for (long i = 0; i < got; ++i) out[i] *= 32768.0f;
+        remaining -= got * 4;
+        return got;
     }
     // Up to n samples; how many were read.
     long read(int16_t* out, long n) {

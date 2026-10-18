@@ -169,10 +169,12 @@ struct Decoder::Impl {
     std::vector<float> pulse;
 
     void gen_fst4wave(const int* itone, int nsym, int nsps, int nwave, float fsample, int hmod, float f0, cfloat* cwave);
-    void dopspread(const int* itone, const int16_t* iwave, int nsps, int nmax, int ndown, int hmod, int i0, float fc,
+    template <class Sample>
+    void dopspread(const int* itone, const Sample* iwave, int nsps, int nmax, int ndown, int hmod, int i0, float fc,
                    float& fmid, float& w50, std::vector<std::pair<float, float>>* spectrum, bool fast = false,
                    bool count = true);
-    void decode(int16_t* iwave, int nutc, const Options& o, const std::function<void(const Result&)>& on_result,
+    template <class Sample>
+    void decode(Sample* iwave, int nutc, const Options& o, const std::function<void(const Result&)>& on_result,
                 bool* calls_changed);
 };
 
@@ -251,7 +253,8 @@ void Decoder::Impl::gen_fst4wave(const int* itone, int nsym, int nsps, int nwave
     }
 }
 
-void Decoder::Impl::dopspread(const int* itone, const int16_t* iwave, int nsps, int nmax, int ndown, int hmod, int i0,
+template <class Sample>
+void Decoder::Impl::dopspread(const int* itone, const Sample* iwave, int nsps, int nmax, int ndown, int hmod, int i0,
                               float fc, float& fmid, float& w50, std::vector<std::pair<float, float>>* spectrum,
                               bool fast, bool count) {
     if (count) ++ncall;
@@ -388,7 +391,8 @@ void Decoder::Impl::dopspread(const int* itone, const int16_t* iwave, int nsps, 
     }
 }
 
-void Decoder::Impl::decode(int16_t* iwave, int nutc, const Options& o,
+template <class Sample>
+void Decoder::Impl::decode(Sample* iwave, int nutc, const Options& o,
                            const std::function<void(const Result&)>& on_result, bool* calls_changed) {
     if (calls_changed) *calls_changed = false;
     stopped = false;
@@ -740,6 +744,11 @@ size_t Decoder::memory_needed(const Options& o) {
 }
 
 void Decoder::decode(int16_t* iwave, int nutc, const Options& o, const std::function<void(const Result&)>& on_result,
+                     bool* calls_changed) {
+    d_->decode(iwave, nutc, o, on_result, calls_changed);
+}
+
+void Decoder::decode(float* iwave, int nutc, const Options& o, const std::function<void(const Result&)>& on_result,
                      bool* calls_changed) {
     d_->decode(iwave, nutc, o, on_result, calls_changed);
 }

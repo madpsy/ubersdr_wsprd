@@ -68,6 +68,9 @@ struct Period {
 // samples copied as interleaved pairs into c_bigfft (complex 0:nz/2; its
 // last element left as it was).
 void blanker(int16_t* iwave, int nz, int ndropmax, int npct, float* c_bigfft);
+// The same on float samples at the 16-bit scale: |x| binned as the 16-bit
+// samples' (truncated, 32768 and over in the top bin).
+void blanker(float* iwave, int nz, int ndropmax, int npct, float* c_bigfft);
 
 // four2a's in-place FFTs, planned as four2a plans them (FFTW_ESTIMATE_PATIENT,
 // in place), with only the planner's own wisdom (the process's is set aside
