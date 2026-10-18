@@ -12,6 +12,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <type_traits>
 
 #include "fst4w_jt9.h"    // fortran_f, fortran_i
 #include "ft8_fortran.h"  // fix, trim, findex, nint, maxval, twkfreq1, fbits
@@ -29,6 +30,14 @@ using ft8::fortran::trim;
 using ft8::fortran::twkfreq1;
 
 namespace {
+
+// The float samples' RMS gate (call()): only all zeros is silence.
+bool all_zero(const float* x, int n) {
+    for (int i = 0; i < n; ++i)
+        if (x[i] != 0.0f) return false;
+    return true;
+}
+bool all_zero(const int16_t*, int) { return false; }  // not asked: the 16-bit gate is jt9's
 
 constexpr int NPTS = 180000;  // id2's length (the RMS gate's)
 
@@ -184,7 +193,8 @@ size_t Decoder::memory() const {
 
 // ---------------------------------------------------------------- decoder.f90
 
-Decoder::Call Decoder::call(const int16_t* id2, int nutc, const Params& p) {
+template <class S>
+Decoder::Call Decoder::call_t(const S* id2, int nutc, const Params& p) {
     Call c;
     // rms=sqrt(dot_product(float(id2(1:180000)),float(id2(1:180000)))/180000.0)
     float sum = 0.0f;
@@ -193,7 +203,7 @@ Decoder::Call Decoder::call(const int16_t* id2, int nutc, const Params& p) {
         sum = sum + x * x;
     }
     const float rms = std::sqrt(sum / 180000.0f);
-    if (!(rms < 0.5f)) {
+    if (std::is_same<S, float>::value ? !all_zero(id2, NPTS) : !(rms < 0.5f)) {
         c.gated = true;
         decoded_exists_ = true;  // open(13, ..., status='unknown'), or position='append' with nagain
         decoded_pending_.clear();
@@ -208,9 +218,13 @@ Decoder::Call Decoder::call(const int16_t* id2, int nutc, const Params& p) {
     return c;
 }
 
-Decoder::Period Decoder::period(const int16_t* samples, size_t n, int nutc, const Params& p, size_t take) {
+Decoder::Call Decoder::call(const int16_t* id2, int nutc, const Params& p) { return call_t(id2, nutc, p); }
+Decoder::Call Decoder::call(const float* id2, int nutc, const Params& p) { return call_t(id2, nutc, p); }
+
+template <class S>
+Decoder::Period Decoder::period_t(const S* samples, size_t n, int nutc, const Params& p, size_t take) {
     Period r;
-    std::vector<int16_t> id2(NPTS, 0);
+    std::vector<S> id2(NPTS, 0);
     std::copy(samples, samples + std::min({n, take, static_cast<size_t>(NPTS)}), id2.begin());
     r.c = call(id2.data(), nutc, p);
     for (const Decode& d : r.c.decodes) r.out += d.line + "\n";
@@ -219,6 +233,13 @@ Decoder::Period Decoder::period(const int16_t* samples, size_t n, int nutc, cons
     r.out += "<DecodeFinished>" + fst4w::fortran_i(0, 4) + fst4w::fortran_i(r.ndecoded, 4) + fst4w::fortran_i(0, 9) +
              "\n";
     return r;
+}
+
+Decoder::Period Decoder::period(const int16_t* samples, size_t n, int nutc, const Params& p, size_t take) {
+    return period_t(samples, n, nutc, p, take);
+}
+Decoder::Period Decoder::period(const float* samples, size_t n, int nutc, const Params& p, size_t take) {
+    return period_t(samples, n, nutc, p, take);
 }
 
 // decoder_callbacks.f90's ft4_decoded.
@@ -252,7 +273,8 @@ void Decoder::callback(float sync, int snr, float dt, float freq, const std::str
 
 // ---------------------------------------------------------------- ft4_decode.f90
 
-void Decoder::decode(const int16_t* iwave, const Params& p, int nutc, int ncontest, Call& c) {
+template <class S>
+void Decoder::decode(const S* iwave, const Params& p, int nutc, int ncontest, Call& c) {
     std::string mycall = fix(p.mycall, 12), hiscall = fix(p.hiscall, 12);
     const int nfqso = p.nfqso, ndepth = p.ndepth, nqso = p.nqso_progress;
     const bool lapcqonly = p.lapcqonly;

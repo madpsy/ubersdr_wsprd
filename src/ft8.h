@@ -80,6 +80,12 @@ public:
         std::vector<Decode> decodes;  // in the order printed
     };
     Call call(const int16_t* id2, int nzhsym, int nutc, const Params& p);
+    // The same on float samples in 16-bit units (a 16-bit sample s is s: a
+    // float .wav file's x as fst4w::Wav reads it, x * 32768), so float copies
+    // of 16-bit samples decode as they do. One difference, as FST4W's: the
+    // RMS gate passes any call whose samples are not all zero, since a float
+    // file's level is its own (an SDR's unscaled output sits far below RMS 0.5).
+    Call call(const float* id2, int nzhsym, int nutc, const Params& p);
 
     // jt9a's period: the calls at nzhsym 41, 47 and 50 on samples (n of them,
     // the first 180,000 used, zeros past n) and <DecodeFinished>'s count.
@@ -92,6 +98,9 @@ public:
         std::string out;   // stdout: the decode lines and <DecodeFinished>
     };
     Period period(const int16_t* samples, size_t n, int nutc, const Params& p, size_t fifty = 180000,
+                  const std::function<void(int)>& after_call = {});
+    // The same on float samples, as call()'s.
+    Period period(const float* samples, size_t n, int nutc, const Params& p, size_t fifty = 180000,
                   const std::function<void(int)>& after_call = {});
 
     // decoded.txt as decoder.f90 leaves it in its temp dir: absent until a
@@ -132,8 +141,15 @@ public:
     void flush_frontend_trace() { fe_.trace_flush(); }
 
 private:
+    // call() and period() for both sample types (S: int16_t or float).
+    template <class S>
+    Call call_t(const S* id2, int nzhsym, int nutc, const Params& p);
+    template <class S>
+    Period period_t(const S* samples, size_t n, int nutc, const Params& p, size_t fifty,
+                    const std::function<void(int)>& after_call);
     // ft8_decode's decode(), with the callback.
-    void decode(const int16_t* iwave, const Params& p, int nutc, int nzhsym, int ncontest, Call& c);
+    template <class S>
+    void decode(const S* iwave, const Params& p, int nutc, int nzhsym, int ncontest, Call& c);
     // ft8_a7.f90's ft8_a7_save (msg is ft8_decode's msg37, rewritten in place
     // by split77 as the reference's argument is).
     void ft8_a7_save(int jseq, float dt, float f, std::string& msg);

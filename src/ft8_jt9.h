@@ -16,6 +16,7 @@
 // Taylor, K1JT, and the WSJT-X developers (GNU GPL v3), and so is this.
 #pragma once
 
+#include <istream>
 #include <ostream>
 #include <string>
 #include <vector>
@@ -42,6 +43,21 @@ struct FileMode {
 // read or of another rate).
 int run_files(const FileMode& fm, const std::vector<std::string>& files, const std::string& cwd, std::ostream& out,
               std::ostream& err);
+
+// Ours, --feed: the files named on in, one a line ("PATH" or "PATH HHMMSS"),
+// each decoded as it arrives, as run_files decodes its files (one Decoder for
+// all: the hashes and a7 tables carried from period to period, as one jt9 -s
+// carries them for WSJT-X), its lines and <DecodeFinished> printed, then
+// "<FileDone> PATH N" (N its decodes; 0 for a file that cannot be read, said
+// on err, the feed going on) and out flushed. The period's UTC: HHMMSS when
+// given, else jt9's from the name (..._HHMMSS.wav), else ka9q-radio
+// pcmrecord's (YYYYMMDDTHHMMSSZ_...), else 0. Ends at the end of in (0).
+int run_feed(const FileMode& fm, std::istream& in, const std::string& cwd, std::ostream& out, std::ostream& err);
+
+// --feed's: a line's path and the UTC it gives (feed_nutc's rules), and
+// pcmrecord's name's HHMMSS (-1 when the name is not one).
+bool feed_line(const std::string& line, std::string& path, int& nutc);
+int pcmrecord_nutc(const std::string& path);
 
 // Shared with FT4's file mode (ft4_jt9.h). A path as jt9 opens it from cwd
 // (absolute ones as they are), dir/name, and decoded.txt as decoder.f90

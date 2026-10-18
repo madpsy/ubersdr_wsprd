@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <type_traits>
 
 #include "fst4w_jt9.h"  // fortran_f, fortran_i
 #include "ft8_fortran.h"  // fix, trim, findex, nint, cmul, db, twkfreq1, isgrid4 (shared with FT4)
@@ -31,6 +32,14 @@ using fortran::trim;
 using fortran::twkfreq1;
 
 namespace {
+
+// The float samples' RMS gate (call()): only all zeros is silence.
+bool all_zero(const float* x, int n) {
+    for (int i = 0; i < n; ++i)
+        if (x[i] != 0.0f) return false;
+    return true;
+}
+bool all_zero(const int16_t*, int) { return false; }  // not asked: the 16-bit gate is jt9's
 
 constexpr int MAXCAND = 1000, MAX_EARLY = 200, NPTS = 15 * 12000;
 
@@ -228,7 +237,8 @@ void Decoder::set_jseq(int v) {
 
 // ---------------------------------------------------------------- decoder.f90
 
-Decoder::Call Decoder::call(const int16_t* id2, int nzhsym, int nutc, const Params& p) {
+template <class S>
+Decoder::Call Decoder::call_t(const S* id2, int nzhsym, int nutc, const Params& p) {
     Call c;
     // rms=sqrt(dot_product(float(id2(1:180000)),float(id2(1:180000)))/180000.0)
     float sum = 0.0f;
@@ -237,7 +247,7 @@ Decoder::Call Decoder::call(const int16_t* id2, int nzhsym, int nutc, const Para
         sum = sum + x * x;
     }
     const float rms = std::sqrt(sum / 180000.0f);
-    if (!(rms < 0.5f)) {
+    if (std::is_same<S, float>::value ? !all_zero(id2, 180000) : !(rms < 0.5f)) {
         c.gated = true;
         // FT8 defaults at start to enable a8 decoding
         if (nzhsym == 41) ltry_a8_ = true;
@@ -260,10 +270,18 @@ Decoder::Call Decoder::call(const int16_t* id2, int nzhsym, int nutc, const Para
     return c;
 }
 
-Decoder::Period Decoder::period(const int16_t* samples, size_t n, int nutc, const Params& p, size_t fifty,
-                                const std::function<void(int)>& after_call) {
+Decoder::Call Decoder::call(const int16_t* id2, int nzhsym, int nutc, const Params& p) {
+    return call_t(id2, nzhsym, nutc, p);
+}
+Decoder::Call Decoder::call(const float* id2, int nzhsym, int nutc, const Params& p) {
+    return call_t(id2, nzhsym, nutc, p);
+}
+
+template <class S>
+Decoder::Period Decoder::period_t(const S* samples, size_t n, int nutc, const Params& p, size_t fifty,
+                                  const std::function<void(int)>& after_call) {
     Period r;
-    std::vector<int16_t> id2(NPTS, 0), id2a(NPTS, 0);
+    std::vector<S> id2(NPTS, 0), id2a(NPTS, 0);
     std::copy(samples, samples + std::min<size_t>(n, NPTS), id2.begin());
     auto lines = [&](const Call& c) {
         for (const Decode& d : c.decodes) r.out += d.line + "\n";
@@ -292,6 +310,15 @@ Decoder::Period Decoder::period(const int16_t* samples, size_t n, int nutc, cons
     r.out += "<DecodeFinished>" + fst4w::fortran_i(0, 4) + fst4w::fortran_i(r.ndecoded, 4) + fst4w::fortran_i(0, 9) +
              "\n";
     return r;
+}
+
+Decoder::Period Decoder::period(const int16_t* samples, size_t n, int nutc, const Params& p, size_t fifty,
+                                const std::function<void(int)>& after_call) {
+    return period_t(samples, n, nutc, p, fifty, after_call);
+}
+Decoder::Period Decoder::period(const float* samples, size_t n, int nutc, const Params& p, size_t fifty,
+                                const std::function<void(int)>& after_call) {
+    return period_t(samples, n, nutc, p, fifty, after_call);
 }
 
 // decoder_callbacks.f90's ft8_decoded (ncontest 6's Fox branch not reached).
@@ -327,7 +354,8 @@ void Decoder::callback(float sync, int snr, float dt, float freq, const std::str
 
 // ---------------------------------------------------------------- ft8_decode.f90
 
-void Decoder::decode(const int16_t* iwave16, const Params& p, int nutc, int nzhsym, int ncontest, Call& c) {
+template <class S>
+void Decoder::decode(const S* iwave16, const Params& p, int nutc, int nzhsym, int ncontest, Call& c) {
     const std::string mycall12 = fix(p.mycall, 12), hiscall12 = fix(p.hiscall, 12), hisgrid = fix(p.hisgrid, 6);
     const int ndepth = p.ndepth, nfqso = p.nfqso, nftx = p.nftx;
     const bool lft8apon = p.lft8apon, nagain = p.nagain;
