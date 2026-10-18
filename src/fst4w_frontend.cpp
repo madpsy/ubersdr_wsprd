@@ -108,8 +108,8 @@ CachedPlan cached_plan(int n, int kind) {
     return c;
 }
 
-// A plan for this very buffer (one not aligned as the cached plans are),
-// used once.
+// A plan for this very buffer (one not aligned as the cached plans are, or
+// one too big to keep), used once.
 template <typename Plan>
 void plan_and_run(void* data, size_t keep_bytes, Plan make) {
     fftwf_plan p = make_plan(data, keep_bytes, make);
@@ -431,7 +431,18 @@ void blanker(float* iwave, int nz, int ndropmax, int npct, float* c_bigfft) {
 void* fftw_alloc_bytes(size_t n) { return fftwf_malloc(n); }
 void fftw_free_bytes(void* p) { fftwf_free(p); }
 
+// Transforms of at least this many points (FST4W-900's and -1800's big FFT,
+// the exact spread's) are planned for each use, not kept: their plans hold
+// 44 and 124 MB for the process's life, for an FFT run once a decode, every
+// 15 or 30 minutes, and plan in about 0.3 s. Planned on the buffer itself,
+// as an unaligned one is: the same plan as a kept one of its alignment.
+constexpr int KEEP_PLANS_UNDER = 1 << 22;
+
 void fft_r2c_inplace(float* data, int n) {
+    if (n >= KEEP_PLANS_UNDER) {
+        plan_and_run(data, 0, [&] { return fftwf_plan_dft_r2c_1d(n, data, reinterpret_cast<fftwf_complex*>(data), PATIENCE); });
+        return;
+    }
     const CachedPlan c = cached_plan(n, 0);
     if (fftwf_alignment_of(data) == c.alignment) {
         fftwf_execute_dft_r2c(c.plan, data, reinterpret_cast<fftwf_complex*>(data));
@@ -445,6 +456,10 @@ void fft_r2c_inplace(float* data, int n) {
 
 void fft_c2c_inplace(cfloat* data, int n, int isign) {
     auto* d = reinterpret_cast<fftwf_complex*>(data);
+    if (n >= KEEP_PLANS_UNDER) {
+        plan_and_run(data, 0, [&] { return fftwf_plan_dft_1d(n, d, d, isign == -1 ? FFTW_FORWARD : FFTW_BACKWARD, PATIENCE); });
+        return;
+    }
     const CachedPlan c = cached_plan(n, isign == -1 ? -1 : 1);
     if (fftwf_alignment_of(reinterpret_cast<float*>(data)) == c.alignment) {
         fftwf_execute_dft(c.plan, d, d);
