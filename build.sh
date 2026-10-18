@@ -141,15 +141,10 @@ make_latest() {
     local tag=$1 commit=$2 notes=$3; shift 3
     git tag -f latest "$commit" >/dev/null
     git push -q -f origin refs/tags/latest
-    if gh release view latest >/dev/null 2>&1; then
-        for a in $(gh release view latest --json assets -q '.assets[].name'); do
-            gh release delete-asset latest "$a" -y
-        done
-        gh release edit latest --title "latest ($tag)" --notes "$notes" --latest
-        gh release upload latest "$@" --clobber
-    else
-        gh release create latest "$@" --title "latest ($tag)" --notes "$notes" --latest
-    fi
+    # Made again each time, not edited: a release's date is when it was
+    # first published, and an edited one would go on showing the first.
+    if gh release view latest >/dev/null 2>&1; then gh release delete latest -y; fi
+    gh release create latest "$@" --verify-tag --title "latest ($tag)" --notes "$notes" --latest
     echo "  $(gh release view latest --json url -q .url)"
 }
 
