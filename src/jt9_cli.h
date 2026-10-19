@@ -28,9 +28,9 @@
 // 300, 900 or 1800 s) ends as WSJT-X's does: of SIGFPE on x86-64 (status
 // 136), of SIGSEGV on arm64 (139); gfortran's line on stderr, no backtrace.
 //
-// Ours alone: --feed (FT8, FT4: the files' names read from stdin, each
+// Ours alone: --feed (FT8, FT4, FT2: the files' names read from stdin, each
 // decoded as it arrives by one decoder, then "<FileDone> PATH N": ft8_jt9.h's
-// run_feed); FT8's and FT4's file modes take 32-bit float .wav files too;
+// run_feed); FT8's, FT4's and FT2's file modes take 32-bit float .wav files too;
 // --spread fast|exact|off (FST4W's dopspread: fast by default,
 // exact for WSJT-X's byte for byte; a long option alone, taking its one
 // value); -v's line. Still apart: FST4W's -c and -x only standard calls

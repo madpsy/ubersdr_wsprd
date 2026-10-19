@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# jt9's FT8 (-8) and FT4 (-5) on 32-bit float .wav input and through --feed,
+# jt9's FT8 (-8), FT4 (-5) and FT2 (--ft2) on 32-bit float .wav input and through --feed,
 # against jt9's file mode on the 16-bit files. Each set of recordings below
 # is decoded as one run (one decoder for all its files, in name order, so the
 # hashes and a7 tables carried from period to period are checked too), under
@@ -40,11 +40,17 @@ EOF
 }
 
 pass=0 fail=0
-# MODE SET: each recordings/SET's .wav files as one run.
+# MODE SET [SKIP]: each recordings/SET's .wav files as one run, less those
+# whose names match the glob SKIP.
 check_set() {
-    local mode=$1 set=$2 opts way f bad
+    local mode=$1 set=$2 skip=${3:-} opts way f bad
     local -a files=()
-    for f in "$repo/recordings/$set"/*.wav; do [[ -f $f ]] && files+=("${f##*/}"); done
+    for f in "$repo/recordings/$set"/*.wav; do
+        [[ -f $f ]] || continue
+        # shellcheck disable=SC2053
+        [[ -n $skip && ${f##*/} == $skip ]] && continue
+        files+=("${f##*/}")
+    done
     (( ${#files[@]} )) || return 0
     mkdir -p "$work/$set/int" "$work/$set/float"
     for f in "${files[@]}"; do
@@ -89,5 +95,10 @@ check_set() {
 
 for set in ft8-real ft8-sim ft8-filemode; do check_set -8 "$set"; done
 for set in ft4-real ft4-sim ft4-filemode; do check_set -5 "$set"; done
-echo "FT8/FT4 float input and --feed: $((pass + fail)) runs as jt9's on the 16-bit files, $fail differing"
+# ft2-sim's quiet* periods sit just under the 16-bit RMS gate (0.474) to
+# test it; a float period has no such gate (only all zeros is silent), so
+# they decode from the float copies by design.
+check_set --ft2 ft2-sim 'quiet*'
+check_set --ft2 ft2-live/40m-20261014-0226
+echo "FT8/FT4/FT2 float input and --feed: $((pass + fail)) runs as jt9's on the 16-bit files, $fail differing"
 (( fail == 0 ))

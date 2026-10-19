@@ -34,4 +34,7 @@ namespace ft2 {
 int run_files(const ft8::FileMode& fm, const std::vector<std::string>& files, const std::string& cwd,
               std::ostream& out, std::ostream& err);
 
+// Ours, --feed: as ft8::run_feed, for FT2.
+int run_feed(const ft8::FileMode& fm, std::istream& in, const std::string& cwd, std::ostream& out, std::ostream& err);
+
 }  // namespace ft2
