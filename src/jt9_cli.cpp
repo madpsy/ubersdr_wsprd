@@ -68,7 +68,7 @@ const Opt OPTS[] = {
      "decodes as WSJT-X's, not to the bit, for about a third less CPU",
      ""},
     {"feed", false, 0,
-     "Ours (FT8, FT4): read WAV paths from stdin, one a line (PATH or PATH HHMMSS), and decode each as it arrives "
+     "Ours (FT8, FT4, FT2): read WAV paths from stdin, one a line (PATH or PATH HHMMSS), and decode each as it arrives "
      "with one decoder for all, as one jt9 -s does period after period; after each file's lines and "
      "<DecodeFinished>, <FileDone> PATH N",
      ""},
@@ -440,8 +440,8 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
             << " (FST4W, FT8 and FT4: WSJT-X 567ad29ce's decoders; FT2: WSJT-X improved 3.2.0's FT2 on that FT4)\n";
         return 0;
     }
-    if (feed && (!read_files || g.remain > 0 || (mode != 8 && mode != 5))) {
-        err << "jt9: --feed takes FT8 (-8) or FT4 (-5), no -s and no files\nSTOP 2\n";
+    if (feed && (!read_files || g.remain > 0 || (mode != 8 && mode != 5 && mode != 52))) {
+        err << "jt9: --feed takes FT8 (-8), FT4 (-5) or FT2 (--ft2), no -s and no files\nSTOP 2\n";
         return 2;
     }
     if (display_help || g.st < 0 || (!read_files && g.remain > 0) || (read_files && g.remain < 1 && !feed)) {
@@ -458,7 +458,9 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
     if (feed) {
         // Runs until stdin ends: what it says goes out as it happens.
         std::ostream& e = live_err ? *live_err : err;
-        status = mode == 8 ? ft8::run_feed(f8, std::cin, cwd, out, e) : ft4::run_feed(f8, std::cin, cwd, out, e);
+        status = mode == 8   ? ft8::run_feed(f8, std::cin, cwd, out, e)
+                 : mode == 5 ? ft4::run_feed(f8, std::cin, cwd, out, e)
+                             : ft2::run_feed(f8, std::cin, cwd, out, e);
     } else {
         status = decode(read_files, shm_key, mode, fm, f8, args, g, cwd, out, err, live_err);
     }

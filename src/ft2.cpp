@@ -20,6 +20,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <type_traits>
 
 #include "fst4w_jt9.h"    // fortran_f, fortran_i
 #include "ft8_fortran.h"  // fix, trim, findex, nint, maxval, twkfreq1, fbits, the trace hashes
@@ -117,6 +118,20 @@ uint32_t h_i2(const int16_t* a, size_t n) {
     for (size_t i = 0; i < n; ++i) h = hw(h, static_cast<uint32_t>(static_cast<int>(a[i])));
     return h;
 }
+// Float samples' (ours, no reference trace): their bits.
+uint32_t h_i2(const float* a, size_t n) {
+    uint32_t h = 2166136261u;
+    for (size_t i = 0; i < n; ++i) h = hw(h, fbits(a[i]));
+    return h;
+}
+
+// The float samples' RMS gate (call()): only all zeros is silence.
+bool all_zero(const float* x, int n) {
+    for (int i = 0; i < n; ++i)
+        if (x[i] != 0.0f) return false;
+    return true;
+}
+bool all_zero(const int16_t*, int) { return false; }  // not asked: the 16-bit gate is jt9's
 
 // sum2 = sum(cd2*conjg(cd2))/(real(NMAX)/real(NDOWN)) as ft4.cpp's
 // sum2_cd2, over NDMAX 4,416, divided by 4416.0.
@@ -204,12 +219,18 @@ Halved halve(int nfa, int nfb, int nfqso) {
     return h;
 }
 
-void stretch(const int16_t* id2, int16_t* id2_ft4) {
+namespace {
+template <class S>
+void stretch_t(const S* id2, S* id2_ft4) {
     for (int i = 1; i <= FT2_NMAX; ++i) {
         id2_ft4[FT2_STRETCH * i - FT2_STRETCH] = id2[i - 1];
         id2_ft4[FT2_STRETCH * i - 1] = id2[i - 1];
     }
 }
+}  // namespace
+
+void stretch(const int16_t* id2, int16_t* id2_ft4) { stretch_t(id2, id2_ft4); }
+void stretch(const float* id2, float* id2_ft4) { stretch_t(id2, id2_ft4); }
 
 Decode decoded_lines(int nutc, float sync, int snr, float dt, float freq, const std::string& decoded, int nap,
                      float qual) {
@@ -257,7 +278,7 @@ Decoder::~Decoder() = default;
 
 size_t Decoder::memory() const {
     auto b = [](const auto& v) { return v.capacity() * sizeof(v[0]); };
-    return sizeof(*this) + fe_.heap_bytes() + b(dd_) + b(id2_ft4_) + b(candidate_) + b(cd2_) + b(cb_) + b(frame_) +
+    return sizeof(*this) + fe_.heap_bytes() + b(dd_) + b(id2_ft4_) + b(id2_ft4f_) + b(candidate_) + b(cd2_) + b(cb_) + b(frame_) +
            b(bitmetrics_) + b(syncs_) + decoded_text_.capacity() + decoded_pending_.capacity() +
            static_cast<size_t>(NPTS) * sizeof(int16_t);  // period()'s id2
 }
@@ -268,7 +289,8 @@ void Decoder::set_frontend_trace(std::function<void(const std::string&)> f) {
 }
 
 // decoder.f90: the RMS gate, decoded.txt, then improved's FT2 branch.
-Decoder::Call Decoder::call(const int16_t* id2, int nutc, const Params& p) {
+template <class S>
+Decoder::Call Decoder::call_t(const S* id2, int nutc, const Params& p) {
     Call c;
     // rms=sqrt(dot_product(float(id2(1:180000)),float(id2(1:180000)))/180000.0)
     float sum = 0.0f;
@@ -277,7 +299,7 @@ Decoder::Call Decoder::call(const int16_t* id2, int nutc, const Params& p) {
         sum = sum + x * x;
     }
     const float rms = std::sqrt(sum / 180000.0f);
-    if (!(rms < 0.5f)) {
+    if (std::is_same<S, float>::value ? !all_zero(id2, NPTS) : !(rms < 0.5f)) {
         c.gated = true;
         decoded_exists_ = true;
         decoded_pending_.clear();
@@ -286,10 +308,17 @@ Decoder::Call Decoder::call(const int16_t* id2, int nutc, const Params& p) {
         // if(params%nmode.eq.52): nfa/nfb/nfqso halved, id2(1:23*1728)
         // stretched into id2_ft4, FT4's decode with them.
         const Halved h = halve(p.nfa, p.nfb, p.nfqso);
-        stretch(id2, id2_ft4_.data());
+        S* id2_ft4;
+        if constexpr (std::is_same<S, float>::value) {
+            if (id2_ft4f_.empty()) id2_ft4f_.assign(NMAX, 0.0f);
+            id2_ft4 = id2_ft4f_.data();
+        } else {
+            id2_ft4 = id2_ft4_.data();
+        }
+        stretch(id2, id2_ft4);
         if (trace_ || fetrace_) {
             const std::string s = "S " + I(p.nfa) + " " + I(p.nfb) + " " + I(p.nfqso) + " " + I(h.nfa) + " " +
-                                  I(h.nfb) + " " + I(h.nfqso) + " " + X(h_i2(id2_ft4_.data(), NMAX));
+                                  I(h.nfb) + " " + I(h.nfqso) + " " + X(h_i2(id2_ft4, NMAX));
             if (trace_) trace_(s);
             if (fetrace_) fetrace_(s);
         }
@@ -297,16 +326,20 @@ Decoder::Call Decoder::call(const int16_t* id2, int nutc, const Params& p) {
         q.nfa = h.nfa;
         q.nfb = h.nfb;
         q.nfqso = h.nfqso;
-        decode(id2_ft4_.data(), q, nutc, ncontest, c);
+        decode(id2_ft4, q, nutc, ncontest, c);
         if (wrote_ > 0) decoded_text_ = p.nagain ? decoded_text_ + decoded_pending_ : decoded_pending_;
     }
     c.ndecoded = static_cast<int>(c.decodes.size());
     return c;
 }
 
-Decoder::Period Decoder::period(const int16_t* samples, size_t n, int nutc, const Params& p, size_t take) {
+Decoder::Call Decoder::call(const int16_t* id2, int nutc, const Params& p) { return call_t(id2, nutc, p); }
+Decoder::Call Decoder::call(const float* id2, int nutc, const Params& p) { return call_t(id2, nutc, p); }
+
+template <class S>
+Decoder::Period Decoder::period_t(const S* samples, size_t n, int nutc, const Params& p, size_t take) {
     Period r;
-    std::vector<int16_t> id2(NPTS, 0);
+    std::vector<S> id2(NPTS, 0);
     std::copy(samples, samples + std::min({n, take, static_cast<size_t>(NPTS)}), id2.begin());
     r.c = call(id2.data(), nutc, p);
     for (const Decode& d : r.c.decodes) r.out += d.line + "\n";
@@ -319,7 +352,15 @@ Decoder::Period Decoder::period(const int16_t* samples, size_t n, int nutc, cons
 
 // ---------------------------------------------------------------- ft4_decode.f90 (FT2's sizes)
 
-void Decoder::decode(const int16_t* iwave, const Params& p, int nutc, int ncontest, Call& c) {
+Decoder::Period Decoder::period(const int16_t* samples, size_t n, int nutc, const Params& p, size_t take) {
+    return period_t(samples, n, nutc, p, take);
+}
+Decoder::Period Decoder::period(const float* samples, size_t n, int nutc, const Params& p, size_t take) {
+    return period_t(samples, n, nutc, p, take);
+}
+
+template <class S>
+void Decoder::decode(const S* iwave, const Params& p, int nutc, int ncontest, Call& c) {
     std::string mycall = fix(p.mycall, 12), hiscall = fix(p.hiscall, 12);
     const int nfqso = p.nfqso, ndepth = p.ndepth, nqso = p.nqso_progress;
     const bool lapcqonly = p.lapcqonly;

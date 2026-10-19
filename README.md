@@ -212,7 +212,7 @@ float file because its level is its own: only an all-zero file counts as
 silent (a 16-bit file whose first 15 s have an RMS under 0.5 is skipped, but
 an unscaled SDR's quiet band sits far below that), and the noise blanker's
 histogram puts |x| of 32768 and over in its top bin, which no 16-bit sample
-reaches. FT8 and FT4 take float files too (below); FT2 takes 16-bit files only.
+reaches. FT8, FT4 and FT2 take float files too (below).
 
 ## jt9: FT8
 
@@ -252,7 +252,7 @@ Windows every case is the reference's to the bit.
 
 FT8's Fox mode (`-X` with Fox's bit) is refused.
 
-`jt9 -8` and `jt9 -5` (FT4, below) take a mono 32-bit float `.wav` as well,
+`jt9 -8`, `jt9 -5` and `jt9 --ft2` (FT4 and FT2, below) take a mono 32-bit float `.wav` as well,
 as `jt9 --fst4w` does: its samples are decoded as they are, scaled to the
 16-bit full scale, nothing rounded or clipped, and a float file of the same
 samples as a 16-bit one decodes byte for byte as it does. One thing differs
@@ -262,7 +262,7 @@ unscaled SDR's quiet band sits far below that).
 
 ### --feed: one jt9 for a stream of files
 
-`--feed` (ours, FT8 and FT4) reads the files to decode from stdin, one a
+`--feed` (ours, FT8, FT4 and FT2) reads the files to decode from stdin, one a
 line, and decodes each as it arrives, with one decoder for all of them, so
 the a-priori decoding of calls heard in earlier periods (a7) and the hash
 tables run across them as they do in WSJT-X's own live jt9:
@@ -275,7 +275,7 @@ A line is `PATH`, or `PATH HHMMSS` to give the period's UTC; without it the
 UTC is jt9's from the name (`..._HHMMSS.wav`), else ka9q-radio's `pcmrecord`'s
 (`YYYYMMDDTHHMMSSZ_...`), else 0. FT8 needs it: its a7 passes tell even
 periods from odd ones by it. Each file's decodes and `<DecodeFinished>` are
-printed as `jt9 -8 FILE` prints them, then `<FileDone> PATH N` (N its
+printed as `jt9 -8 FILE` (or `-5`, `--ft2`) prints them, then `<FileDone> PATH N` (N its
 decodes), and stdout is flushed, so a caller feeding many files knows where
 each ends. A file that cannot be read is said on stderr, gets `N = 0`, and
 the feed goes on. It ends when stdin does.
@@ -359,7 +359,8 @@ jt9 -a DIR --ft2 -d 2 YYMMDD_HHMMSS.wav [more.wav ...]
 not take it, and neither does this one), with FT4's options above. Each
 file is one 3.75 s period (10 blocks of 3456 samples, 34,560 in all,
 whatever `-p` says, `EOF on input file` when a file is shorter); several
-files are a sequence of periods, the hash tables kept across them.
+files are a sequence of periods, the hash tables kept across them. It
+takes float files and `--feed` as FT8 does (above).
 
 WSJT-X itself has no FT2; WSJT-X improved 3.2.0 decodes it with its FT4
 decoder on the audio stretched to twice its length, with FT2's own sizes,
@@ -616,7 +617,7 @@ FT2 case whose inputs are here (the same script checks `jt9.exe` under
 wine). `scripts/float-input-check.sh` writes each 16-bit recording
 again as 32-bit float, the same samples, and requires `wsprd` (under four
 option sets) and `jt9 --fst4w` to leave the same files from it, byte for byte.
-`scripts/ft-float-feed-check.sh` decodes each FT8 and FT4 recording set as
+`scripts/ft-float-feed-check.sh` decodes each FT8, FT4 and FT2 recording set as
 one run (one decoder for its files, in order) under three option sets, from
 the 16-bit files, from their float copies, and through `--feed` from each,
 and requires every way to print what jt9 prints from the 16-bit files, and

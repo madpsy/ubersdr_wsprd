@@ -65,6 +65,7 @@ Halved halve(int nfa, int nfb, int nfqso);
 // id2_ft4(2i-1) = id2_ft4(2i) = id2(i), i = 1..FT2_NMAX: id2 FT2_NMAX
 // samples in, id2_ft4 NMAX out.
 void stretch(const int16_t* id2, int16_t* id2_ft4);
+void stretch(const float* id2, float* id2_ft4);
 
 // ft2_decoded's two lines from what ft4_decode passes it (FT4's domain:
 // dt and freq stretched) and the period's nutc: d's fields filled, dt and
@@ -89,6 +90,13 @@ public:
         std::vector<Decode> decodes;  // in the order printed
     };
     Call call(const int16_t* id2, int nutc, const Params& p);
+    // The same on float samples in 16-bit units (a 16-bit sample s is s: a
+    // float .wav file's x as fst4w::Wav reads it, x * 32768), so float copies
+    // of 16-bit samples decode as they do. One difference, as FT8's and FT4's:
+    // the RMS gate passes any call whose samples are not all zero, since a
+    // float file's level is its own (an SDR's unscaled output sits far below
+    // RMS 0.5).
+    Call call(const float* id2, int nutc, const Params& p);
 
     // A period: one call on samples (n of them, at most `take` used, zeros
     // past them in the 180,000: the GUI's request has the cycle's 45,000,
@@ -99,6 +107,8 @@ public:
         std::string out;   // stdout: the decode lines and <DecodeFinished>
     };
     Period period(const int16_t* samples, size_t n, int nutc, const Params& p, size_t take = 45000);
+    // The same on float samples, as call()'s.
+    Period period(const float* samples, size_t n, int nutc, const Params& p, size_t take = 45000);
 
     // decoded.txt as decoder.f90 leaves it (as ft4::Decoder's).
     bool decoded_exists() const { return decoded_exists_; }
@@ -123,7 +133,13 @@ public:
     void set_frontend_trace(std::function<void(const std::string&)> f);
 
 private:
-    void decode(const int16_t* iwave, const Params& p, int nutc, int ncontest, Call& c);
+    // call() and period() for both sample types (S: int16_t or float).
+    template <class S>
+    Call call_t(const S* id2, int nutc, const Params& p);
+    template <class S>
+    Period period_t(const S* samples, size_t n, int nutc, const Params& p, size_t take);
+    template <class S>
+    void decode(const S* iwave, const Params& p, int nutc, int ncontest, Call& c);
     bool stopped() const { return stop_.load(std::memory_order_relaxed); }
 
     Frontend fe_;
@@ -137,6 +153,7 @@ private:
     std::string mycall0_, hiscall0_;
     std::vector<float> dd_;
     std::vector<int16_t> id2_ft4_;
+    std::vector<float> id2_ft4f_;  // float calls' stretch: made on the first one
     std::vector<float> candidate_;
     std::vector<cfloat> cd2_, cb_;
     std::vector<float> syncs_ = std::vector<float>(128);
