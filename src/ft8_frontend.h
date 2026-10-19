@@ -43,10 +43,12 @@
 #include <complex>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "fst4w_frontend.h"  // FftwVec
+#include "ft_fast_subtract.h"  // --fast-subtract's smoothing
 
 namespace ft8 {
 
@@ -236,8 +238,8 @@ private:
     bool st_first_ = true;
     float endcorrection_[2001] = {};
     bool fast_subtract_ = false;
-    std::vector<float> fs_kernel_;  // fast subtraction: the window integrated over each 40-sample block
-    std::vector<cfloat> fs_b_, fs_y_;
+    std::unique_ptr<FastSubtract> fs_;  // fast subtraction's (sqf_fast), made on its first call
+    std::vector<float> fs_gain_;         // and the end correction a sample
     float sqf_fast(int idt, float* dd0, float f0, float dt, bool ldt);
     fst4w::FftwVec<cfloat> cref_, camp_, cfilt_, cw_;
     std::vector<float> st_dd_;

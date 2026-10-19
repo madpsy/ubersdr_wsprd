@@ -99,6 +99,8 @@ public:
     }
     // subtractft4 on dd's first 72,576 samples (its own NMAX).
     void subtractft4(float* dd, const int itone[NN], float f0, float dt) { fe4_.subtractft4(dd, itone, f0, dt); }
+    // FT4's fast subtraction (ft4::Frontend::set_fast_subtract), for jt9 --ft2 --fast-subtract.
+    void set_fast_subtract(bool v) { fe4_.set_fast_subtract(v); }
 
     // Its buffers on the heap, bytes (FFTW's plans not counted).
     size_t heap_bytes() const;

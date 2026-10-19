@@ -64,8 +64,8 @@ const Opt OPTS[] = {
     {"his-grid", true, 'g', "his grid locator", "GRID"},
     {"experience-decode", true, 'X', "experience based decoding flags (1..n), default FLAGS=0", "FLAGS"},
     {"fast-subtract", false, 0,
-     "Ours (FT8): the decoded signals' subtraction smoothed at 300 S/s, not with two 180,000-point FFTs: the same "
-     "decodes as WSJT-X's, not to the bit, for about a third less CPU",
+     "Ours (FT8, FT4, FT2): the decoded signals' subtraction smoothed at a low rate, not with two big FFTs: the "
+     "same decodes as WSJT-X's, not to the bit, for less CPU",
      ""},
     {"feed", false, 0,
      "Ours (FT8, FT4, FT2): read WAV paths from stdin, one a line (PATH or PATH HHMMSS), and decode each as it arrives "
@@ -450,8 +450,14 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
     }
     // jt9.f90: FFTW's wisdom imported from <data_dir>/jt9_wisdom.dat
     // before decoding, exported to it at the end; a STOP (status 2) on the
-    // way ends jt9 without exporting it.
-    const std::string wisfile = ft8::jt9_join(ft8::jt9_at(cwd, f8.data_dir), "jt9_wisdom.dat");
+    // way ends jt9 without exporting it. Ours: a -w other than 1 keeps its
+    // own, jt9_wisdom-wN.dat: FFTW plans with any wisdom made at the same
+    // patience or more, so a measured plan kept in jt9_wisdom.dat would be
+    // taken by every later -w 1 run in that directory, which would then no
+    // longer decode as WSJT-X's does to the bit.
+    const std::string wisfile = ft8::jt9_join(
+        ft8::jt9_at(cwd, f8.data_dir),
+        npatience == 1 ? std::string("jt9_wisdom.dat") : "jt9_wisdom-w" + std::to_string(npatience) + ".dat");
     skimmer::set_decoder_plan_patience(npatience);
     skimmer::decoder_wisdom_on(wisfile);
     int status;

@@ -35,6 +35,7 @@ Params params_of(const ft8::FileMode& fm) {
     p.nagain = false;
     p.mycall = mycall;
     p.hiscall = hiscall;
+    p.fast_subtract = fm.fast_subtract;
     return p;
 }
 

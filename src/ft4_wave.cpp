@@ -32,6 +32,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -41,6 +42,7 @@
 #include "ft8_frontend.h"    // gfsk_pulse
 #include "ft8_ldpc.h"        // encode174_91
 #include "ft8_maths.h"       // glibc 2.39's maths and x86-64 libmvec, carried
+#include "ft_fast_subtract.h"  // --fast-subtract's smoothing
 #include "packjt77.h"
 
 namespace ft4 {
@@ -65,6 +67,7 @@ struct Frontend::Wave {
     fst4w::FftwVec<cfloat> cref, cfilt, cw;
     std::vector<float> xjunk;
     int al_cw = -1, al_cfilt = -1;  // the trace's '@' lines (loc() mod 16)
+    std::unique_ptr<ft8::FastSubtract> fs;  // fast subtraction's (subtractft4_fast), made on its first call
 };
 
 Frontend::Wave* Frontend::make_wave() { return new Wave(); }
@@ -73,7 +76,7 @@ size_t Frontend::wave_bytes(const Wave* w) {
     if (!w) return 0;
     return (w->pulse.capacity() + w->pp.capacity()) * sizeof(float) + w->dphi.capacity() * sizeof(float) +
            (w->cref.capacity() + w->cfilt.capacity() + w->cw.capacity()) * sizeof(cfloat) +
-           w->xjunk.capacity() * sizeof(float);
+           w->xjunk.capacity() * sizeof(float) + (w->fs ? w->fs->bytes() : 0);
 }
 
 namespace {
@@ -377,6 +380,10 @@ void Frontend::subtractft4(float* dd, const int itone[NN], float f0, float dt) {
     }
     gen_ft4wave(itone, 103, NSPS, 12000.0f, f0, cref, w.xjunk.data(), 1, NFRAME);
     if (trace_) trace_("V " + X(h_c(cref, NFRAME)));
+    if (fast_subtract_) {
+        subtractft4_fast(dd, nstart);
+        return;
+    }
     // camp = dd*conjg(cref), zero elsewhere, made where cfilt = camp puts
     // it (cfilt(1:NFRAME) = camp(1:NFRAME), the rest zero, as
     // camp(NFRAME+1:NMAX) is; camp itself is read nowhere else).
@@ -443,6 +450,20 @@ void Frontend::subtractft4(float* dd, const int itone[NN], float f0, float dt) {
             dd[j - 1] = dd[j - 1] - (z + z);
         }
     }
+    if (trace_) trace_("u " + X(h_r(dd, NMAX)));
+}
+
+// Fast subtraction (fast_subtract_): subtractft4's smoothing (the 1401-tap window over the 60,480-sample frame, no
+// end correction) by ft_fast_subtract.h's, at 857 S/s (14-sample blocks: the window is 100 blocks a side, as FT8's
+// 4000 taps are at 40), and subtracted in dd.
+void Frontend::subtractft4_fast(float* dd, int nstart) {
+    Wave& w = *wave_;
+    if (!w.fs) w.fs = std::make_unique<ft8::FastSubtract>(NFRAME, NFILT, 14);
+    // i in [ilo, ihi] (1-based) has j = nstart - 1 + i in [1, NMAX]
+    const int ilo = std::max(1, 2 - nstart), ihi = std::min(NFRAME, NMAX - nstart + 1);
+    const int n0 = std::min(std::max(ilo - 1, 0), NFRAME), n1 = std::max(ihi, n0);
+    float* d = dd + (nstart - 1);
+    w.fs->subtract(d, w.cref.data(), n0, n1, nullptr, d);
     if (trace_) trace_("u " + X(h_r(dd, NMAX)));
 }
 

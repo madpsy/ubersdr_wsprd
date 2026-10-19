@@ -284,32 +284,54 @@ This is what jt9-decode's `-F` does over WSJT-X's shared memory (`jt9 -s`,
 below), without the shared memory, and so it takes float files as well,
 which that memory's 16-bit `d2` cannot carry.
 
-### --fast-subtract and -w 2: the same decodes for less CPU
+### --fast-subtract and -w: the same decodes for less CPU
 
-Two options trade WSJT-X's output to the bit for speed, and keep its
-decodes:
+Two options give up WSJT-X's output to the bit for speed, and keep its
+decodes. Without them every mode decodes as WSJT-X's does, to the bit.
 
-- `--fast-subtract` (ours, FT8). After a decode, `subtractft8` smooths the
-  received signal against the decoded one with a 4001-tap window (a few Hz
-  wide) through two 180,000-point FFTs, and with DT refinement (depth 3, and
-  the early decodes' subtraction) does so three more times. Here that
-  smoothing is computed at 300 S/s and interpolated back. The refinement
-  still measures its trials with WSJT-X's own FFT; measuring them more cheaply
-  changed about 5% of the decodes on crowded bands.
-- `-w 2`. jt9's planning patience (0 to 4, WSJT-X's option, read but unused
-  until now) for the decoders' FFT plans: 1, the default, is four2a's
-  `FFTW_ESTIMATE_PATIENT`, WSJT-X's own; 2 measures each plan
-  (`FFTW_MEASURE`), 3 `FFTW_PATIENT`, 4 `FFTW_EXHAUSTIVE`. A measured plan
-  rounds differently and runs faster. It takes about 20 s to make the first
-  time, and is kept in `jt9_wisdom.dat` after that.
+- `--fast-subtract` (ours; FT8, FT4 and FT2). After each decode the decoder
+  subtracts the decoded signal from the period, smoothing the received
+  signal against it with a window a few Hz wide (FT8's 4001 taps, FT4's and
+  FT2's 1401) through two FFTs of the whole period; FT8 refining DT (depth
+  3, and the early decodes' subtraction) does so three more times. Here the
+  smoothing is computed at a low rate (FT8 300 S/s, FT4 and FT2 857 S/s) and
+  interpolated back. FT8's refinement still measures its trials with WSJT-X's
+  own FFT: measuring them more cheaply changed about 5% of the decodes on
+  crowded bands.
+- `-w N`, WSJT-X's planning patience, as WSJT-X's `jt9` takes it (its
+  `four2a` maps it so): 0 `FFTW_ESTIMATE`, 1 (the default, and what WSJT-X
+  runs its `jt9` with) `FFTW_ESTIMATE_PATIENT`, 2 `FFTW_MEASURE`, 3
+  `FFTW_PATIENT`, 4 `FFTW_EXHAUSTIVE`, for the decoders' FFT plans (FST4W's
+  plans made on the data itself stay at 1: a measured plan writes over its
+  buffer). A measured plan rounds differently and runs faster. It takes
+  about 20 s to make the first time and is kept after that, in its own
+  `jt9_wisdom-wN.dat` beside `jt9_wisdom.dat`: FFTW takes wisdom made at the
+  same patience or more, so a measured plan kept in `jt9_wisdom.dat` would be
+  taken by every later `-w 1` run, and those would no longer be WSJT-X's to
+  the bit.
 
-`scripts/ft8-fast-subtract-check.sh` decodes each FT8 recording set at
-depths 1 to 3 as WSJT-X does, with `--fast-subtract`, and with both, and
-requires 99% of WSJT-X's decodes and no more than 1% new: on x86-64 every
-run has had exactly WSJT-X's decodes.
+`scripts/ft-fast-subtract-check.sh` decodes each FT8, FT4 and FT2 recording
+set at depths 1 to 3 as WSJT-X does, with `--fast-subtract`, and with
+`-w 2 --fast-subtract`, and requires 99% of WSJT-X's decodes and no more than
+1% new. On x86-64, of 48 runs, `--fast-subtract` has had exactly WSJT-X's
+decodes in every one; `-w 2` one decode fewer in one (426 of 427).
 
+CPU on x86-64 (Ryzen 9 3900X, user time, the mean of three runs; one run is
+a set's files in one `jt9`, at the same decodes in every row):
+
+| | as WSJT-X's | `--fast-subtract` | `-w 2 --fast-subtract` |
+|---|---|---|---|
+| FT8 `-d 2`, `ft8-sim` (1,498 decodes) | 29.1 s | 24.9 s (-14%) | 19.2 s (-34%) |
+| FT8 `-d 3` (1,863) | 47.0 s | 38.2 s (-19%) | 31.8 s (-32%) |
+| FT4 `-d 2`, `ft4-sim` (373) | 1.05 s | 0.76 s (-28%) | 0.74 s (-30%) |
+| FT4 `-d 3` (412) | 1.22 s | 0.92 s (-25%) | 0.86 s (-30%) |
+| FT2 `-d 2`, `ft2-sim` (174) | 1.09 s | 0.96 s (-12%) | 0.94 s (-14%) |
+| FT2 `-d 3` (201) | 1.26 s | 1.10 s (-13%) | 1.06 s (-16%) |
+
+The busier the band, the more decodes are subtracted, and the more it saves.
 On 504 live 15 s periods from 12 FT8 bands at one station (one `jt9 --feed`
-a band, one run after another on x86-64; CPU times vary ~10% between runs):
+a band, one run after another on x86-64; CPU times vary ~10% between runs;
+an earlier `--fast-subtract`, the same decodes, slower than this one):
 
 | jt9 -8 | Decodes | CPU |
 |---|---|---|

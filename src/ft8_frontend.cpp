@@ -185,7 +185,7 @@ size_t Frontend::heap_bytes() const {
     auto b = [](const auto& v) { return v.capacity() * sizeof(v[0]); };
     return b(gsb_window_) + b(s_) + b(x3840_) + b(ds_x_) + b(c3200_) + b(cd0_) + b(csymb_) + b(cref_) + b(camp_) +
            b(cfilt_) + b(cw_) + b(st_dd_) + b(st_x_) + b(pulse_) + b(ctab_) + b(dphi_) + b(pdphi_) + b(gw_phi_) +
-           b(gw_ix_) + b(gw_c_);
+           b(gw_ix_) + b(gw_c_) + b(fs_gain_) + (fs_ ? fs_->bytes() : 0);
 }
 
 Frontend::~Frontend() {
@@ -1077,7 +1077,8 @@ void Frontend::st_plan_r2c(float* x) {
         fftwf_forget_wisdom();
         skimmer::decoder_wisdom_before_plan();
         std::vector<float> keep(x, x + NFFT + 2);
-        st_plan_ = fftwf_plan_dft_r2c_1d(NFFT, x, reinterpret_cast<fftwf_complex*>(x), FFTW_ESTIMATE_PATIENT);
+        // four2a's patience (jt9 -w, skimmer::decoder_plan_flags()): x is kept across the planning
+        st_plan_ = fftwf_plan_dft_r2c_1d(NFFT, x, reinterpret_cast<fftwf_complex*>(x), skimmer::decoder_plan_flags());
         std::copy(keep.begin(), keep.end(), x);
         skimmer::decoder_wisdom_after_plan();
         fftwf_forget_wisdom();
@@ -1240,84 +1241,33 @@ float Frontend::sqf(int idt, float* dd0, float f0, float dt, bool ldt) {
     return sqq;
 }
 
-// Fast subtraction (fast_subtract_), sqf's job without its 180,000-point FFTs. sqf smooths c = dd0*conj(cref) over the
-// frame with the 4001-tap normalized cos^2 window w: y[i] = sum_j w[j] c[i+1-j], j = -2000..2000 (the +1 is cshift's;
-// c zero outside the frame and outside dd0), end-corrected over its first and last 2001 samples, then subtracts
-// 2*Re(y*cref). y's band is a few Hz wide, so here c is taken down to 300 S/s through a 2D-sample triangle (two
-// cascaded 40-sample block means: their aliases ~80 dB down), convolved with w sampled every 40 samples, and taken back
-// to each sample linearly between the block centres; the subtraction is done in the same loop. A trial (ldt) writes
-// the residual to x and measures its band power with sqf's own r2c FFT: measuring it more cheaply (block sums of the
-// residual mixed down to the band) moved the refined DT enough to change ~5% of the decodes on crowded bands.
+// Fast subtraction (fast_subtract_), sqf's job without its 180,000-point FFTs: its smoothing (the 4001-tap window
+// over the 151,680-sample frame, end-corrected over its first and last 2001 samples) by ft_fast_subtract.h's, at
+// 300 S/s (40-sample blocks), subtracted in dd0; or, for a trial (ldt), the residual written to sqf's x and its band
+// power measured with sqf's own r2c FFT: measuring it more cheaply (block sums of the residual mixed down to the band)
+// moved the refined DT enough to change ~5% of the decodes on crowded bands.
 float Frontend::sqf_fast(int idt, float* dd0, float f0, float dt, bool ldt) {
-    constexpr int NFRAME = 1920 * 79, NFILT = 4000, D = 40, M = NFRAME / D, Q = NFILT / 2 / D + 1;
-    if (fs_kernel_.empty()) {
-        std::vector<double> w(NFILT + 1);
-        double sumw = 0;
-        for (int j = -NFILT / 2; j <= NFILT / 2; ++j) {
-            const double a = std::cos(3.14159265358979323846 * j / NFILT);
-            w[j + NFILT / 2] = a * a;
-            sumw += a * a;
+    constexpr int NFRAME = 1920 * 79, NFILT = 4000;
+    if (!fs_) {
+        fs_ = std::make_unique<FastSubtract>(NFRAME, NFILT, 40);
+        // the end correction as a gain a sample (1 between the ends)
+        fs_gain_.assign(NFRAME, 1.0f);
+        for (int i = 0; i <= NFILT / 2; ++i) {
+            fs_gain_[static_cast<size_t>(i)] = endcorrection_[i];
+            fs_gain_[static_cast<size_t>(NFRAME - 1 - i)] = endcorrection_[i];
         }
-        std::vector<double> k(2 * Q + 1, 0.0);  // K[q]: the window at lag q*D, D of them per decimated sample
-        for (int q = -Q; q <= Q; ++q) {
-            const int j = q * D;
-            if (j >= -NFILT / 2 && j <= NFILT / 2) k[q + Q] = D * w[j + NFILT / 2] / sumw;
-        }
-        fs_kernel_.assign(k.begin(), k.end());
-        fs_b_.resize(M);
-        fs_y_.resize(M);
     }
     const int nstart = static_cast<int>((dt * 12000.0f + 1.0f) + static_cast<float>(idt));
     const int ilo = std::max(1, 2 - nstart), ihi = std::min(NFRAME, NMAX - nstart + 1);
     const int n0 = std::min(std::max(ilo - 1, 0), NFRAME), n1 = std::max(ihi, n0);
     float* d = dd0 + (nstart - 1);
-    const cfloat* cref = cref_.data();
-    // c decimated to 300 S/s through a 2D-sample triangle (two cascaded block means: its aliases are down ~80 dB where
-    // a single block mean's were ~40 dB, which mattered on crowded bands), centred on the block centres t_m
-    for (int m = 0; m < M; ++m) {
-        const float tc = m * D + (D - 1) / 2.0f;  // the triangle's centre
-        const int i0 = std::max(m * D - D / 2, n0), i1 = std::min(m * D + D + D / 2, n1);
-        float sr = 0, si = 0;
-        for (int i = i0; i < i1; ++i) {
-            const float g = 1.0f - std::fabs(static_cast<float>(i) - tc) / D;
-            if (g <= 0) continue;
-            const float v = g * d[i];
-            sr += v * cref[i].real();
-            si -= v * cref[i].imag();
-        }
-        fs_b_[m] = cfloat(sr / D, si / D);
+    if (!ldt) {
+        fs_->subtract(d, cref_.data(), n0, n1, fs_gain_.data(), d);
+        return 0.0f;
     }
-    // y at the block centres t_m = m*D + (D-1)/2 - 1
-    const float* kq = fs_kernel_.data();
-    for (int m = 0; m < M; ++m) {
-        const int qlo = std::max(-Q, m - (M - 1)), qhi = std::min(Q, m);
-        float yr = 0, yi = 0;
-        for (int q = qlo; q <= qhi; ++q) {
-            yr += kq[q + Q] * fs_b_[m - q].real();
-            yi += kq[q + Q] * fs_b_[m - q].imag();
-        }
-        fs_y_[m] = cfloat(yr, yi);
-    }
-    // Each sample: y linear between centres, end-corrected, and the residual d - 2*Re(y*cref): subtracted in dd0, or,
-    // for a trial, written to sqf's x for its r2c FFT and band power, as sqf measures it
-    float* x = ldt ? st_x_.data() + 1 : nullptr;
-    if (ldt) std::fill(x, x + n0, 0.0f);
-    for (int i = n0; i < n1; ++i) {
-        const int u = 2 * i - (D - 3);  // 2*(i - t_0), t_0 = (D-1)/2 - 1
-        int m = u >= 0 ? u / (2 * D) : -((-u + 2 * D - 1) / (2 * D));
-        float f = static_cast<float>(u - 2 * D * m) / (2 * D);
-        if (m < 0) m = 0, f = 0;
-        if (m >= M - 1) m = M - 2, f = 1;
-        float yr = fs_y_[m].real() + f * (fs_y_[m + 1].real() - fs_y_[m].real());
-        float yi = fs_y_[m].imag() + f * (fs_y_[m + 1].imag() - fs_y_[m].imag());
-        float ec = 1.0f;
-        if (i <= NFILT / 2) ec = endcorrection_[i];
-        else if (i >= NFRAME - NFILT / 2 - 1) ec = endcorrection_[NFRAME - 1 - i];
-        const float r = d[i] - 2.0f * ((yr * ec) * cref[i].real() - (yi * ec) * cref[i].imag());
-        if (ldt) x[i] = r;
-        else d[i] = r;
-    }
-    if (!ldt) return 0.0f;
+    float* x = st_x_.data() + 1;
+    std::fill(x, x + n0, 0.0f);
+    fs_->subtract(d, cref_.data(), n0, n1, fs_gain_.data(), x);
     std::fill(x + n1, x + NMAX + 2, 0.0f);
     st_plan_r2c(x);
     fftwf_execute(static_cast<fftwf_plan>(st_plan_));  // Forward FFT, r2c

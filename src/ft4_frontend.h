@@ -187,6 +187,9 @@ public:
     // subtractft4(dd, itone, f0, dt): dd NMAX, changed in place; its
     // /heap4/ arrays and filter kept here.
     void subtractft4(float* dd, const int itone[NN], float f0, float dt);
+    // Ours (jt9 --fast-subtract, as FT8's): subtractft4's 1401-tap smoothing of dd*conj(cref) computed at 857 S/s
+    // and interpolated back, in place of its two 72,576-point FFTs. Not WSJT-X's to the bit; the same decodes.
+    void set_fast_subtract(bool v) { fast_subtract_ = v; }
 
     // ---------------------------------------------- src/ft4_frontend.cpp
     // Its buffers on the heap now, bytes (FFTW's plans
@@ -227,6 +230,8 @@ private:
     Sync* sync_ = nullptr;
     Metrics* metrics_ = nullptr;
     Wave* wave_ = nullptr;
+    bool fast_subtract_ = false;
+    void subtractft4_fast(float* dd, int nstart);
 
     Trace trace_;
 };

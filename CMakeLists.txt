@@ -101,6 +101,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_L
   set(FT8_FP_OPTIONS "-ffp-contract=off;-mno-fma")
 endif()
 set(FT8_SOURCES src/packjt77.cpp src/ft8_ldpc.cpp src/ft8_frontend.cpp src/ft8.cpp)
+# --fast-subtract's smoothing (not WSJT-X's to the bit, so none of its floating-point options)
+set(FT_FAST_SOURCES src/ft_fast_subtract.cpp)
 set_source_files_properties(src/ft8_maths.cpp PROPERTIES COMPILE_OPTIONS "-ffp-contract=off")
 set_source_files_properties(${FT8_SOURCES} PROPERTIES COMPILE_OPTIONS "${FT8_FP_OPTIONS}")
 set(FT4_SOURCES src/ft4_frontend.cpp src/ft4_candidates.cpp src/ft4_sync.cpp src/ft4_metrics.cpp src/ft4_wave.cpp
@@ -110,7 +112,7 @@ set_source_files_properties(${FT4_SOURCES} PROPERTIES COMPILE_OPTIONS "${FT8_FP_
 # WSJT-X improved 3.2.0 runs FT2, built as FT4's files are.
 set(FT2_SOURCES src/ft2_sync.cpp src/ft2.cpp src/ft2_jt9.cpp)
 set_source_files_properties(${FT2_SOURCES} PROPERTIES COMPILE_OPTIONS "${FT8_FP_OPTIONS}")
-add_executable(jt9 src/jt9_main.cpp src/jt9_cli.cpp src/jt9_shm.cpp ${FST4W_SOURCES} ${FT8_SOURCES} ${FT4_SOURCES} ${FT2_SOURCES}
+add_executable(jt9 src/jt9_main.cpp src/jt9_cli.cpp src/jt9_shm.cpp ${FST4W_SOURCES} ${FT8_SOURCES} ${FT_FAST_SOURCES} ${FT4_SOURCES} ${FT2_SOURCES}
   src/ft8_maths.cpp src/ft8_jt9.cpp
   src/wsprd_osd.cpp src/fft.cpp src/fft_wisdom.cpp)
 target_include_directories(jt9 PRIVATE src)

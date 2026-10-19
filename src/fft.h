@@ -4,6 +4,7 @@
 #pragma once
 
 #include <complex>
+#include <functional>
 #include <cstddef>
 #include <mutex>
 #include <string>
@@ -43,6 +44,18 @@ void decoder_wisdom_after_plan();
 // FFTW_EXHAUSTIVE (measured: different rounding, the same decodes, faster; kept in jt9_wisdom.dat).
 void set_decoder_plan_patience(int npatience);
 int decoder_plan_patience();
+// The FFTW flags for that patience, as four2a maps jt9's npatience (an unknown one: FFTW_ESTIMATE_PATIENT). Only for
+// plans made on a buffer whose data is kept or not yet there: a measured plan writes over its buffer.
+unsigned decoder_plan_flags();
+// At most this long planning each of those plans (FFTW's fftwf_set_timelimit; 0: no limit, the default, as jt9's):
+// FFTW_MEASURE of FT8's 180,000-point transforms takes about 20 s on x86-64, but over 10 minutes on a Pi 5.
+void set_decoder_plan_timelimit(double seconds);
+// Each time a kept plan adds to the decoders' wisdom (decoder_wisdom_after_plan), save is given all of it, FFTW's
+// text (null: not saved). Called with the planner locked.
+void set_decoder_wisdom_saver(std::function<void(const std::string&)> save);
+// The skimmer's: its decoders' plans measured (patience 2, as jt9 -w 2, for at most 1 s each), their wisdom read from
+// and kept in decoder-wisdom-w2 beside fft_wisdom.cpp's file, so only a first run measures them (fft_wisdom.cpp).
+void decoder_plans_measured();
 
 class Fft {
 public:

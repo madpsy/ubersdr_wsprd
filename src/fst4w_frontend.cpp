@@ -98,16 +98,10 @@ CachedPlan cached_plan(int n, int kind) {
     std::memset(buf, 0, bytes);
     CachedPlan c;
     // The kept plans' patience: four2a's FFTW_ESTIMATE_PATIENT unless jt9 -w asked for another (skimmer::
-    // decoder_plan_patience()): a measured plan, made here on this scratch buffer, rounds differently from WSJT-X's
-    // but runs faster.
-    unsigned kept_flags = PATIENCE;
-    switch (skimmer::decoder_plan_patience()) {
-    case 0: kept_flags = FFTW_ESTIMATE; break;
-    case 2: kept_flags = FFTW_MEASURE; break;
-    case 3: kept_flags = FFTW_PATIENT; break;
-    case 4: kept_flags = FFTW_EXHAUSTIVE; break;
-    default: break;
-    }
+    // decoder_plan_flags()): a measured plan, made here on this scratch buffer, rounds differently from WSJT-X's
+    // but runs faster. (The plans made on the caller's own data, plan_and_run's, stay at PATIENCE: a measured
+    // plan would write over the data.)
+    const unsigned kept_flags = skimmer::decoder_plan_flags();
     c.plan = make_plan(buf, 0, [&] {
         if (kind == 0) return fftwf_plan_dft_r2c_1d(n, static_cast<float*>(buf), static_cast<fftwf_complex*>(buf), kept_flags);
         return fftwf_plan_dft_1d(n, static_cast<fftwf_complex*>(buf), static_cast<fftwf_complex*>(buf),

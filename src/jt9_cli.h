@@ -31,6 +31,9 @@
 // Ours alone: --feed (FT8, FT4, FT2: the files' names read from stdin, each
 // decoded as it arrives by one decoder, then "<FileDone> PATH N": ft8_jt9.h's
 // run_feed); FT8's, FT4's and FT2's file modes take 32-bit float .wav files too;
+// --fast-subtract (FT8, FT4, FT2: ft_fast_subtract.h, not WSJT-X's to the
+// bit, its decodes); -w as WSJT-X's four2a takes it (fft.h), a -w other than 1
+// keeping its own jt9_wisdom-wN.dat;
 // --spread fast|exact|off (FST4W's dopspread: fast by default,
 // exact for WSJT-X's byte for byte; a long option alone, taking its one
 // value); -v's line. Still apart: FST4W's -c and -x only standard calls

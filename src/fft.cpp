@@ -24,6 +24,7 @@ namespace {
 
 bool decoder_wisdom_enabled = false;
 std::string decoder_wisdom;  // FFTW's text; "" none
+std::function<void(const std::string&)> decoder_wisdom_saver;
 
 // The process's wisdom set aside while fn runs on the decoders' alone.
 template <typename Fn>
@@ -50,9 +51,20 @@ std::string wisdom_now() {
 
 namespace {
 int plan_patience = 1;
+double plan_timelimit = FFTW_NO_TIMELIMIT;
 }
+void set_decoder_plan_timelimit(double seconds) { plan_timelimit = seconds > 0 ? seconds : FFTW_NO_TIMELIMIT; }
 void set_decoder_plan_patience(int npatience) { plan_patience = npatience; }
 int decoder_plan_patience() { return plan_patience; }
+unsigned decoder_plan_flags() {
+    switch (plan_patience) {
+    case 0: return FFTW_ESTIMATE;
+    case 2: return FFTW_MEASURE;
+    case 3: return FFTW_PATIENT;
+    case 4: return FFTW_EXHAUSTIVE;
+    default: return FFTW_ESTIMATE_PATIENT;
+    }
+}
 
 void decoder_wisdom_on(const std::string& import_file) {
     std::lock_guard<std::mutex> lock(planner_lock());
@@ -77,11 +89,21 @@ void decoder_wisdom_off() {
 }
 
 void decoder_wisdom_before_plan() {
+    fftwf_set_timelimit(plan_timelimit);
     if (decoder_wisdom_enabled && !decoder_wisdom.empty()) fftwf_import_wisdom_from_string(decoder_wisdom.c_str());
 }
 
 void decoder_wisdom_after_plan() {
-    if (decoder_wisdom_enabled) decoder_wisdom = wisdom_now();
+    fftwf_set_timelimit(FFTW_NO_TIMELIMIT);
+    if (!decoder_wisdom_enabled) return;
+    std::string now = wisdom_now();
+    if (decoder_wisdom_saver && now != decoder_wisdom) decoder_wisdom_saver(now);
+    decoder_wisdom = std::move(now);
+}
+
+void set_decoder_wisdom_saver(std::function<void(const std::string&)> save) {
+    std::lock_guard<std::mutex> lock(planner_lock());
+    decoder_wisdom_saver = std::move(save);
 }
 
 Fft::Fft(size_t n, bool quick) : n_(n) {

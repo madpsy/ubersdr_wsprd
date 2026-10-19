@@ -365,6 +365,7 @@ void Decoder::decode(const S* iwave, const Params& p, int nutc, int ncontest, Ca
     const int nfqso = p.nfqso, ndepth = p.ndepth, nqso = p.nqso_progress;
     const bool lapcqonly = p.lapcqonly;
     pk_.set_calls(mycall, hiscall);  // dxcall13=hiscall; mycall13=mycall
+    fe_.set_fast_subtract(p.fast_subtract);
     const bool fe = static_cast<bool>(fetrace_);
 
     if (first_) {
