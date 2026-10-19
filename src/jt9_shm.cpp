@@ -136,7 +136,8 @@ int run(const Options& o, const std::string& cwd, std::ostream& out, std::ostrea
             if (said.insert(why).second) err << o.program << ": not decoded here: " << why << "\n";
             text = finished(0);
         } else {
-            const ft8::Params p = params_of(q);
+            ft8::Params p = params_of(q);
+            p.fast_subtract = o.fast_subtract;
             if (q.nmode == 8) {
                 if (!ft8dec) ft8dec = std::make_unique<ft8::Decoder>();
                 if (q.ndiskdat && !q.nagain) {

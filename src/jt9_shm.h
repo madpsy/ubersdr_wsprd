@@ -22,6 +22,7 @@ namespace jt9_shm {
 struct Options {
     std::string key;       // -s
     std::string temp_dir;  // -t: decoded.txt's
+    bool fast_subtract = false;  // ours, --fast-subtract: not in the memory's params, so taken from the command line
     std::string program = "jt9";
 };
 

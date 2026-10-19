@@ -279,6 +279,7 @@ int decode(bool read_files, const std::string& shm_key, int mode, fst4w::FileMod
         jt9_shm::Options so;
         so.key = shm_key;
         so.temp_dir = f8.temp_dir;
+        so.fast_subtract = f8.fast_subtract;
         return jt9_shm::run(so, cwd, out, live_err ? *live_err : err);
     }
     std::vector<std::string> files(args.begin() + g.offset, args.begin() + g.offset + g.remain);
