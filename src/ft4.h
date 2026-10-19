@@ -67,6 +67,12 @@ public:
         std::vector<Decode> decodes;  // in the order printed
     };
     Call call(const int16_t* id2, int nutc, const Params& p);
+    // The same on float samples in 16-bit units (a 16-bit sample s is s: a
+    // float .wav file's x as fst4w::Wav reads it, x * 32768), so float copies
+    // of 16-bit samples decode as they do. One difference, as FT8's and FST4W's: the
+    // RMS gate passes any call whose samples are not all zero, since a float
+    // file's level is its own (an SDR's unscaled output sits far below RMS 0.5).
+    Call call(const float* id2, int nutc, const Params& p);
 
     // jt9a's period for FT4: one call on samples (n of them, at most
     // `take` used, zeros past them in the 180,000: jt9a's request has the
@@ -77,6 +83,8 @@ public:
         std::string out;   // stdout: the decode lines and <DecodeFinished>
     };
     Period period(const int16_t* samples, size_t n, int nutc, const Params& p, size_t take = 90000);
+    // The same on float samples, as call()'s.
+    Period period(const float* samples, size_t n, int nutc, const Params& p, size_t take = 90000);
 
     // decoded.txt as decoder.f90 leaves it (as ft8::Decoder's): absent
     // until a call passes the RMS gate, then the lines of the last call
@@ -104,8 +112,14 @@ public:
     void set_frontend_trace(std::function<void(const std::string&)> f) { fe_.set_trace(std::move(f)); }
 
 private:
+    // call() and period() for both sample types (S: int16_t or float).
+    template <class S>
+    Call call_t(const S* id2, int nutc, const Params& p);
+    template <class S>
+    Period period_t(const S* samples, size_t n, int nutc, const Params& p, size_t take);
     // ft4_decode's decode(), with the callback.
-    void decode(const int16_t* iwave, const Params& p, int nutc, int ncontest, Call& c);
+    template <class S>
+    void decode(const S* iwave, const Params& p, int nutc, int ncontest, Call& c);
     // decoder_callbacks.f90's ft4_decoded.
     void callback(float sync, int snr, float dt, float freq, const std::string& decoded, int nap, float qual,
                   int nutc, Call& c);

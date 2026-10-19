@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <string>
 
 #include "fst4w_jt9.h"
@@ -62,6 +63,11 @@ const Opt OPTS[] = {
     {"his-call", true, 'x', "his callsign", "CALL"},
     {"his-grid", true, 'g', "his grid locator", "GRID"},
     {"experience-decode", true, 'X', "experience based decoding flags (1..n), default FLAGS=0", "FLAGS"},
+    {"feed", false, 0,
+     "Ours (FT8, FT4): read WAV paths from stdin, one a line (PATH or PATH HHMMSS), and decode each as it arrives "
+     "with one decoder for all, as one jt9 -s does period after period; after each file's lines and "
+     "<DecodeFinished>, <FileDone> PATH N",
+     ""},
     {"spread", true, 0,
      "FST4W's spread (w50): fast (default: within 0.0001 Hz of jt9's, several times cheaper), exact (jt9's, "
      "bit for bit) or off (none)",
@@ -301,6 +307,7 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
     int mode = 0;  // jt9's: 241 --fst4w (-W), 242 -Y, 8 -8, 5 -5, 52 --ft2 (improved's)
     bool display_help = false, display_version = false;
     bool read_files = true;  // false: -s
+    bool feed = false;       // --feed: the files' names from stdin
     std::string shm_key;
     int nthreads = 1, npatience = 1;  // -m, -w: read (FFTW's, which ours plan for themselves)
     Getopt getopt(args);
@@ -324,6 +331,10 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
         g = getopt.next(err);
         if (g.st != 0) break;
         const std::string& v = g.optarg;
+        if (g.opt && !g.opt->chr && std::strcmp(g.opt->name, "feed") == 0) {
+            feed = true;
+            continue;
+        }
         if (g.opt && !g.opt->chr) {  // --spread
             if (v == "fast") fm.spread = fst4w::Options::Spread::Fast;
             else if (v == "exact") fm.spread = fst4w::Options::Spread::Exact;
@@ -421,7 +432,11 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
             << " (FST4W, FT8 and FT4: WSJT-X 567ad29ce's decoders; FT2: WSJT-X improved 3.2.0's FT2 on that FT4)\n";
         return 0;
     }
-    if (display_help || g.st < 0 || (!read_files && g.remain > 0) || (read_files && g.remain < 1)) {
+    if (feed && (!read_files || g.remain > 0 || (mode != 8 && mode != 5))) {
+        err << "jt9: --feed takes FT8 (-8) or FT4 (-5), no -s and no files\nSTOP 2\n";
+        return 2;
+    }
+    if (display_help || g.st < 0 || (!read_files && g.remain > 0) || (read_files && g.remain < 1 && !feed)) {
         usage(out);
         return 0;
     }
@@ -430,7 +445,14 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
     // way ends jt9 without exporting it.
     const std::string wisfile = ft8::jt9_join(ft8::jt9_at(cwd, f8.data_dir), "jt9_wisdom.dat");
     skimmer::decoder_wisdom_on(wisfile);
-    const int status = decode(read_files, shm_key, mode, fm, f8, args, g, cwd, out, err, live_err);
+    int status;
+    if (feed) {
+        // Runs until stdin ends: what it says goes out as it happens.
+        std::ostream& e = live_err ? *live_err : err;
+        status = mode == 8 ? ft8::run_feed(f8, std::cin, cwd, out, e) : ft4::run_feed(f8, std::cin, cwd, out, e);
+    } else {
+        status = decode(read_files, shm_key, mode, fm, f8, args, g, cwd, out, err, live_err);
+    }
     if (status == 0) skimmer::decoder_wisdom_export(wisfile);
     skimmer::decoder_wisdom_off();
     return status;
