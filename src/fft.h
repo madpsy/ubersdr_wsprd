@@ -38,6 +38,11 @@ void decoder_wisdom_off();
 // after it, what the planner then knows kept as theirs (when on).
 void decoder_wisdom_before_plan();
 void decoder_wisdom_after_plan();
+// The patience the decoders' kept plans are made with, as jt9's -w gives it: 0 FFTW_ESTIMATE, 1 (the default)
+// FFTW_ESTIMATE_PATIENT as four2a's, so the output is WSJT-X's to the bit, 2 FFTW_MEASURE, 3 FFTW_PATIENT, 4
+// FFTW_EXHAUSTIVE (measured: different rounding, the same decodes, faster; kept in jt9_wisdom.dat).
+void set_decoder_plan_patience(int npatience);
+int decoder_plan_patience();
 
 class Fft {
 public:

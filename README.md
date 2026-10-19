@@ -284,6 +284,42 @@ This is what jt9-decode's `-F` does over WSJT-X's shared memory (`jt9 -s`,
 below), without the shared memory, and so it takes float files as well,
 which that memory's 16-bit `d2` cannot carry.
 
+### --fast-subtract and -w 2: the same decodes for less CPU
+
+Two options trade WSJT-X's output to the bit for speed, and keep its
+decodes:
+
+- `--fast-subtract` (ours, FT8). After a decode, `subtractft8` smooths the
+  received signal against the decoded one with a 4001-tap window (a few Hz
+  wide) through two 180,000-point FFTs, and with DT refinement (depth 3, and
+  the early decodes' subtraction) does so three more times. Here that
+  smoothing is computed at 300 S/s and interpolated back. The refinement
+  still measures its trials with WSJT-X's own FFT; measuring them more cheaply
+  changed about 5% of the decodes on crowded bands.
+- `-w 2`. jt9's planning patience (0 to 4, WSJT-X's option, read but unused
+  until now) for the decoders' FFT plans: 1, the default, is four2a's
+  `FFTW_ESTIMATE_PATIENT`, WSJT-X's own; 2 measures each plan
+  (`FFTW_MEASURE`), 3 `FFTW_PATIENT`, 4 `FFTW_EXHAUSTIVE`. A measured plan
+  rounds differently and runs faster. It takes about 20 s to make the first
+  time, and is kept in `jt9_wisdom.dat` after that.
+
+`scripts/ft8-fast-subtract-check.sh` decodes each FT8 recording set at
+depths 1 to 3 as WSJT-X does, with `--fast-subtract`, and with both, and
+requires 99% of WSJT-X's decodes and no more than 1% new: on x86-64 every
+run has had exactly WSJT-X's decodes.
+
+On 504 live 15 s periods from 12 FT8 bands at one station (one `jt9 --feed`
+a band, one run after another on x86-64; CPU times vary ~10% between runs):
+
+| jt9 -8 | Decodes | CPU |
+|---|---|---|
+| `-d 2` | 7,051 | 294 s |
+| `-d 2 --fast-subtract` | 7,050 | 180 s (-39%) |
+| `-d 2 -w 2 --fast-subtract` | 7,050 | 172 s (-41%) |
+| `-d 3` | 7,412 (+5.1%) | 651 s (+122%) |
+| `-d 3 --fast-subtract` | 7,411 (+5.1%) | 432 s (+47%) |
+| `-d 3 -w 2 --fast-subtract` | 7,411 (+5.1%) | 396 s (+35%) |
+
 ## jt9: FT4
 
 Run it as WSJT-X's `jt9` is run on WAV files, for FT4:

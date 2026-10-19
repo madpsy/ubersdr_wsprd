@@ -48,6 +48,12 @@ std::string wisdom_now() {
 
 }  // namespace
 
+namespace {
+int plan_patience = 1;
+}
+void set_decoder_plan_patience(int npatience) { plan_patience = npatience; }
+int decoder_plan_patience() { return plan_patience; }
+
 void decoder_wisdom_on(const std::string& import_file) {
     std::lock_guard<std::mutex> lock(planner_lock());
     decoder_wisdom.clear();

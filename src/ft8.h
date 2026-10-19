@@ -45,6 +45,9 @@ struct Params {
     int nqso_progress = 0;
     int nexp_decode = 0;  // ncontest = iand(nexp_decode, 7)
     bool lft8apon = true, lapcqonly = false, nagain = false;
+    // Ours: the subtraction's smoothing computed at 300 S/s (Frontend::set_fast_subtract): the same decodes as
+    // WSJT-X's (scripts/ft8-fast-subtract-check.sh), not to the bit, for about a third less CPU.
+    bool fast_subtract = false;
     // character*12, *12 and *6 (cut or blank padded; blank: none).
     std::string mycall, hiscall, hisgrid;
 };

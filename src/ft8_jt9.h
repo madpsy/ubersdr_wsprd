@@ -34,6 +34,7 @@ struct FileMode {
     int nqso_progress = 0;                        // -Q (0-5)
     int nexp_decode = 0;                          // -X (ncontest = its low 3 bits)
     bool quiet = false;                           // -q: no <DecodeFinished>
+    bool fast_subtract = false;                   // ours, --fast-subtract (ft8.h's Params)
     std::string mycall = "K1ABC", hiscall = "W9XYZ", hisgrid = "EN37";  // -c, -x, -g as read ("b": none)
 };
 

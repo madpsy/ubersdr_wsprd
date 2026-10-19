@@ -138,6 +138,9 @@ public:
 
     // subtractft8(dd0, itone, f0, dt, lrefinedt).
     void subtractft8(float* dd0, const int itone[NN], float f0, float dt, bool lrefinedt);
+    // Ours (jt9 --fast-subtract): sqf's 4001-tap smoothing of dd*conj(cref) computed at 300 S/s and interpolated back
+    // (sqf_fast), in place of its two 180,000-point FFTs. Not WSJT-X's to the bit; the same decodes.
+    void set_fast_subtract(bool v) { fast_subtract_ = v; }
 
     // gen_ft8wave(itone, nsym, nsps, bt, fsample, f0, cwave, wave, icmplx,
     // nwave): cwave or wave (icmplx) nwave long; its tables kept here.
@@ -232,6 +235,10 @@ private:
     // subtractft8's
     bool st_first_ = true;
     float endcorrection_[2001] = {};
+    bool fast_subtract_ = false;
+    std::vector<float> fs_kernel_;  // fast subtraction: the window integrated over each 40-sample block
+    std::vector<cfloat> fs_b_, fs_y_;
+    float sqf_fast(int idt, float* dd0, float f0, float dt, bool ldt);
     fst4w::FftwVec<cfloat> cref_, camp_, cfilt_, cw_;
     std::vector<float> st_dd_;
     fst4w::FftwVec<float> st_x_;

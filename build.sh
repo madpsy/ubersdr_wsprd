@@ -262,6 +262,8 @@ if $check && [ "${WSPRD_SKIP_COMPARE:-0}" != 1 ] && [ "${JT9_SKIP_COMPARE:-0}" !
     "$root/scripts/float-input-check.sh" "$build/wsprd" "$build/jt9" "$build/float-input"
     say "checking jt9's FT8 and FT4 on 32-bit float input and through --feed against its 16-bit file mode"
     "$root/scripts/ft-float-feed-check.sh" "$build/jt9" "$build/ft-float-feed"
+    say "checking jt9's FT8 --fast-subtract (and -w 2) against its decodes as WSJT-X's"
+    "$root/scripts/ft8-fast-subtract-check.sh" "$build/jt9" "$build/ft8-fast-subtract"
 fi
 
 # --- the deep check: WSJT-X's own wsprd, every option and recording -----------

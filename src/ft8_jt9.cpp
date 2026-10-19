@@ -60,6 +60,7 @@ Params params_of(const FileMode& fm) {
     p.mycall = mycall;
     p.hiscall = hiscall;
     p.hisgrid = hisgrid;
+    p.fast_subtract = fm.fast_subtract;
     return p;
 }
 
