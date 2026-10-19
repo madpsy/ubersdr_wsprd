@@ -63,6 +63,10 @@ const Opt OPTS[] = {
     {"his-call", true, 'x', "his callsign", "CALL"},
     {"his-grid", true, 'g', "his grid locator", "GRID"},
     {"experience-decode", true, 'X', "experience based decoding flags (1..n), default FLAGS=0", "FLAGS"},
+    {"fast-subtract", false, 0,
+     "Ours (FT8): the decoded signals' subtraction smoothed at 300 S/s, not with two 180,000-point FFTs: the same "
+     "decodes as WSJT-X's, not to the bit, for about a third less CPU",
+     ""},
     {"feed", false, 0,
      "Ours (FT8, FT4, FT2): read WAV paths from stdin, one a line (PATH or PATH HHMMSS), and decode each as it arrives "
      "with one decoder for all, as one jt9 -s does period after period; after each file's lines and "
@@ -309,7 +313,7 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
     bool read_files = true;  // false: -s
     bool feed = false;       // --feed: the files' names from stdin
     std::string shm_key;
-    int nthreads = 1, npatience = 1;  // -m, -w: read (FFTW's, which ours plan for themselves)
+    int nthreads = 1, npatience = 1;  // -m read; -w the decoders' kept FFT plans' patience (fft.h)
     Getopt getopt(args);
     Getopt::Got g;
     // jt9.f90's invalid_option: said, status 2.
@@ -331,6 +335,10 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
         g = getopt.next(err);
         if (g.st != 0) break;
         const std::string& v = g.optarg;
+        if (g.opt && !g.opt->chr && std::strcmp(g.opt->name, "fast-subtract") == 0) {
+            f8.fast_subtract = true;
+            continue;
+        }
         if (g.opt && !g.opt->chr && std::strcmp(g.opt->name, "feed") == 0) {
             feed = true;
             continue;
@@ -444,6 +452,7 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
     // before decoding, exported to it at the end; a STOP (status 2) on the
     // way ends jt9 without exporting it.
     const std::string wisfile = ft8::jt9_join(ft8::jt9_at(cwd, f8.data_dir), "jt9_wisdom.dat");
+    skimmer::set_decoder_plan_patience(npatience);
     skimmer::decoder_wisdom_on(wisfile);
     int status;
     if (feed) {

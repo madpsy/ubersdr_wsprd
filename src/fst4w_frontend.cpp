@@ -97,10 +97,21 @@ CachedPlan cached_plan(int n, int kind) {
     if (!buf) throw std::bad_alloc();
     std::memset(buf, 0, bytes);
     CachedPlan c;
+    // The kept plans' patience: four2a's FFTW_ESTIMATE_PATIENT unless jt9 -w asked for another (skimmer::
+    // decoder_plan_patience()): a measured plan, made here on this scratch buffer, rounds differently from WSJT-X's
+    // but runs faster.
+    unsigned kept_flags = PATIENCE;
+    switch (skimmer::decoder_plan_patience()) {
+    case 0: kept_flags = FFTW_ESTIMATE; break;
+    case 2: kept_flags = FFTW_MEASURE; break;
+    case 3: kept_flags = FFTW_PATIENT; break;
+    case 4: kept_flags = FFTW_EXHAUSTIVE; break;
+    default: break;
+    }
     c.plan = make_plan(buf, 0, [&] {
-        if (kind == 0) return fftwf_plan_dft_r2c_1d(n, static_cast<float*>(buf), static_cast<fftwf_complex*>(buf), PATIENCE);
+        if (kind == 0) return fftwf_plan_dft_r2c_1d(n, static_cast<float*>(buf), static_cast<fftwf_complex*>(buf), kept_flags);
         return fftwf_plan_dft_1d(n, static_cast<fftwf_complex*>(buf), static_cast<fftwf_complex*>(buf),
-                                 kind < 0 ? FFTW_FORWARD : FFTW_BACKWARD, PATIENCE);
+                                 kind < 0 ? FFTW_FORWARD : FFTW_BACKWARD, kept_flags);
     });
     c.alignment = fftwf_alignment_of(static_cast<float*>(buf));
     fftwf_free(buf);
