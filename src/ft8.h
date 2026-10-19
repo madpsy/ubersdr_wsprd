@@ -46,7 +46,7 @@ struct Params {
     int nexp_decode = 0;  // ncontest = iand(nexp_decode, 7)
     bool lft8apon = true, lapcqonly = false, nagain = false;
     // Ours: the subtraction's smoothing computed at a low rate (FT8: 300 S/s, Frontend::set_fast_subtract; FT4 and
-    // FT2: 857 S/s, ft4::Frontend::set_fast_subtract): the same decodes as WSJT-X's (scripts/ft8-fast-subtract-check.sh),
+    // FT2: 857 S/s, ft4::Frontend::set_fast_subtract): the same decodes as WSJT-X's (scripts/ft-fast-subtract-check.sh),
     // not to the bit, for less CPU.
     bool fast_subtract = false;
     // character*12, *12 and *6 (cut or blank padded; blank: none).

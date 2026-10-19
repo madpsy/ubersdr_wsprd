@@ -27,13 +27,17 @@ decodes() {
 }
 
 pass=0 fail=0
+# -w 2's ways on x86-64 only: measuring FT8's and FT4's plans takes about 20 s there, but over 10 minutes a run on a
+# Pi 5 (each run starts with no wisdom), hours for the whole check.
+fast_ways=(fast fast-w2)
+[[ $(uname -m) == x86_64 ]] || fast_ways=(fast)
 check_set() {
     local mode=$1 set=$2 sep=$3 f depth way run other nb no same new lost pct line
     local -a files=() opts=()
     for f in "$repo/recordings/$set"/*.wav; do [[ -f $f ]] && files+=("${f##*/}"); done
     (( ${#files[@]} )) || return 0
     for depth in 1 2 3; do
-        for way in exact fast fast-w2; do
+        for way in exact "${fast_ways[@]}"; do
             run=$work/${set//\//_}-d$depth-$way; mkdir -p "$run"
             cp "$repo/recordings/$set"/*.wav "$run/"
             opts=()
@@ -45,7 +49,7 @@ check_set() {
         done
         base=$work/${set//\//_}-d$depth-exact/decodes
         nb=$(wc -l < "$base")
-        for way in fast fast-w2; do
+        for way in "${fast_ways[@]}"; do
             other=$work/${set//\//_}-d$depth-$way/decodes
             no=$(wc -l < "$other")
             same=$(comm -12 "$base" "$other" | wc -l)

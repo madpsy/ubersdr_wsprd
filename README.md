@@ -304,7 +304,9 @@ decodes. Without them every mode decodes as WSJT-X's does, to the bit.
   `FFTW_PATIENT`, 4 `FFTW_EXHAUSTIVE`, for the decoders' FFT plans (FST4W's
   plans made on the data itself stay at 1: a measured plan writes over its
   buffer). A measured plan rounds differently and runs faster. It takes
-  about 20 s to make the first time and is kept after that, in its own
+  about 20 s to make the first time on x86-64 (on a Raspberry Pi 5, over 10
+  minutes: `-w 1` is the one to use there, where measuring gains little)
+  and is kept after that, in its own
   `jt9_wisdom-wN.dat` beside `jt9_wisdom.dat`: FFTW takes wisdom made at the
   same patience or more, so a measured plan kept in `jt9_wisdom.dat` would be
   taken by every later `-w 1` run, and those would no longer be WSJT-X's to
