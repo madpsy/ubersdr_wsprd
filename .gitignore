@@ -3,3 +3,4 @@ build-*/
 # made by scripts/fst4w-oracle.sh --sim-only (./build.sh --check)
 recordings/fst4w-sim/
 recordings/fst4w-real/
+wasm/dist/

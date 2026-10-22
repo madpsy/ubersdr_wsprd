@@ -60,6 +60,7 @@ your operating system and CPU from the
 | `jt9-linux-x86_64` | `jt9` (FST4W, FT8, FT4 and FT2) for Linux on an x86-64 CPU with AVX2 |
 | `jt9-linux-aarch64` | `jt9` (FST4W, FT8, FT4 and FT2) for Linux on 64-bit ARM |
 | `jt9-windows-x86_64.exe` | `jt9` (FST4W, FT8, FT4 and FT2) for 64-bit Windows 10 or 11 on an x86-64 CPU with AVX2 |
+| `jt9-wasm.tgz` | the FT8, FT4 and FT2 decoders in WebAssembly, for JavaScript (a browser, a Web Worker or Node): see [WebAssembly](#webassembly-ft8-ft4-and-ft2-in-javascript) |
 
 **The CPU: the prebuilt binaries need AVX2 on x86-64 (Linux and Windows)
 and NEON on ARM.** The decoder's searches run eight lanes at a time with
@@ -441,6 +442,52 @@ Run by jt9-decode, against WSJT-X 3.1.0's own `jt9` run by it on the same
 recorded periods (FT8 and FT4 at every depth: 27 periods, 1,135 decodes), every
 decode line was the same.
 
+## WebAssembly: FT8, FT4 and FT2 in JavaScript
+
+`jt9-wasm.tgz` (in each release) is the same FT8, FT4 and FT2 decoders
+built to WebAssembly, for a browser, a Web Worker or Node 18 or later, with
+nothing else to install. They decode as `jt9` does: on every FT8, FT4 and
+FT2 recording here, at depths 1 to 3, the same output byte for byte.
+Against WSJT-X's own outputs, 299 of 305 test cases are identical; in the
+other six a few decodes differ (weak a-priori decodes at -25 dB, and in one
+43-period run three decodes of one crowded period): WebAssembly has no
+fused multiply-add and FFTW has no WebAssembly SIMD, so a few results
+round differently from x86-64's in their last bits.
+
+```
+npm install https://github.com/madpsy/ubersdr_wsprd/releases/download/latest/jt9-wasm.tgz
+```
+
+```js
+import createFt from "ubersdr-jt9-wasm";
+
+const ft = await createFt();
+const dec = new ft.Decoder("ft8");          // "ft8", "ft4" or "ft2"
+// One period's 12 kHz audio from its start (FT8 15 s, FT4 7.5 s, FT2
+// 3.75 s): a Float32Array (-1..1) or an Int16Array. utc as HHMMSS.
+const r = dec.decode(samples, 193500, { depth: 2 });
+for (const d of r.decodes) console.log(d.snr, d.dt, d.freq, d.message);
+```
+
+Keep one `Decoder` per dial and give it every period in turn: it carries
+what `jt9` carries from period to period (the hashed calls, the a7
+decodes). The parameters default to WSJT-X's as its GUI runs `jt9` (blank
+calls, 100-3200 Hz, depth 2); the package's README lists them all. It also
+holds `jt9`'s command line for Node (`npx jt9-wasm -8 -d 2 file.wav`; not
+`-s`).
+
+It is the plain code, without AVX2 or NEON, and WebAssembly is slower than
+native code: on x86-64 under Node, 43 busy recorded 40 m FT8 periods at
+depth 2 took 86 s against the native `jt9`'s 34 s, about 2 s a period, and
+FT4 and FT2 about four times the native time. Run it in a Web Worker in a
+browser so the page does not stop while it decodes.
+
+Building it needs Emscripten ([emsdk](https://emscripten.org/docs/getting_started/downloads.html)):
+`./build.sh --wasm`, or `wasm/build.sh` alone (FFTW is fetched and built
+for WebAssembly once, into `wasm/build`). `wasm/check.sh build/jt9` checks
+it against a native `jt9`: the command line and the JavaScript API on every
+FT8, FT4 and FT2 recording here at depths 1 to 3, byte for byte.
+
 ## Its CPU
 
 Against WSJT-X's own `wsprd`, built from the same commit with WSJT-X's
@@ -733,6 +780,7 @@ in any case.
 | `src/ft4*.cpp` | jt9's FT4 decoder: WSJT-X's `ft4_decode.f90` and what it calls (`getcandidates4`, `sync4d`, `get_ft4_bitmetrics`, `subtractft4`, `gen_ft4wave`), on FT8's LDPC decoder, `packjt77` and maths |
 | `src/ft2*.cpp` | WSJT-X improved's FT2: its decoder's FT2 branch (the audio stretched 2x, FT2's sizes and threshold) and `ft2_decoded`'s output, on the FT4 decoder |
 | `src/jt9_cli.cpp`, `fst4w_jt9.cpp`, `ft8_jt9.cpp`, `ft4_jt9.cpp`, `ft2_jt9.cpp`, `jt9_main.cpp` | jt9's command line, files and output: `jt9.f90`, `decoder.f90`, `options.f90` |
+| `wasm/` | the WebAssembly build: `build.sh`, the JavaScript API (`src/ft_wasm.cpp`), the package's files and the check against a native `jt9` |
 | `scripts/` | the comparisons with WSJT-X's `wsprd` and `jt9`, and the synthetic periods' generators |
 | `tests/data/wsprd`, `tests/data/fst4w`, `tests/data/ft8`, `tests/data/ft4`, `tests/data/ft2` | WSJT-X's `wsprd`'s and `jt9`'s outputs (the hybrid's for FT2), case by case, and wsprd's synthetic inputs |
 | `recordings/` | the six real WSPR periods, and FT8's, FT4's and FT2's inputs |

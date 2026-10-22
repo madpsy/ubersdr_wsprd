@@ -1,0 +1,32 @@
+{
+  "name": "ubersdr-jt9-wasm",
+  "version": "0.0.0",
+  "description": "FT8, FT4 and FT2 decoders in WebAssembly, decoding as WSJT-X's jt9 does, for browsers, workers and Node",
+  "type": "module",
+  "main": "ft.mjs",
+  "types": "ft.d.ts",
+  "exports": {
+    ".": {
+      "types": "./ft.d.ts",
+      "default": "./ft.mjs"
+    },
+    "./ft.wasm": "./ft.wasm"
+  },
+  "bin": {
+    "jt9-wasm": "jt9.cjs"
+  },
+  "files": [
+    "ft.mjs",
+    "ft.wasm",
+    "ft.d.ts",
+    "jt9.cjs",
+    "jt9.wasm",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": ["ft8", "ft4", "ft2", "wsjt-x", "jt9", "ham-radio", "wasm"],
+  "license": "GPL-3.0-or-later",
+  "engines": {
+    "node": ">=18"
+  }
+}

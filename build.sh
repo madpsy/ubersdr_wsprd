@@ -23,13 +23,17 @@
 #                         run beside WSJT-X's own, built here, on every option
 #                         and recording (scripts/wsprd-compare.sh,
 #                         scripts/jt9-compare.sh; longer)
+#   ./build.sh --wasm     the same, and jt9's FT8, FT4 and FT2 decoders for
+#                         JavaScript (WebAssembly, Emscripten: wasm/build.sh):
+#                         build/dist/jt9-wasm.tgz, checked against this
+#                         jt9 (wasm/check.sh)
 #   ./build.sh --version TAG
 #                         built as release TAG (wsprd --version, jt9 -v); otherwise
 #                         dev-<commit>
 #
 # Releases (the maintainer's):
 #   ./build.sh --release [TAG]
-#                         --check and --windows (--deep-check too when given),
+#                         --check, --windows and --wasm (--deep-check too when given),
 #                         then release both as TAG on
 #                         GitHub (default vYYYY.MM.DD, with -2, -3... if that
 #                         is taken), and as the release "latest" (its tag
@@ -50,7 +54,8 @@
 # minutes (jt9's the longer, building WSJT-X); WSPRD_SKIP_COMPARE=1 leaves
 # wsprd's out, JT9_SKIP_COMPARE=1 jt9's. Publishing needs the GitHub CLI logged
 # in (gh auth login), a clean working tree and HEAD pushed, so what is
-# released is a commit on GitHub; Windows needs Docker.
+# released is a commit on GitHub; Windows needs Docker; WebAssembly Emscripten
+# (emsdk: EMSDK, default ~/emsdk) and Node.
 #
 # Debian or Ubuntu: cmake, g++, pkg-config and libfftw3-dev (and gfortran and
 # Docker for the deep check).
@@ -62,6 +67,7 @@ build=$root/build
 
 release=false
 windows=false
+wasm=false
 check=false
 deep=false
 added=""
@@ -74,6 +80,7 @@ while [ $# -gt 0 ]; do
             if [ $# -gt 1 ] && [ "${2#-}" = "$2" ]; then tag=$2; shift; fi
             ;;
         --windows) windows=true ;;
+        --wasm) wasm=true ;;
         --check) check=true ;;
         --deep-check) deep=true ;;
         --version)
@@ -98,7 +105,7 @@ while [ $# -gt 0 ]; do
     esac
     shift
 done
-if $release; then windows=true; check=true; fi
+if $release; then windows=true; wasm=true; check=true; fi
 if $release && [ -n "$version" ]; then
     echo "--version is for a plain build; a release is built as its tag" >&2
     exit 2
@@ -112,6 +119,7 @@ dist_assets() {
     local dir=$1 platform=$2
     case "$platform" in
         windows-*) echo "$dir/wsprd-$platform.exe" "$dir/jt9-$platform.exe" "$dir/SHA256SUMS-$platform" ;;
+        wasm) echo "$dir/jt9-wasm.tgz" "$dir/SHA256SUMS-wasm" ;;
         *) echo "$dir/wsprd-$platform" "$dir/jt9-$platform" "$dir/SHA256SUMS-$platform" ;;
     esac
 }
@@ -124,6 +132,7 @@ section_for() {
         linux-x86_64) needs="an x86-64 CPU with AVX2 (Intel since Haswell, AMD since Zen); nothing else to install" ;;
         linux-aarch64) needs="64-bit ARM (a Raspberry Pi 4 or 5 on a 64-bit OS, for one); nothing else to install" ;;
         windows-x86_64) needs="64-bit Windows 10 or 11 on an x86-64 CPU with AVX2; nothing else to install" ;;
+        wasm) needs="a browser or Node 18 or later" ;;
         *) needs="an ${platform#*-} CPU" ;;
     esac
     built_on=$dir/built-on
@@ -187,6 +196,12 @@ if $release; then
     say "checking the release can be made"
     gh auth status >/dev/null 2>&1 || { echo "gh is not logged in: run gh auth login" >&2; exit 1; }
     docker info >/dev/null 2>&1 || { echo "a release carries wsprd.exe, built in Docker: Docker is not usable here" >&2; exit 1; }
+    if ! command -v emcc >/dev/null; then
+        # shellcheck disable=SC1091
+        [ -f "${EMSDK:-$HOME/emsdk}/emsdk_env.sh" ] && source "${EMSDK:-$HOME/emsdk}/emsdk_env.sh" >/dev/null 2>&1
+    fi
+    command -v emcc >/dev/null && command -v node >/dev/null && command -v npm >/dev/null ||
+        { echo "a release carries jt9-wasm.tgz: Emscripten (emsdk), Node and npm are needed" >&2; exit 1; }
     if [ -n "$(git status --porcelain)" ]; then
         echo "the working tree has changes; commit or stash them first:" >&2
         git status --short >&2
@@ -283,6 +298,20 @@ if $deep && [ "${JT9_SKIP_COMPARE:-0}" != 1 ]; then
         "$root/scripts/jt9-compare.sh" "$build/jt9" "$build/stock-jt9/release/jt9" --docker wsjtx-oracle
 fi
 
+# --- WebAssembly (Emscripten) -------------------------------------------------
+if $wasm; then
+    say "building jt9's decoders for WebAssembly"
+    "$root/wasm/build.sh" --version "$version" --pack
+    if [ "${WASM_SKIP_CHECK:-0}" != 1 ]; then
+        say "checking the WebAssembly build against this jt9"
+        "$root/wasm/check.sh" "$build/jt9" "$build/wasm-check"
+    fi
+    cp "$root"/wasm/dist/ubersdr-jt9-wasm-*.tgz "$dist/jt9-wasm.tgz"
+    (cd "$dist" && sha256sum -- jt9-wasm.tgz > SHA256SUMS-wasm)
+    echo "Emscripten $(emcc -dumpversion)" > "$dist/built-on-wasm"
+    echo "built: $dist/jt9-wasm.tgz"
+fi
+
 $windows || exit 0
 
 # --- Windows (Docker, mingw-w64) -----------------------------------------------
@@ -349,9 +378,10 @@ WSJT-X's \`wsprd\` (567ad29ce's decoder), a drop-in for it: the same options, ou
 And WSJT-X's \`jt9\` for FST4W (FST4W-120 to -1800, and 15, 30 and 60 s), FT8 (\`jt9 -8\`) and FT4 (\`jt9 -5\`), run on WAV files: the same command line, output and files, byte for byte, in about a seventh of its CPU for FST4W, 2.1 to 2.9 times less for FT8 and 2.9 to 4.3 times less for FT4 (x86-64, depths 1 to 3). And FT2 (\`jt9 --ft2\`) as WSJT-X improved 3.2.0's \`jt9\` runs it: improved's FT2 code on the FT4 decoder above, in 4.2 to 6.0 times less CPU than improved's \`jt9\` (x86-64, depths 1 to 3). One option more, \`--spread fast|exact|off\` (FST4W). FST4W, FT8, FT4 and FT2 only so far: keep WSJT-X's own \`jt9\` for WSJT-X and its other modes. \`jt9 -v\` gives this release.
 
 - \`wsprd-linux-x86_64\`, \`wsprd-linux-aarch64\`, \`jt9-linux-x86_64\`, \`jt9-linux-aarch64\`: Linux.
-- \`wsprd-windows-x86_64.exe\`, \`jt9-windows-x86_64.exe\`: Windows."
+- \`wsprd-windows-x86_64.exe\`, \`jt9-windows-x86_64.exe\`: Windows.
+- \`jt9-wasm.tgz\`: the FT8, FT4 and FT2 decoders in WebAssembly, for JavaScript in a browser, a Web Worker or Node (\`npm install\` it), decoding as this \`jt9\` does (the same decodes but a few weak ones); with \`jt9\`'s command line for Node."
 assets=()
-for platform in "linux-$arch" windows-x86_64; do
+for platform in "linux-$arch" windows-x86_64 wasm; do
     notes="$notes
 
 $(section_for "$dist" "$platform")"
