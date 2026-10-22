@@ -60,7 +60,8 @@ your operating system and CPU from the
 | `jt9-linux-x86_64` | `jt9` (FST4W, FT8, FT4 and FT2) for Linux on an x86-64 CPU with AVX2 |
 | `jt9-linux-aarch64` | `jt9` (FST4W, FT8, FT4 and FT2) for Linux on 64-bit ARM |
 | `jt9-windows-x86_64.exe` | `jt9` (FST4W, FT8, FT4 and FT2) for 64-bit Windows 10 or 11 on an x86-64 CPU with AVX2 |
-| `jt9-wasm.tgz` | the FT8, FT4 and FT2 decoders in WebAssembly, for JavaScript (a browser, a Web Worker or Node): see [WebAssembly](#webassembly-ft8-ft4-and-ft2-in-javascript) |
+| `jt9-wasm.tgz` | the FT8, FT4 and FT2 decoders in WebAssembly, for JavaScript (a browser, a Web Worker or Node): see [WebAssembly](#webassembly-wspr-ft8-ft4-and-ft2-in-javascript) |
+| `wsprd-wasm.tgz` | `wsprd` in WebAssembly, for JavaScript likewise |
 
 **The CPU: the prebuilt binaries need AVX2 on x86-64 (Linux and Windows)
 and NEON on ARM.** The decoder's searches run eight lanes at a time with
@@ -442,9 +443,49 @@ Run by jt9-decode, against WSJT-X 3.1.0's own `jt9` run by it on the same
 recorded periods (FT8 and FT4 at every depth: 27 periods, 1,135 decodes), every
 decode line was the same.
 
-## WebAssembly: FT8, FT4 and FT2 in JavaScript
+## WebAssembly: WSPR, FT8, FT4 and FT2 in JavaScript
 
-`jt9-wasm.tgz` (in each release) is the same FT8, FT4 and FT2 decoders
+Each release has two packages for JavaScript in a browser, a Web Worker or
+Node 18 or later, nothing else to install: `wsprd-wasm.tgz`, `wsprd`, and
+`jt9-wasm.tgz`, `jt9`'s FT8, FT4 and FT2 decoders, built to WebAssembly.
+
+### wsprd-wasm.tgz
+
+`wsprd` itself, WSPR-2 and WSPR-15. Its decodes are this `wsprd`'s: run
+on every case of `tests/data/wsprd` (`scripts/wsprd-stored-check.sh`), every
+decode and every line of stdout, `ALL_WSPR.TXT`, `wspr_spots.txt` and
+`hashtable.txt` is WSJT-X's `wsprd`'s, byte for byte. Two things differ:
+where WSJT-X's `wsprd` crashes (a read-only data directory, `-J` with a
+large `-z`), what it had printed is not lost; and the `.c2` file `-c` writes
+from a `.wav` differs in its last bits (its FFTs are FFTW's without SIMD,
+as on arm64).
+
+```
+npm install https://github.com/madpsy/ubersdr_wsprd/releases/download/latest/wsprd-wasm.tgz
+```
+
+```js
+import createWspr from "ubersdr-wsprd-wasm";
+
+const wspr = await createWspr();
+const dec = new wspr.WsprDecoder();
+// One period's 12 kHz audio from its start (114 s): an Int16Array or a
+// Float32Array (-1..1). The options are wsprd's (as WSJT-X runs it: -C 500 -o 4).
+const r = dec.decode(samples, { dialFreq: 14.0956, date: "261022", time: "1200" });
+for (const d of r.decodes) console.log(d.snr, d.dt, d.freq, d.drift, d.callsign, d.grid, d.power);
+```
+
+Keep one `WsprDecoder` per dial: it keeps the hash table from period to
+period (`dec.hashtable()` and `dec.loadHashtable(text)` are
+`hashtable.txt`). Each decode carries wsprd's three lines (stdout,
+`ALL_WSPR.TXT`, `wspr_spots.txt`) and its fields, and its spread. It also
+holds `wsprd`'s command line for Node (`npx wsprd-wasm -f 14.0956
+file.wav`). Five recorded 40 m periods took 0.66 s a period under Node
+against the native `wsprd`'s 0.11 s (x86-64, `-C 500 -o 4`).
+
+### jt9-wasm.tgz
+
+`jt9-wasm.tgz` is the same FT8, FT4 and FT2 decoders
 built to WebAssembly, for a browser, a Web Worker or Node 18 or later, with
 nothing else to install. They decode as `jt9` does: on every FT8, FT4 and
 FT2 recording here, at depths 1 to 3, the same output byte for byte.
@@ -482,11 +523,15 @@ depth 2 took 86 s against the native `jt9`'s 34 s, about 2 s a period, and
 FT4 and FT2 about four times the native time. Run it in a Web Worker in a
 browser so the page does not stop while it decodes.
 
-Building it needs Emscripten ([emsdk](https://emscripten.org/docs/getting_started/downloads.html)):
+### Building them
+
+Building them needs Emscripten ([emsdk](https://emscripten.org/docs/getting_started/downloads.html)):
 `./build.sh --wasm`, or `wasm/build.sh` alone (FFTW is fetched and built
-for WebAssembly once, into `wasm/build`). `wasm/check.sh build/jt9` checks
-it against a native `jt9`: the command line and the JavaScript API on every
-FT8, FT4 and FT2 recording here at depths 1 to 3, byte for byte.
+for WebAssembly once, into `wasm/build`). `wasm/check.sh build/jt9
+build/wsprd` checks them against the native programs, byte for byte: `jt9`'s
+command line and the JavaScript API on every FT8, FT4 and FT2 recording here
+at depths 1 to 3, and `wsprd`'s command line and API on every WSPR
+recording here under eight option sets.
 
 ## Its CPU
 
@@ -780,7 +825,7 @@ in any case.
 | `src/ft4*.cpp` | jt9's FT4 decoder: WSJT-X's `ft4_decode.f90` and what it calls (`getcandidates4`, `sync4d`, `get_ft4_bitmetrics`, `subtractft4`, `gen_ft4wave`), on FT8's LDPC decoder, `packjt77` and maths |
 | `src/ft2*.cpp` | WSJT-X improved's FT2: its decoder's FT2 branch (the audio stretched 2x, FT2's sizes and threshold) and `ft2_decoded`'s output, on the FT4 decoder |
 | `src/jt9_cli.cpp`, `fst4w_jt9.cpp`, `ft8_jt9.cpp`, `ft4_jt9.cpp`, `ft2_jt9.cpp`, `jt9_main.cpp` | jt9's command line, files and output: `jt9.f90`, `decoder.f90`, `options.f90` |
-| `wasm/` | the WebAssembly build: `build.sh`, the JavaScript API (`src/ft_wasm.cpp`), the package's files and the check against a native `jt9` |
+| `wasm/` | the WebAssembly builds: `build.sh`, the JavaScript APIs (`src/ft_wasm.cpp`, `src/wspr_wasm.cpp`), the packages' files and the check against the native programs |
 | `scripts/` | the comparisons with WSJT-X's `wsprd` and `jt9`, and the synthetic periods' generators |
 | `tests/data/wsprd`, `tests/data/fst4w`, `tests/data/ft8`, `tests/data/ft4`, `tests/data/ft2` | WSJT-X's `wsprd`'s and `jt9`'s outputs (the hybrid's for FT2), case by case, and wsprd's synthetic inputs |
 | `recordings/` | the six real WSPR periods, and FT8's, FT4's and FT2's inputs |

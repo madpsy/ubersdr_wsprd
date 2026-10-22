@@ -7,7 +7,7 @@
 //   node wasm/check-api.mjs -8|-5|--ft2 DEPTH NATIVE_STDOUT WAV...
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
-import createFt from "./dist/ft.mjs";
+import createFt from "./dist/jt9/ft.mjs";
 
 const [flag, depthArg, nativeOut, ...wavs] = process.argv.slice(2);
 const mode = { "-8": "ft8", "-5": "ft4", "--ft2": "ft2" }[flag];

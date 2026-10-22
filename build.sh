@@ -23,10 +23,11 @@
 #                         run beside WSJT-X's own, built here, on every option
 #                         and recording (scripts/wsprd-compare.sh,
 #                         scripts/jt9-compare.sh; longer)
-#   ./build.sh --wasm     the same, and jt9's FT8, FT4 and FT2 decoders for
-#                         JavaScript (WebAssembly, Emscripten: wasm/build.sh):
-#                         build/dist/jt9-wasm.tgz, checked against this
-#                         jt9 (wasm/check.sh)
+#   ./build.sh --wasm     the same, and jt9's FT8, FT4 and FT2 decoders and
+#                         wsprd for JavaScript (WebAssembly, Emscripten:
+#                         wasm/build.sh): build/dist/jt9-wasm.tgz and
+#                         wsprd-wasm.tgz, checked against this jt9 and
+#                         wsprd (wasm/check.sh)
 #   ./build.sh --version TAG
 #                         built as release TAG (wsprd --version, jt9 -v); otherwise
 #                         dev-<commit>
@@ -119,7 +120,7 @@ dist_assets() {
     local dir=$1 platform=$2
     case "$platform" in
         windows-*) echo "$dir/wsprd-$platform.exe" "$dir/jt9-$platform.exe" "$dir/SHA256SUMS-$platform" ;;
-        wasm) echo "$dir/jt9-wasm.tgz" "$dir/SHA256SUMS-wasm" ;;
+        wasm) echo "$dir/jt9-wasm.tgz" "$dir/wsprd-wasm.tgz" "$dir/SHA256SUMS-wasm" ;;
         *) echo "$dir/wsprd-$platform" "$dir/jt9-$platform" "$dir/SHA256SUMS-$platform" ;;
     esac
 }
@@ -201,7 +202,7 @@ if $release; then
         [ -f "${EMSDK:-$HOME/emsdk}/emsdk_env.sh" ] && source "${EMSDK:-$HOME/emsdk}/emsdk_env.sh" >/dev/null 2>&1
     fi
     command -v emcc >/dev/null && command -v node >/dev/null && command -v npm >/dev/null ||
-        { echo "a release carries jt9-wasm.tgz: Emscripten (emsdk), Node and npm are needed" >&2; exit 1; }
+        { echo "a release carries jt9-wasm.tgz and wsprd-wasm.tgz: Emscripten (emsdk), Node and npm are needed" >&2; exit 1; }
     if [ -n "$(git status --porcelain)" ]; then
         echo "the working tree has changes; commit or stash them first:" >&2
         git status --short >&2
@@ -300,16 +301,17 @@ fi
 
 # --- WebAssembly (Emscripten) -------------------------------------------------
 if $wasm; then
-    say "building jt9's decoders for WebAssembly"
+    say "building jt9's decoders and wsprd for WebAssembly"
     "$root/wasm/build.sh" --version "$version" --pack
     if [ "${WASM_SKIP_CHECK:-0}" != 1 ]; then
-        say "checking the WebAssembly build against this jt9"
-        "$root/wasm/check.sh" "$build/jt9" "$build/wasm-check"
+        say "checking the WebAssembly builds against this jt9 and wsprd"
+        "$root/wasm/check.sh" "$build/jt9" "$build/wsprd" "$build/wasm-check"
     fi
-    cp "$root"/wasm/dist/ubersdr-jt9-wasm-*.tgz "$dist/jt9-wasm.tgz"
-    (cd "$dist" && sha256sum -- jt9-wasm.tgz > SHA256SUMS-wasm)
+    cp "$root"/wasm/dist/jt9/ubersdr-jt9-wasm-*.tgz "$dist/jt9-wasm.tgz"
+    cp "$root"/wasm/dist/wsprd/ubersdr-wsprd-wasm-*.tgz "$dist/wsprd-wasm.tgz"
+    (cd "$dist" && sha256sum -- jt9-wasm.tgz wsprd-wasm.tgz > SHA256SUMS-wasm)
     echo "Emscripten $(emcc -dumpversion)" > "$dist/built-on-wasm"
-    echo "built: $dist/jt9-wasm.tgz"
+    echo "built: $dist/jt9-wasm.tgz, $dist/wsprd-wasm.tgz"
 fi
 
 $windows || exit 0
@@ -379,7 +381,8 @@ And WSJT-X's \`jt9\` for FST4W (FST4W-120 to -1800, and 15, 30 and 60 s), FT8 (\
 
 - \`wsprd-linux-x86_64\`, \`wsprd-linux-aarch64\`, \`jt9-linux-x86_64\`, \`jt9-linux-aarch64\`: Linux.
 - \`wsprd-windows-x86_64.exe\`, \`jt9-windows-x86_64.exe\`: Windows.
-- \`jt9-wasm.tgz\`: the FT8, FT4 and FT2 decoders in WebAssembly, for JavaScript in a browser, a Web Worker or Node (\`npm install\` it), decoding as this \`jt9\` does (the same decodes but a few weak ones); with \`jt9\`'s command line for Node."
+- \`jt9-wasm.tgz\`: the FT8, FT4 and FT2 decoders in WebAssembly, for JavaScript in a browser, a Web Worker or Node (\`npm install\` it), decoding as this \`jt9\` does (the same decodes but a few weak ones); with \`jt9\`'s command line for Node.
+- \`wsprd-wasm.tgz\`: \`wsprd\` in WebAssembly likewise (WSPR-2 and WSPR-15), its decodes as this \`wsprd\`'s; with \`wsprd\`'s command line for Node."
 assets=()
 for platform in "linux-$arch" windows-x86_64 wasm; do
     notes="$notes

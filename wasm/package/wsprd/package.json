@@ -1,0 +1,32 @@
+{
+  "name": "ubersdr-wsprd-wasm",
+  "version": "0.0.0",
+  "description": "WSJT-X's WSPR decoder (wsprd) in WebAssembly, for browsers, workers and Node",
+  "type": "module",
+  "main": "wspr.mjs",
+  "types": "wspr.d.ts",
+  "exports": {
+    ".": {
+      "types": "./wspr.d.ts",
+      "default": "./wspr.mjs"
+    },
+    "./wspr.wasm": "./wspr.wasm"
+  },
+  "bin": {
+    "wsprd-wasm": "wsprd.cjs"
+  },
+  "files": [
+    "wspr.mjs",
+    "wspr.wasm",
+    "wspr.d.ts",
+    "wsprd.cjs",
+    "wsprd.wasm",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": ["wspr", "wsprd", "wsjt-x", "ham-radio", "wasm"],
+  "license": "GPL-3.0-or-later",
+  "engines": {
+    "node": ">=18"
+  }
+}
