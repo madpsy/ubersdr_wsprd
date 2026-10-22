@@ -105,6 +105,9 @@ em++ "$objs/ft_wasm.o" "${lib_objs[@]}" "${ldflags[@]}" -lembind \
 em++ "$objs/jt9_main.o" "$objs/jt9_cli.o" "$objs/jt9_shm_none.o" "${lib_objs[@]}" "${ldflags[@]}" \
     -sNODERAWFS=1 -sENVIRONMENT=node -sEXIT_RUNTIME=1 \
     -o "$dist/jt9.cjs"
+# run as a program too (npx jt9-wasm, package.json's bin)
+sed -i '1i #!/usr/bin/env node' "$dist/jt9.cjs"
+chmod +x "$dist/jt9.cjs"
 
 cp "$here/package/"* "$dist/"
 cp "$root/LICENSE" "$dist/LICENSE"
