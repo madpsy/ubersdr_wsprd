@@ -1,0 +1,26 @@
+120100   0  0.3 1500 &  K1ABC W9XYZ EN37                                        
+<DecodeFinished>   0   0        0
+<FileDone> recordings/msk144-sim/early-ping-261106_120100.wav 1
+120100   0  0.3 1500 &  K1ABC W9XYZ EN37                                        
+<DecodeFinished>   0   0        0
+<FileDone> recordings/msk144-sim/early-ping-261106_120100.wav 1
+120500   8  8.7 1488 &  K1JT WA4CQG EM72                                        
+<DecodeFinished>   0   0        0
+<FileDone> recordings/msk144-samples/181211_120500.wav 1
+120500   8  8.7 1488 &  K1JT WA4CQG EM72                                        
+<DecodeFinished>   0   0        0
+<FileDone> recordings/msk144-samples/181211_120500.wav 1
+120058   8  3.2 1500 &  K1ABC W9XYZ EN37                                        
+120058   8  9.2 1500 &  <W9XYZ> PJ4/K1ABC RRR                                   
+<DecodeFinished>   0   0        0
+<FileDone> recordings/msk144-sim/hash-ab-261106_120058.wav 2
+120057  11  9.2 1500 &  <...> PJ4/K1ABC RRR                                     
+<DecodeFinished>   0   0        0
+<FileDone> recordings/msk144-sim/hash-b-261106_120057.wav 1
+120058   8  3.2 1500 &  K1ABC W9XYZ EN37                                        
+120058   8  9.2 1500 &  <W9XYZ> PJ4/K1ABC RRR                                   
+<DecodeFinished>   0   0        0
+<FileDone> recordings/msk144-sim/hash-ab-261106_120058.wav 2
+120057  11  9.2 1500 &  <...> PJ4/K1ABC RRR                                     
+<DecodeFinished>   0   0        0
+<FileDone> recordings/msk144-sim/hash-b-261106_120057.wav 1

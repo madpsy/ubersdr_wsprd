@@ -1,0 +1,2 @@
+ EOF on input file @I/header-261012_1200.wav
+<DecodeFinished>   0   0        0

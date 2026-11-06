@@ -1,0 +1,3 @@
+ EOF on input file recordings/msk144-samples/181211_120500.wav
+120500   8  8.7 1488 &  K1JT WA4CQG EM72                                        
+<DecodeFinished>   0   0        0

@@ -1,0 +1,9 @@
+120104   9  2.2 1496 &  <1591> RRR                                              
+<DecodeFinished>   0   0        0
+<FileDone> recordings/msk144-sim/swl-state-b-261106_120104.wav 1
+120103  11  5.2 1500 &  N0ABC W1AW EN34                                         
+<DecodeFinished>   0   0        0
+<FileDone> recordings/msk144-sim/swl-state-a-261106_120103.wav 1
+120104   9  2.2 1496 &  <1591> RRR                                              
+<DecodeFinished>   0   0        0
+<FileDone> recordings/msk144-sim/swl-state-b-261106_120104.wav 1

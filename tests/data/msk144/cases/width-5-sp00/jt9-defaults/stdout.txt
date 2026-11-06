@@ -1,0 +1,5 @@
+120028  -2  6.7 1500 &  K1ABC W9XYZ EN37                                        
+120028   0  6.8 1500 &  K1ABC W9XYZ EN37                                        
+120028   1  7.8 1500 &  K1ABC W9XYZ EN37                                        
+120028   2  8.8 1499 &  K1ABC W9XYZ EN37                                        
+<DecodeFinished>   0   0        0

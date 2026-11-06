@@ -1,0 +1,2 @@
+120101  -3  5.6 1537 &  K1ABC W9XYZ EN37                                        
+<DecodeFinished>   0   0        0

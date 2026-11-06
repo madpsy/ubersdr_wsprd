@@ -1,0 +1,4 @@
+120050   8  1.4 1500 &  K1ABC W9XYZ EN37                                        
+120050  11  1.7 1500 &  K1ABC W9XYZ EN37                                        
+120050  13  1.9 1500 &  K1ABC W9XYZ EN37                                        
+<DecodeFinished>   0   0        0

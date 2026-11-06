@@ -30,11 +30,13 @@ struct FileMode {
     double trperiod = 60.0;                       // -p
     int ndepth = 1;                               // -d
     int nrxfreq = 1500;                           // -f (nfqso)
+    int ntol = 20;                                // -F (MSK144's: limited to 1000, as jt9.f90 does)
     int flow = 200, fhigh = 4000;                 // -L, -H (nfa, nfb)
     int nqso_progress = 0;                        // -Q (0-5)
     int nexp_decode = 0;                          // -X (ncontest = its low 3 bits)
     bool quiet = false;                           // -q: no <DecodeFinished>
     bool fast_subtract = false;                   // ours, --fast-subtract (ft8.h's Params; FT4's, FT2's too)
+    bool msk_shmsg = false, msk_swl = false;      // ours, --msk-shmsg and --msk-swl (MSK144's bshmsg and bswl)
     std::string mycall = "K1ABC", hiscall = "W9XYZ", hisgrid = "EN37";  // -c, -x, -g as read ("b": none)
 };
 

@@ -1,0 +1,1 @@
+jt9 --msk144 -Y -p 15 -f 1500 -F 200 -d 3 -a . recordings/msk144-samples/181211_120500.wav

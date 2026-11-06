@@ -54,6 +54,9 @@ public:
     // blank padded to 12), then padded to 13.
     void set_calls(const std::string& mycall12, const std::string& hiscall12);
 
+    // recent_calls(i)(1:13)=' ' for every i (mskrtd's first call).
+    void blank_recent_calls();
+
     // unpack77(c77, nrx, msg, success): c77 is 77 characters (normally '0'
     // and '1'; anything else fails as the reference does). msg is the
     // character*37, meaningful when ok (the reference's msg after a failure

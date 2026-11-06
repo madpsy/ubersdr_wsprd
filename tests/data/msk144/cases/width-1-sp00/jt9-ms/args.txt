@@ -1,0 +1,1 @@
+jt9 -Y --msk144 -p 15 -f 1500 -F 200 -d 3 -a . recordings/msk144-sim/width-1-sp00-261106_120026.wav

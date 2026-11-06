@@ -1,0 +1,62 @@
+{
+ "band": "6m",
+ "channel_reported": {
+  "agc_enable": false,
+  "encoding": "F32LE",
+  "frequency_hz": 50260000,
+  "gain_db": 0.0,
+  "preset": "usb",
+  "received_at": 1793926329.2356648,
+  "ssrc": 1903631679
+ },
+ "channel_requested": {
+  "agc_enable": 0,
+  "encoding": "f32",
+  "gain_db": 0.0,
+  "preset": "usb"
+ },
+ "clipped_samples": 0,
+ "decodes": [
+  {
+   "audio_freq_hz": 1496,
+   "dt": 0.4,
+   "jt9_line": "000000   0  0.4 1496 &  KF2ZQ KA2PBO FN21                                       ",
+   "message": "KF2ZQ KA2PBO FN21",
+   "snr": 0,
+   "sync": "&"
+  }
+ ],
+ "dial_freq_hz": 50260000,
+ "frontend": {
+  "ad_over_delta": 0,
+  "ad_over_reset": false,
+  "basis": "host receive time of radiod status packets",
+  "end": null,
+  "frontend_status": "partial",
+  "missing_sample_windows": [
+   [
+    0,
+    3566
+   ],
+   [
+    47940,
+    110805
+   ],
+   [
+    205372,
+    360000
+   ]
+  ],
+  "overloaded": false,
+  "start": null,
+  "steps": []
+ },
+ "noise_floor_dbfs": -132.24154580762584,
+ "noise_floor_reference": "dB re radiod f32 full scale, before wav_gain_db",
+ "reporter_id": "UACNJ",
+ "sample_rate": 12000,
+ "scale": "uncalibrated",
+ "slot_start_utc": "2026-11-06T00:52:00+00:00",
+ "software_version": "0.4.0+9babd4c",
+ "wav_gain_db": 100.85420851619169
+}

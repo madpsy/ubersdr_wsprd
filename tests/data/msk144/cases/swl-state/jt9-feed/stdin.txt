@@ -1,0 +1,3 @@
+recordings/msk144-sim/swl-state-b-261106_120104.wav
+recordings/msk144-sim/swl-state-a-261106_120103.wav
+recordings/msk144-sim/swl-state-b-261106_120104.wav

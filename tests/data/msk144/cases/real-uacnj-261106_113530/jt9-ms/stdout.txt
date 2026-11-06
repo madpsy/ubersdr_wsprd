@@ -1,0 +1,4 @@
+113530  16 15.9 1495 &  CQ WA2FZW FN20                                          
+113530  17 21.3 1493 &  CQ WA2FZW FN20                                          
+113530  18 29.1 1492 &  CQ WA2FZW FN20                                          
+<DecodeFinished>   0   0        0

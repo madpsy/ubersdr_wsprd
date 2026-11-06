@@ -1,0 +1,1 @@
+jt9 -a . -k -p 15 -f 1500 -F 200 -d 1 recordings/msk144-sim/offgrid-f1537-sm04-261106_120102.wav

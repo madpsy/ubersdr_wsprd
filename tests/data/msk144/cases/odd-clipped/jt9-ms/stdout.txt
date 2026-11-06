@@ -1,0 +1,3 @@
+120055   5  4.6 1455 &  CQ W4IMD EM84                                           
+120055   7 12.2 1496 &  CQ KD9VV EN71                                           
+<DecodeFinished>   0   0        0

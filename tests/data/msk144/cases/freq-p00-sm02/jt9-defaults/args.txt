@@ -1,0 +1,1 @@
+jt9 -a . -k -p 15 recordings/msk144-sim/freq-p00-sm02-261106_120016.wav

@@ -1,0 +1,3 @@
+034930   0  9.1 1450 &  CQ W4IMD EM84                                           
+034930   1 14.8 1446 &  CQ W4IMD EM84                                           
+<DecodeFinished>   0   0        0

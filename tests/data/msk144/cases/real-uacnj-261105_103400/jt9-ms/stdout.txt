@@ -1,0 +1,2 @@
+103400  20 15.5 1490 &  CQ KA2PBO FN21                                          
+<DecodeFinished>   0   0        0

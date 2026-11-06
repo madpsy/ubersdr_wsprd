@@ -1,0 +1,84 @@
+{
+ "band": "6m",
+ "channel_reported": {
+  "agc_enable": false,
+  "encoding": "F32LE",
+  "frequency_hz": 50260000,
+  "gain_db": 0.0,
+  "preset": "usb",
+  "received_at": 1793936379.553004,
+  "ssrc": 1903631679
+ },
+ "channel_requested": {
+  "agc_enable": 0,
+  "encoding": "f32",
+  "gain_db": 0.0,
+  "preset": "usb"
+ },
+ "clipped_samples": 0,
+ "decodes": [
+  {
+   "audio_freq_hz": 1493,
+   "dt": 0.1,
+   "jt9_line": "000000   0  0.1 1493 &  W4IMD KA2PBO FN21                                       ",
+   "message": "W4IMD KA2PBO FN21",
+   "snr": 0,
+   "sync": "&"
+  },
+  {
+   "audio_freq_hz": 1493,
+   "dt": 15.8,
+   "jt9_line": "000000  20 15.8 1493 &  W4IMD KA2PBO FN21                                       ",
+   "message": "W4IMD KA2PBO FN21",
+   "snr": 20,
+   "sync": "&"
+  }
+ ],
+ "dial_freq_hz": 50260000,
+ "frontend": {
+  "ad_over_delta": 5837,
+  "ad_over_reset": false,
+  "basis": "host receive time of radiod status packets",
+  "end": {
+   "ad_over": 739620,
+   "if_power": -20.979862213134766,
+   "rf_agc": true,
+   "rf_atten": 0.0,
+   "rf_gain": 32.75181579589844,
+   "t": 1793936396.8953378
+  },
+  "frontend_status": "partial",
+  "missing_sample_windows": [
+   [
+    11689,
+    72401
+   ],
+   [
+    114636,
+    210170
+   ],
+   [
+    210170,
+    322744
+   ]
+  ],
+  "overloaded": true,
+  "start": {
+   "ad_over": 733783,
+   "if_power": -20.88385581970215,
+   "rf_agc": true,
+   "rf_atten": 0.0,
+   "rf_gain": 32.75181579589844,
+   "t": 1793936367.875744
+  },
+  "steps": []
+ },
+ "noise_floor_dbfs": -132.40262036063316,
+ "noise_floor_reference": "dB re radiod f32 full scale, before wav_gain_db",
+ "reporter_id": "UACNJ",
+ "sample_rate": 12000,
+ "scale": "uncalibrated",
+ "slot_start_utc": "2026-11-06T03:39:30+00:00",
+ "software_version": "0.4.0+9babd4c",
+ "wav_gain_db": 106.27163485808681
+}

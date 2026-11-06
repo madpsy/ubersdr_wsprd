@@ -1,0 +1,2 @@
+120017   5  5.2 1600 &  K1ABC W9XYZ EN37                                        
+<DecodeFinished>   0   0        0

@@ -10,7 +10,8 @@
 // v2.1 or later). svml_s_cosf4_core_sse4.S, svml_s_sinf4_core_sse4.S,
 // svml_s_log10f4_core_sse4.S, svml_s_powf4_core_sse4.S and
 // svml_s_powf_data.S: the GNU C Library, Free Software Foundation
-// (GNU LGPL v2.1 or later).
+// (GNU LGPL v2.1 or later). e_atan2f.c and s_atanf.c: Sun Microsystems
+// (fdlibm; freely distributable), as the GNU C Library carries them.
 #include "ft8_maths.h"
 
 #include <algorithm>
@@ -1612,6 +1613,171 @@ void powf4_glibc(const float* x, const float* y, float* out) {
         const int32_t hi = static_cast<int32_t>(static_cast<uint32_t>(asuint64(ylnx) >> 32) & 0x7fffffffu);
         const bool special = xm > NMAXVAL || xm == NMAXVAL || ay > INF || ay == INF || hi > iDomainRange;
         out[l] = special ? powf_glibc(x[l], y[l]) : v;
+    }
+}
+
+
+// ---- atan2f: sysdeps/ieee754/flt-32 e_atan2f.c and s_atanf.c, glibc 2.39 (fdlibm's)
+namespace {
+
+float glibc_atanf(float x) {
+    static const float atanhi[] = {
+        4.6364760399e-01f,  // atan(0.5)hi 0x3eed6338
+        7.8539812565e-01f,  // atan(1.0)hi 0x3f490fda
+        9.8279368877e-01f,  // atan(1.5)hi 0x3f7b985e
+        1.5707962513e+00f,  // atan(inf)hi 0x3fc90fda
+    };
+    static const float atanlo[] = {
+        5.0121582440e-09f,  // atan(0.5)lo 0x31ac3769
+        3.7748947079e-08f,  // atan(1.0)lo 0x33222168
+        3.4473217170e-08f,  // atan(1.5)lo 0x33140fb4
+        7.5497894159e-08f,  // atan(inf)lo 0x33a22168
+    };
+    static const float aT[] = {
+        3.3333334327e-01f,   // 0x3eaaaaaa
+        -2.0000000298e-01f,  // 0xbe4ccccd
+        1.4285714924e-01f,   // 0x3e124925
+        -1.1111110449e-01f,  // 0xbde38e38
+        9.0908870101e-02f,   // 0x3dba2e6e
+        -7.6918758452e-02f,  // 0xbd9d8795
+        6.6610731184e-02f,   // 0x3d886b35
+        -5.8335702866e-02f,  // 0xbd6ef16b
+        4.9768779427e-02f,   // 0x3d4bda59
+        -3.6531571299e-02f,  // 0xbd15a221
+        1.6285819933e-02f,   // 0x3c8569d7
+    };
+    const float one = 1.0f, huge = 1.0e30f;
+    float w, s1, s2, z;
+    int32_t ix, hx, id;
+    std::memcpy(&hx, &x, 4);
+    ix = hx & 0x7fffffff;
+    if (ix >= 0x4c000000) {  // if |x| >= 2^25 (glibc 2.39's threshold; fdlibm's float one is 2^26: measured on every 251st float)
+        if (ix > 0x7f800000) return x + x;  // NaN
+        if (hx > 0) return atanhi[3] + atanlo[3];
+        return -atanhi[3] - atanlo[3];
+    }
+    if (ix < 0x3ee00000) {  // |x| < 0.4375
+        if (ix < 0x31000000) {  // |x| < 2^-29
+            if (huge + x > one) return x;  // raise inexact
+        }
+        id = -1;
+    } else {
+        x = std::fabs(x);
+        if (ix < 0x3f980000) {  // |x| < 1.1875
+            if (ix < 0x3f300000) {  // 7/16 <=|x|<11/16
+                id = 0;
+                x = (2.0f * x - one) / (2.0f + x);
+            } else {  // 11/16<=|x|< 19/16
+                id = 1;
+                x = (x - one) / (x + one);
+            }
+        } else {
+            if (ix < 0x401c0000) {  // |x| < 2.4375
+                id = 2;
+                x = (x - 1.5f) / (one + 1.5f * x);
+            } else {  // 2.4375 <= |x| < 2^66
+                id = 3;
+                x = -1.0f / x;
+            }
+        }
+    }
+    // end of argument reduction
+    z = x * x;
+    w = z * z;
+    // break sum from i=0 to 10 aT[i]z**(i+1) into odd and even poly
+    s1 = z * (aT[0] + w * (aT[2] + w * (aT[4] + w * (aT[6] + w * (aT[8] + w * aT[10])))));
+    s2 = w * (aT[1] + w * (aT[3] + w * (aT[5] + w * (aT[7] + w * aT[9]))));
+    if (id < 0) return x - x * (s1 + s2);
+    z = atanhi[id] - ((x * (s1 + s2) - atanlo[id]) - x);
+    return (hx < 0) ? -z : z;
+}
+
+}  // namespace
+
+float atan2f_glibc(float y, float x) {
+    const float tiny = 1.0e-30f, zero = 0.0f;
+    const float pi_o_4 = 7.8539818525e-01f;  // 0x3f490fdb
+    const float pi_o_2 = 1.5707963705e+00f;  // 0x3fc90fdb
+    const float pi = 3.1415927410e+00f;      // 0x40490fdb
+    const float pi_lo = -8.7422776573e-08f;  // 0xb3bbbd2e
+    float z;
+    int32_t k, m, hx, hy, ix, iy;
+    std::memcpy(&hx, &x, 4);
+    ix = hx & 0x7fffffff;
+    std::memcpy(&hy, &y, 4);
+    iy = hy & 0x7fffffff;
+    if ((ix > 0x7f800000) || (iy > 0x7f800000))  // x or y is NaN
+        return x + y;
+    if (hx == 0x3f800000) return glibc_atanf(y);  // x=1.0
+    m = ((hy >> 31) & 1) | ((hx >> 30) & 2);      // 2*sign(x)+sign(y)
+
+    // when y = 0
+    if (iy == 0) {
+        switch (m) {
+            case 0:
+            case 1:
+                return y;  // atan(+-0,+anything)=+-0
+            case 2:
+                return pi + tiny;  // atan(+0,-anything) = pi
+            case 3:
+                return -pi - tiny;  // atan(-0,-anything) =-pi
+        }
+    }
+    // when x = 0
+    if (ix == 0) return (hy < 0) ? -pi_o_2 - tiny : pi_o_2 + tiny;
+
+    // when x is INF
+    if (ix == 0x7f800000) {
+        if (iy == 0x7f800000) {
+            switch (m) {
+                case 0:
+                    return pi_o_4 + tiny;  // atan(+INF,+INF)
+                case 1:
+                    return -pi_o_4 - tiny;  // atan(-INF,+INF)
+                case 2:
+                    return 3.0f * pi_o_4 + tiny;  // atan(+INF,-INF)
+                case 3:
+                    return -3.0f * pi_o_4 - tiny;  // atan(-INF,-INF)
+            }
+        } else {
+            switch (m) {
+                case 0:
+                    return zero;  // atan(+...,+INF)
+                case 1:
+                    return -zero;  // atan(-...,+INF)
+                case 2:
+                    return pi + tiny;  // atan(+...,-INF)
+                case 3:
+                    return -pi - tiny;  // atan(-...,-INF)
+            }
+        }
+    }
+    // when y is INF
+    if (iy == 0x7f800000) return (hy < 0) ? -pi_o_2 - tiny : pi_o_2 + tiny;
+
+    // compute y/x
+    k = (iy - ix) >> 23;
+    if (k > 60) {  // |y/x| >  2**60
+        z = pi_o_2 + 0.5f * pi_lo;  // (no m&=1 here: glibc 2.39's has none, and atan(+,-) comes out pi-(z-pi_lo))
+    } else if (hx < 0 && k < -60) {
+        z = 0.0f;  // 0 > |y|/x > -2**-60
+    } else {
+        z = glibc_atanf(std::fabs(y / x));  // safe to do y/x
+    }
+    switch (m) {
+        case 0:
+            return z;  // atan(+,+)
+        case 1: {
+            uint32_t zh;
+            std::memcpy(&zh, &z, 4);
+            zh ^= 0x80000000u;
+            std::memcpy(&z, &zh, 4);
+            return z;  // atan(-,+)
+        }
+        case 2:
+            return pi - (z - pi_lo);  // atan(+,-)
+        default:                      // case 3
+            return (z - pi_lo) - pi;  // atan(-,-)
     }
 }
 

@@ -1,0 +1,1 @@
+jt9 -Y --msk144 -p 30 -f 1500 -F 200 -d 3 -a . recordings/msk144-sim/tr30-sp04-261106_120036.wav

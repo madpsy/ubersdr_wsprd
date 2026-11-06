@@ -1,0 +1,2 @@
+STOP 2
+jt9: unsupported 11025 Hz WAV sample rate for the selected mode

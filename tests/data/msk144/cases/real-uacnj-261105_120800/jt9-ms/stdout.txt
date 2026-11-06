@@ -1,0 +1,3 @@
+120800   3 16.0 1493 &  W4HP WA2FZW +07                                         
+120800   4 17.1 1493 &  W4HP WA2FZW +07                                         
+<DecodeFinished>   0   0        0

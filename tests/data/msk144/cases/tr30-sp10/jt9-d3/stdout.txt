@@ -1,0 +1,3 @@
+120037  10  4.1 1504 &  K1ABC W9XYZ EN37                                        
+120037  11  4.2 1500 &  K1ABC W9XYZ EN37                                        
+<DecodeFinished>   0   0        0
