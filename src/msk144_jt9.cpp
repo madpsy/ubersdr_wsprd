@@ -48,7 +48,7 @@ bool decode_file(RtdState& st, const Params& p, const ft8::FileMode& fm, const s
                  int& n) {
     n = 0;
     fst4w::Wav wav;
-    if (!wav.open(ft8::jt9_at(cwd, infile), why, false)) {
+    if (!wav.open(ft8::jt9_at(cwd, infile), why, true)) {
         why = "cannot read WAV file " + infile + ": " + why;
         return false;
     }
@@ -60,13 +60,22 @@ bool decode_file(RtdState& st, const Params& p, const ft8::FileMode& fm, const s
     constexpr long KSTEP = 6912 / 2;
     const long npts = static_cast<long>(fm.trperiod * 12000.0);
     const long nblocks = npts / KSTEP;
-    std::vector<int16_t> id2;  // shared_data%id2=0: what is not read stays zero
+    // shared_data%id2=0: what is not read stays zero. A float file (ours) is read into id2f, each
+    // sample x as x*32768.0f (Wav::read, exact): the 16-bit counts mskrtd's float(id2) would hold.
+    std::vector<int16_t> id2;
+    std::vector<float> id2f;
     long nhsym0 = -999;
     for (long iblk = 1; iblk <= nblocks; ++iblk) {
         const long k0 = (iblk - 1) * KSTEP;
         const long k = std::min(iblk * KSTEP, npts);
-        id2.resize(static_cast<size_t>(k), 0);
-        const long got = wav.read(&id2[static_cast<size_t>(k0)], k - k0);
+        long got;
+        if (wav.is_float) {
+            id2f.resize(static_cast<size_t>(k), 0.0f);
+            got = wav.read(&id2f[static_cast<size_t>(k0)], k - k0);
+        } else {
+            id2.resize(static_cast<size_t>(k), 0);
+            got = wav.read(&id2[static_cast<size_t>(k0)], k - k0);
+        }
         if (got == 0) {
             out << " EOF on input file " << infile << "\n";
             break;
@@ -86,14 +95,20 @@ bool decode_file(RtdState& st, const Params& p, const ft8::FileMode& fm, const s
     Packjt77& pk = msk144_packjt77();
     st.reset();
     msk144_reset_packjt77();
-    n = decode_msk144(st, pk, id2.data(), static_cast<long>(id2.size()), nutc, p.ntr, p.ntol, p.nfqso, p.ndepth,
-                      p.mycall, p.hiscall, p.shmsg, p.swl, out);
+    if (wav.is_float)
+        n = decode_msk144(st, pk, id2f.data(), static_cast<long>(id2f.size()), nutc, p.ntr, p.ntol, p.nfqso, p.ndepth,
+                          p.mycall, p.hiscall, p.shmsg, p.swl, out);
+    else
+        n = decode_msk144(st, pk, id2.data(), static_cast<long>(id2.size()), nutc, p.ntr, p.ntol, p.nfqso, p.ndepth,
+                          p.mycall, p.hiscall, p.shmsg, p.swl, out);
 
     // The "normal decoding pass": multimode_decoder, which for MSK144 opens decoded.txt once the rms of
     // id2(1:180000) reaches 0.5 and says <DecodeFinished> 0 0 0 (decoder.f90:104-107)
     float sum = 0.0f;
     for (long i = 0; i < 180000; ++i) {
-        const float x = i < static_cast<long>(id2.size()) ? static_cast<float>(id2[static_cast<size_t>(i)]) : 0.0f;
+        const long have = wav.is_float ? static_cast<long>(id2f.size()) : static_cast<long>(id2.size());
+        const float x = i >= have ? 0.0f
+                        : wav.is_float ? id2f[static_cast<size_t>(i)] : static_cast<float>(id2[static_cast<size_t>(i)]);
         sum = sum + x * x;
     }
     const float rms = std::sqrt(sum / 180000.0f);

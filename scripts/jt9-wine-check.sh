@@ -129,7 +129,7 @@ while IFS= read -r a; do
     missing=
     d=$(dirname "$a")
     if [[ $d == */msk144/* ]]; then
-        if ! $msk_ok || { [[ $d == */jt9-shmsg || $d == */jt9-swl ]] && ! $msk_flags; }; then msk_left=$((msk_left + 1)); continue; fi
+        if ! $msk_ok || { [[ $d == */jt9-shmsg || $d == */jt9-swl || $d == */cases/float-* ]] && ! $msk_flags; }; then msk_left=$((msk_left + 1)); continue; fi
     fi
     for t in $(cut -d' ' -f2- "$a"); do
         [[ $t == recordings/* && ! -f $repo/$t ]] && missing=$t
@@ -206,12 +206,13 @@ done
 echo "jt9-wine-check: MSK144: $nmsk cases ran, $msk_left left out for lack of an option (--msk144 in the usage: $msk_ok, the flags: $msk_flags)" >&2
 echo "jt9-wine-check: $ninput cases left out for their @I/ inputs, $ninput_msk of them MSK144's (scripts/jt9-compare.sh makes those WAVs; --deep-check runs them)" >&2
 if [[ $usage_text == *--spread* ]] && [[ -z ${JT9_WINE_ONLY:-} ]]; then
-    # The floor: 347 MSK144 cases that run here, plus 20 for the real UACNJ slots (recordings/msk144-uacnj). The 347 is
+    # The floor: 347 MSK144 cases that run here, plus 20 for the real UACNJ slots (recordings/msk144-uacnj), plus
+    # the 3 float-* runs (recordings/msk144-float; the float WAVs only our port reads). The 347 is
     # the 367 runs of the corpus as it stood at Task 8, less the 20 @I/ runs (odd-stereo, -rate11025, -bits8,
     # -header and -tiny, 4 variants each). The final fix wave added odd-trunc and odd-stream (8 more @I/ runs,
     # left out too: ninput_msk counts them) and the 20 real-uacnj runs. Raise it with the corpus. Nothing may
     # be left out for lack of an option, and the @I/ runs left out may not number fewer than the 28 there are.
-    (( nmsk < 367 )) && { echo "jt9-wine-check: FAIL: only $nmsk of the 367 MSK144 cases ran" >&2; fail=$((fail + 1)); }
+    (( nmsk < 370 )) && { echo "jt9-wine-check: FAIL: only $nmsk of the 370 MSK144 cases ran" >&2; fail=$((fail + 1)); }
     (( msk_left > 0 )) && { echo "jt9-wine-check: FAIL: $msk_left MSK144 cases left out" >&2; fail=$((fail + 1)); }
     (( ninput_msk != 28 )) && { echo "jt9-wine-check: FAIL: $ninput_msk MSK144 cases left out for their @I/ inputs, 28 expected" >&2; fail=$((fail + 1)); }
 fi

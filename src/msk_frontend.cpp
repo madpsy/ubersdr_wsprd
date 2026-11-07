@@ -9,12 +9,14 @@
 
 #include <fftw3.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <mutex>
 #include <new>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -24,6 +26,7 @@
 namespace msk144 {
 
 AnalyticTrace analytic_trace = nullptr;
+FreqSearchTrace freq_search_trace = nullptr;
 
 namespace {
 
@@ -203,14 +206,30 @@ void analytic(const float* d, int npts, int nfft, cfloat* c, std::array<double, 
     fft_c2c_inplace(c, nfft, 1);                                    // Inverse c2c FFT
 }
 
-void tweak1(const cfloat* ca, int jz, float f0, cfloat* cb) {
+namespace {
+
+// tweak1's step: wstep=cmplx(cos(dphi),sin(dphi)), a complex*16, with dphi (a default real) =
+// twopi*f0/12000.d0. tweak1 and msk144_freq_search share it.
+void tweak1_wstep(float f0, double& sr, double& si) {
     constexpr double twopi = 6.283185307179586476925286766559;
-    // w=1.d0; dphi (a default real) = twopi*f0/12000.d0
-    double wr = 1.0, wi = 0.0;
     const float dphi = static_cast<float>(twopi * static_cast<double>(f0) / 12000.0);
     float sn, cs;
     ft8::sincosf_glibc(dphi, &sn, &cs);
-    const double sr = cs, si = sn;  // wstep=cmplx(cos(dphi),sin(dphi)), a complex*16
+    sr = cs;
+    si = sn;
+}
+
+// Four lanes of doubles and of floats (GCC's and Clang's vector extensions: each operation
+// acts lane by lane, with the scalar operation's IEEE rounding).
+typedef double v4d __attribute__((vector_size(32)));
+typedef float v4f __attribute__((vector_size(16)));
+
+}  // namespace
+
+void tweak1(const cfloat* ca, int jz, float f0, cfloat* cb) {
+    double wr = 1.0, wi = 0.0;  // w=1.d0
+    double sr, si;
+    tweak1_wstep(f0, sr, si);
     for (int i = 0; i < jz; ++i) {
         const double nr = wr * sr - wi * si;
         const double ni = wr * si + wi * sr;
@@ -221,12 +240,46 @@ void tweak1(const cfloat* ca, int jz, float f0, cfloat* cb) {
     }
 }
 
+// msk144_freq_search, in two places in another order than the Fortran's, with the same bits.
+//
+// 1. The frequency shift. The Fortran calls tweak1 once a trial frequency, then sums the
+// averaged frames. tweak1's phasor w steps by a complex*16 product each sample, a chain of
+// dependent multiplies and adds that keeps the CPU waiting on each result. Here NL trials
+// run side by side: one pass over the samples steps NL phasors, each with its own wstep and
+// the same double expressions as tweak1, so each lane's w takes the same values in the same
+// order, and multiplies cdat by each lane's w4 with the same complex product. The NL chains
+// do not depend on each other, so the CPU (and the compiler, across vector lanes) overlaps
+// them. The frames go into each trial's c as the Fortran adds them: from 0, frame by frame in
+// ascending order. Only the last trial's shifted data reaches cdat2, as tweak1's last call
+// leaves it in the Fortran. Lanes past if2 in the last group repeat if2 and are dropped.
+//
+// 2. The correlation. The Fortran runs lag by lag: for each ish, a dot product over the 42
+// sync points kk. Here kk runs outside and ish inside, over the arrays sr and si, so the
+// compiler keeps eight lags in each AVX2 register (four in NEON's) and steps them together. Every lag stays its
+// own sum, from 0, over kk = 0..41 in ascending order, with the same expression for each term.
+// dr and di hold ct2(1+j)+ct2(337+j) for each j: the same single add the Fortran makes inside
+// the dot product, made once a trial instead of 42 times.
+//
+// Why both are exact: the build forbids contraction (FT8_FP_OPTIONS: -ffp-contract=off, and
+// -mno-fma on GCC before 13), so each + and * rounds on its own, as the Fortran's does; IEEE
+// rounding depends only on the operands, so a value computed from the same operands in the
+// same order has the same bits whichever lane, register or loop order computes it. What moved
+// is the order across independent trials and lags, and no trial or lag reads another's
+// values. The trials' results then go through the peak search in ascending ifr, as in the
+// Fortran. The magnitudes stay glibc's cabsf: hypotf_n_glibc gives hypotf_glibc's bits, four at a
+// time, with no squared-magnitude shortcut, so the peak search sees the same values.
 void msk144_freq_search(const cfloat* cdat, float fc, int if1, int if2, float delf, int nframes, const int* navmask,
                         const cfloat* cb, cfloat* cdat2, float& xmax, float& bestf, cfloat* cs, float* xccs) {
     constexpr int NSPM = 864;
+    constexpr int NSYNC = 42;
+    constexpr int ND = NSPM + NSYNC - 1;  // ct2(1+ish+kk), ish 0..863, kk 0..41: 905 sums
+    constexpr int NL = 8;                 // trials side by side
+    constexpr int NG = NL / 4;            // groups of four trials, one vector of each
     std::vector<cfloat> c(NSPM);
+    std::vector<v4f> clr(static_cast<size_t>(NSPM) * NG), cli(clr.size());  // [j*NG+l/4][l%4]: trial l's c(j)
     cfloat ct2[2 * NSPM];
-    cfloat cc[NSPM];
+    alignas(32) float dr[ND], di[ND];
+    alignas(32) float sr[NSPM], si[NSPM];
     float xcc[NSPM];
 
     xmax = 0.0f;
@@ -237,53 +290,113 @@ void msk144_freq_search(const cfloat* cdat, float fc, int if1, int if2, float de
     int navg = 0;
     for (int i = 0; i < nframes; ++i) navg += navmask[i];
     if (navg <= 0 || if1 > if2) return;
-    const int n = nframes * NSPM;
     const float fac = 1.0f / (48.0f * std::sqrt(static_cast<float>(navg)));
 
-    for (int ifr = if1; ifr <= if2; ++ifr) {  // Find freq that maximizes sync
-        const float ferr = static_cast<float>(ifr) * delf;
-        tweak1(cdat, n, -(fc + ferr), cdat2);
-        for (int i = 0; i < NSPM; ++i) c[i] = cfloat(0.0f, 0.0f);
-        for (int i = 1; i <= nframes; ++i) {
-            const int ib = (i - 1) * NSPM;  // ib=(i-1)*NSPM+1, 0-based here
-            if (navmask[i - 1] == 1)
-                for (int j = 0; j < NSPM; ++j) c[j] = cfloat(c[j].real() + cdat2[ib + j].real(), c[j].imag() + cdat2[ib + j].imag());
+    for (int ifr0 = if1; ifr0 <= if2; ifr0 += NL) {  // Find freq that maximizes sync
+        const int nl = std::min(NL, if2 - ifr0 + 1);    // trials in this group
+        const bool last = ifr0 + nl - 1 == if2;         // the group that holds if2: it fills cdat2
+
+        // tweak1(cdat, n, -(fc+ferr), cdat2) for each trial of the group, and the frames' sums;
+        // trial l is lane l%4 of group l/4
+        v4d wsr[NG], wsi[NG], wr[NG], wi[NG];
+        for (int l = 0; l < NL; ++l) {
+            const float ferr = static_cast<float>(ifr0 + std::min(l, nl - 1)) * delf;
+            double sr_, si_;
+            tweak1_wstep(-(fc + ferr), sr_, si_);
+            wsr[l / 4][l % 4] = sr_;
+            wsi[l / 4][l % 4] = si_;
+            wr[l / 4][l % 4] = 1.0;  // w=1.d0
+            wi[l / 4][l % 4] = 0.0;
         }
-
-        for (int i = 0; i < NSPM; ++i) cc[i] = cfloat(0.0f, 0.0f);
-        for (int i = 0; i < NSPM; ++i) ct2[i] = c[i];
-        for (int i = 0; i < NSPM; ++i) ct2[NSPM + i] = c[i];
-
-        for (int ish = 0; ish <= NSPM - 1; ++ish) {
-            // dot_product(ct2(1+ish:42+ish)+ct2(337+ish:378+ish), cb(1:42)): the sum of the
-            // conjugate of the first times the second
-            float sr = 0.0f, si = 0.0f;
-            for (int kk = 0; kk < 42; ++kk) {
-                const float tr = ct2[ish + kk].real() + ct2[336 + ish + kk].real();
-                const float ti = ct2[ish + kk].imag() + ct2[336 + ish + kk].imag();
-                const float br = cb[kk].real(), bi = cb[kk].imag();
-                sr = sr + (tr * br - (-ti) * bi);
-                si = si + (tr * bi + (-ti) * br);
+        for (v4f& x : clr) x = v4f{0.0f, 0.0f, 0.0f, 0.0f};
+        for (v4f& x : cli) x = v4f{0.0f, 0.0f, 0.0f, 0.0f};
+        // The first ngu groups of four, all a group of nl trials uses: with four trials or
+        // fewer (a short last group, or a short call), group 1 holds only repeats of if2,
+        // whose sums nothing reads (the peak search reads l < nl, cdat2 comes from lane
+        // nl-1, both in group 0), so it is not run; its sums stay 0, unread.
+        auto frames = [&](auto ngu_c) {
+            constexpr int ngu = decltype(ngu_c)::value;
+            for (int fr = 0; fr < nframes; ++fr) {
+                const int ib = fr * NSPM;  // ib=(i-1)*NSPM+1, 0-based here
+                const bool avg = navmask[fr] == 1;
+                for (int j = 0; j < NSPM; ++j) {
+                    const float ar = cdat[ib + j].real(), ai = cdat[ib + j].imag();
+                    const v4f arv = {ar, ar, ar, ar}, aiv = {ai, ai, ai, ai};
+                    v4f xr[ngu], xi[ngu];
+                    for (int g = 0; g < ngu; ++g) {
+                        const v4d nr = wr[g] * wsr[g] - wi[g] * wsi[g];
+                        const v4d ni = wr[g] * wsi[g] + wi[g] * wsr[g];
+                        wr[g] = nr;
+                        wi[g] = ni;
+                        const v4f w4r = __builtin_convertvector(nr, v4f), w4i = __builtin_convertvector(ni, v4f);
+                        xr[g] = w4r * arv - w4i * aiv;  // cmul(w4, cdat(i))
+                        xi[g] = w4r * aiv + w4i * arv;
+                    }
+                    if (avg) {
+                        v4f* const cr = &clr[static_cast<size_t>(j) * NG];
+                        v4f* const ci = &cli[static_cast<size_t>(j) * NG];
+                        for (int g = 0; g < ngu; ++g) {
+                            cr[g] = cr[g] + xr[g];
+                            ci[g] = ci[g] + xi[g];
+                        }
+                    }
+                    if (last) cdat2[ib + j] = cfloat(xr[(nl - 1) / 4][(nl - 1) % 4], xi[(nl - 1) / 4][(nl - 1) % 4]);
+                }
             }
-            cc[ish] = cfloat(sr, si);
-        }
+        };
+        static_assert(NG == 2, "frames() is run for one group or both");
+        if (nl > 4)
+            frames(std::integral_constant<int, 2>{});
+        else
+            frames(std::integral_constant<int, 1>{});
 
-        bool finite = true;
-        for (int i = 0; i < NSPM; ++i) {
-            xcc[i] = ft8::hypotf_glibc(cc[i].real(), cc[i].imag());  // abs of a complex: glibc's cabsf
-            if (!std::isfinite(xcc[i])) finite = false;
-        }
-        if (!finite) continue;
-        float mx = xcc[0];
-        for (int i = 1; i < NSPM; ++i)
-            if (xcc[i] > mx) mx = xcc[i];
-        const float xb = mx * fac;
-        if (!std::isfinite(xb)) continue;
-        if (ifr == if1 || xb > xmax) {
-            xmax = xb;
-            bestf = ferr;
-            for (int i = 0; i < NSPM; ++i) cs[i] = c[i];
-            for (int i = 0; i < NSPM; ++i) xccs[i] = xcc[i];
+        for (int l = 0; l < nl; ++l) {
+            const int ifr = ifr0 + l;
+            const float ferr = static_cast<float>(ifr) * delf;
+            for (int i = 0; i < NSPM; ++i) c[i] = cfloat(clr[static_cast<size_t>(i) * NG + l / 4][l % 4], cli[static_cast<size_t>(i) * NG + l / 4][l % 4]);
+
+            for (int i = 0; i < NSPM; ++i) ct2[i] = c[i];
+            for (int i = 0; i < NSPM; ++i) ct2[NSPM + i] = c[i];
+
+            // cc(ish) = dot_product(ct2(1+ish:42+ish)+ct2(337+ish:378+ish), cb(1:42)): the sum of
+            // the conjugate of the first times the second; lags inside, sync points outside (see
+            // above)
+            for (int j = 0; j < ND; ++j) {
+                dr[j] = ct2[j].real() + ct2[336 + j].real();
+                di[j] = ct2[j].imag() + ct2[336 + j].imag();
+            }
+            for (int ish = 0; ish < NSPM; ++ish) {
+                sr[ish] = 0.0f;
+                si[ish] = 0.0f;
+            }
+            for (int kk = 0; kk < NSYNC; ++kk) {
+                const float br = cb[kk].real(), bi = cb[kk].imag();
+                const float* const tr = dr + kk;
+                const float* const ti = di + kk;
+                for (int ish = 0; ish < NSPM; ++ish) {
+                    sr[ish] = sr[ish] + (tr[ish] * br - (-ti[ish]) * bi);
+                    si[ish] = si[ish] + (tr[ish] * bi + (-ti[ish]) * br);
+                }
+            }
+
+            // abs of a complex: glibc's cabsf, hypotf_glibc's bits four at a time
+            ft8::hypotf_n_glibc(sr, si, xcc, NSPM);
+            if (freq_search_trace) freq_search_trace(ifr, c.data(), sr, si, xcc);
+            bool finite = true;
+            for (int i = 0; i < NSPM; ++i)
+                if (!std::isfinite(xcc[i])) finite = false;
+            if (!finite) continue;
+            float mx = xcc[0];
+            for (int i = 1; i < NSPM; ++i)
+                if (xcc[i] > mx) mx = xcc[i];
+            const float xb = mx * fac;
+            if (!std::isfinite(xb)) continue;
+            if (ifr == if1 || xb > xmax) {
+                xmax = xb;
+                bestf = ferr;
+                for (int i = 0; i < NSPM; ++i) cs[i] = c[i];
+                for (int i = 0; i < NSPM; ++i) xccs[i] = xcc[i];
+            }
         }
     }
 }

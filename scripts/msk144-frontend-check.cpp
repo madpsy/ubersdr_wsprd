@@ -74,6 +74,16 @@ void trace(int stage, const float* h, const cfloat* corr, const cfloat* c, int n
     }
 }
 
+// the trace of msk144_freq_search, as the oracle's copy prints it: R, then C, E and M, each trial
+void search_trace(int ifr, const cfloat* c, const float* ccr, const float* cci, const float* xcc) {
+    std::printf("R %d %d\n", kcase, ifr);
+    prc("C", kcase, c, 864);
+    std::vector<cfloat> cc(864);
+    for (int i = 0; i < 864; ++i) cc[i] = cfloat(ccr[i], cci[i]);
+    prc("E", kcase, cc.data(), 864);
+    prr("M", kcase, xcc, 864);
+}
+
 // a line's values, from its third field on (TAG k i v...): stored at i-1...
 void store(const std::string& line, std::vector<float>& into) {
     std::istringstream is(line);
@@ -169,8 +179,11 @@ int main() {
             std::vector<cfloat> cs(NSPM);
             std::vector<float> xccs(NSPM);
             float xmax, bestf;
+            kcase = k;
+            msk144::freq_search_trace = search_trace;  // the full search only: the Q runs are not traced
             msk144::msk144_freq_search(cdat.data(), fc, if1, if2, delf, nfr, mask, cb.data(), cdat2.data(), xmax, bestf, cs.data(),
                                        xccs.data());
+            msk144::freq_search_trace = nullptr;
             std::printf("X %d %08X %08X\n", k, bits_of(xmax), bits_of(bestf));
             prc("Y", k, cs.data(), NSPM);
             prr("Z", k, xccs.data(), NSPM);
@@ -183,7 +196,8 @@ int main() {
                 std::printf("Q %d %d %08X %08X\n", k, ifr, bits_of(x1), bits_of(b1));
             }
             sskip = k;
-        } else if (tag == "X" || tag == "Y" || tag == "Z" || tag == "V" || tag == "Q" || tag == "END") {
+        } else if (tag == "X" || tag == "Y" || tag == "Z" || tag == "V" || tag == "Q" || tag == "R" || tag == "C" || tag == "E" ||
+                   tag == "M" || tag == "END") {
             continue;
         } else {
             std::fprintf(stderr, "msk144-frontend-check: unknown line: %s\n", line.c_str());

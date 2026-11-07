@@ -91,7 +91,7 @@ odd=$work/inputs
 
 # write_sums: SHA256SUMS, every input by its path from the repository's root
 write_sums() {
-    (cd "$repo" && find recordings/msk144-samples recordings/msk144-real recordings/msk144-uacnj recordings/msk144-sim \
+    (cd "$repo" && find recordings/msk144-samples recordings/msk144-real recordings/msk144-uacnj recordings/msk144-sim recordings/msk144-float \
         -name '*.wav' | sort | xargs sha256sum > tests/data/msk144/inputs/SHA256SUMS)
 }
 

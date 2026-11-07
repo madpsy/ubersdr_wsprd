@@ -55,4 +55,13 @@ void msk144_freq_search(const cfloat* cdat, float fc, int if1, int if2, float de
 using AnalyticTrace = void (*)(int stage, const float* h, const cfloat* corr, const cfloat* c, int nfft);
 extern AnalyticTrace analytic_trace;
 
+// A debug-only trace of msk144_freq_search, for the piece check: null in
+// production (one untaken branch a trial). When set, it is called once a trial,
+// in ascending ifr, with the averaged frames c(1:864), the correlation cc(0:863)
+// as its real and imaginary parts, and its magnitudes xcc(0:863), just before
+// the finiteness test, as scripts/msk144-frontend-oracle.f90's copy of
+// msk144_freq_search prints them.
+using FreqSearchTrace = void (*)(int ifr, const cfloat* c, const float* ccr, const float* cci, const float* xcc);
+extern FreqSearchTrace freq_search_trace;
+
 }  // namespace msk144

@@ -62,16 +62,20 @@ float powf_glibc(float x, float y);
 void powf_half_glibc(const float* x, float* out, int n);
 
 // hypotf: e_hypotf.c, sqrt((double)x*x + (double)y*y) rounded to float
-// (the products are exact in double, so fused or not is the same).
+// (the products are exact in double, so fused or not is the same). When
+// both x and y are NaN, the NaN returned (x + y) may carry either one's
+// payload: the compiler may swap the add's operands, and x86 returns the
+// first operand's NaN. Every other input gives glibc's bits.
 float hypotf_glibc(float x, float y);
 // out[i] = hypotf_glibc(x[i], y[i]), i = 0..n-1, the same bits (FT4's
-// bit metrics): four at a time on x86-64 with AVX2 when finite
-// (aarch64: one at a time; NEON gained nothing there)
-// ([ft8-maths]: "hypotf four at a time").
+// bit metrics), but for the NaN payload when both inputs are NaN (as
+// hypotf_glibc's own inlined copies differ there): four at a time on
+// x86-64 with AVX2 when finite (aarch64: one at a time; NEON gained
+// nothing there) ([ft8-maths]: "hypotf four at a time").
 void hypotf_n_glibc(const float* x, const float* y, float* out, int n);
 // The same from interleaved pairs: out[i] = hypotf_glibc(xy[2i], xy[2i+1])
-// (complex magnitudes, cabsf's bits; [ft8-maths]: "hypotf four at a time,
-// interleaved").
+// (complex magnitudes, cabsf's bits, with the same NaN caveat;
+// [ft8-maths]: "hypotf four at a time, interleaved").
 void hypotf_c_glibc(const float* xy, float* out, int n);
 
 // out[l] = f(in[l]), l = 0..3: x86-64 libmvec's _ZGVbN4v_cosf, _ZGVbN4v_sinf

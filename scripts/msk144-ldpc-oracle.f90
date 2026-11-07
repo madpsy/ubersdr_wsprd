@@ -4,14 +4,13 @@
 ! scripts/msk144-ldpc-check.cpp (src/msk144_ldpc.cpp) to match line for line.
 ! Built against WSJT-X's own library (libwsjt_fort.a): encode_128_90,
 ! bpdecode128_90, chkcrc13a, platanh. The piece check appends
-! bpdecode128_90_trace to this file: lib/bpdecode128_90.f90 with one call
-! added at the top of each iteration (see scripts/msk144-piece-check.sh).
+! bpdecode128_90_trace to this file: lib/bpdecode128_90.f90 with two calls
+! added in each iteration, and their printers, scripts/msk144-bp-trace.f90
+! (the I, J, BZ, BV, BO and BH lines; see scripts/msk144-piece-check.sh).
 !
 !   L MAXITER TRACE HEX*128   the soft bits (float bits, 8 hex digits each)
-!   I iter zn-sum tov-sum zn(1) zn(65) zn(128) tov(1,1) tov(2,64) tov(3,128)
-!                             (hex floats) the trace, at the top of each
-!                             iteration, for the vectors with TRACE 1; sums in
-!                             a fixed order (zn i=1..128; tov j=1..128, kk=1..3)
+!   I, J, BZ, BV, BO, BH      the trace (scripts/msk144-bp-trace.f90), for
+!                             the vectors with TRACE 1 (all of them)
 !   R maxiter iter nharderror message77 cw128 nbadcrc
 !                             bpdecode128_90 with apmask 0 on the L line above;
 !                             message77 carries over from vector to vector (it
@@ -30,7 +29,10 @@
 ! 200 random 77-bit messages encoded by encode_128_90, soft bits
 ! (2/s**2)*(+-1 + s*g) with g a sum of 12 uniforms less 6, at s = 0.55, 0.75
 ! and 0.95 in turn (maxiter 10, as msk144decodeframe) and every fifth at
-! maxiter 30; then 40 of pure noise; traces for vectors 1-6 and 201-203;
+! maxiter 30; then 40 of pure noise; then 20 at the edges of the float range
+! (vectors 241-260: codewords' soft bits scaled down to subnormals and up to
+! 1e37, all zeros, signed zeros, +inf and -inf among noise, small integers,
+! noise at 0.5); every vector traced;
 ! then 90-bit words for chkcrc13a: the first 90 bits of 40 codewords, each
 ! also with one bit flipped, and 40 random; then the P and T sweeps.
 !
@@ -51,8 +53,10 @@ program msk144_ldpc_oracle
    m77 = 0
    nenc = 0
    nrun = 0
-   do iv = 1, 240
-      if (iv .le. 200) then
+   do iv = 1, 260
+      if (iv .gt. 240) then
+         call edge_llr(iv - 240)
+      else if (iv .le. 200) then
          do i = 1, 77
             msg(i) = int(nextu() * 2.0d0, 1)
          enddo
@@ -72,7 +76,7 @@ program msk144_ldpc_oracle
       endif
       maxiter = 10
       if (mod(iv, 5) .eq. 0) maxiter = 30
-      ltrace = iv .le. 6 .or. (iv .ge. 201 .and. iv .le. 203)
+      ltrace = .true.
       ntrace = 0
       if (ltrace) ntrace = 1
       ibits = transfer(llr, ibits)
@@ -136,6 +140,45 @@ program msk144_ldpc_oracle
    ! the end marker: a truncated output (a failed self-check, a crash) cannot match without it
    write(*, '(a,1x,i0)') 'END ldpc', nrun
 contains
+   ! the edge cases: k = 1..20
+   subroutine edge_llr(k)
+      integer, intent(in) :: k
+      real, parameter :: sc(9) = (/ 1.0e-40, 1.0e-38, 1.0e-30, 1.0e-6, 1.0e3, 1.0e6, 1.0e20, 1.0e30, 1.0e37 /)
+      real :: pinf
+      integer :: ii
+      pinf = transfer(int(z'7F800000'), 1.0)
+      if (k .le. 9) then
+         do ii = 1, 128
+            llr(ii) = sc(k) * (real(2 * enc(k, ii) - 1) + 0.8 * gauss())
+         enddo
+      else if (k .eq. 10) then
+         llr = 0.0
+      else if (k .eq. 11) then
+         do ii = 1, 128
+            llr(ii) = 0.0
+            if (mod(ii, 2) .eq. 0) llr(ii) = -0.0
+         enddo
+      else if (k .le. 13) then
+         do ii = 1, 128
+            llr(ii) = 4.0 * (real(2 * enc(k, ii) - 1) + 0.6 * gauss())
+         enddo
+         llr(3) = pinf
+         llr(70) = pinf
+         if (k .eq. 13) then
+            llr(3) = -pinf
+            llr(70) = -pinf
+            llr(128) = -pinf
+         endif
+      else if (k .le. 16) then
+         do ii = 1, 128
+            llr(ii) = real(nint(3.0 * (real(2 * enc(k, ii) - 1) + 0.9 * gauss())))
+         enddo
+      else
+         do ii = 1, 128
+            llr(ii) = 0.5 * gauss()
+         enddo
+      endif
+   end subroutine edge_llr
    real function pb(k)
       integer, intent(in) :: k
       real :: b(7)
@@ -200,24 +243,3 @@ contains
       gauss = real(t)
    end function gauss
 end program msk144_ldpc_oracle
-
-subroutine msk144_trace_print(iter, zn, tov)
-   implicit none
-   integer, intent(in) :: iter
-   real, intent(in) :: zn(128), tov(4,128)
-   real :: s1, s2
-   integer :: i, j, kk
-   s1 = 0.0
-   do i = 1, 128
-      s1 = s1 + zn(i)
-   enddo
-   s2 = 0.0
-   do j = 1, 128
-      do kk = 1, 3
-         s2 = s2 + tov(kk, j)
-      enddo
-   enddo
-   write(*, '(a,i0,7(1x,z8.8))') 'I ', iter, transfer(s1, 0), transfer(s2, 0), transfer(zn(1), 0), &
-        transfer(zn(65), 0), transfer(zn(128), 0), transfer(tov(1,1), 0), transfer(tov(2,64), 0)
-   write(*, '(a,z8.8)') 'J ', transfer(tov(3,128), 0)
-end subroutine msk144_trace_print

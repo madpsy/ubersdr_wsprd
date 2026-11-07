@@ -5,8 +5,10 @@
 ! tweak1, msk144_freq_search, four2a (npatience 1, as jt9's default: the plans
 ! are FFTW_ESTIMATE_PATIENT). The piece check appends analytic_trace to this
 ! file: lib/analytic.f90 with two calls added (see scripts/msk144-piece-check.sh)
-! that print the filter response and the FFT outputs. The oracle runs both
-! routines on every case and stops if their outputs differ.
+! that print the filter response and the FFT outputs, and
+! msk144_freq_search_trace: lib/msk144_freq_search.f90 with one call added that
+! prints each trial's c, cc and xcc. The oracle runs both copies and the
+! library's routines on every case and stops if their outputs differ.
 !
 ! Every float is its bits, 8 hex digits (a real*8, 16); arrays 16 values a line,
 ! "TAG k first-index values", complex values as re, im pairs.
@@ -25,6 +27,11 @@
 !   B i v...                     the sync word cb(1:42), as msk144sync makes it
 !   S k src nframes navmask(8) fc if1 if2 delf
 !                                msk144_freq_search on src's O(1:864*nframes)
+!   R k ifr                      one of its trials, in the order it runs them,
+!                                then (before the finiteness test):
+!   C k i v...                   c(1:864), the averaged frames  [the search's]
+!   E k i v...                   cc(0:863), the correlation     [the search's]
+!   M k i v...                   xcc(0:863), its magnitudes     [the search's]
 !   X k xmax bestf               its xmax and bestf
 !   Y k i v...                   cs(1:864)
 !   Z k i v...                   xccs(0:863)
@@ -237,7 +244,7 @@ contains
    subroutine run_search_args(src, nfr, mask, ifrq1, ifrq2, delf_)
       integer :: src, nfr, mask(8), ifrq1, ifrq2, n
       real :: delf_
-      real :: ccs(0:NSPM-1), x1, b1
+      real :: ccs(0:NSPM-1), ccs1(0:NSPM-1), x1, b1
       complex :: cdat(NSPM*8), cdat2l(NSPM*8), csl(NSPM), cs1l(NSPM), cd1l(NSPM*8)
       integer :: kk, ifrq
       k = k + 1
@@ -246,7 +253,15 @@ contains
       write(*, '(a,1x,i0,1x,i0,1x,i0,8(1x,i0),1x,z8.8,2(1x,i0),1x,z8.8)') 'S', k, src, nfr, mask(1:8), &
          transfer(fc, 0), ifrq1, ifrq2, transfer(delf_, 0)
       cdat2l = 0.0
-      call msk144_freq_search(cdat, fc, ifrq1, ifrq2, delf_, nfr, mask, cb, cdat2l, xmax, bestf, csl, ccs)
+      kcase = k
+      call msk144_freq_search_trace(cdat, fc, ifrq1, ifrq2, delf_, nfr, mask, cb, cdat2l, xmax, bestf, csl, ccs)
+      ! the library's routine on the same case: the traced copy must agree with it
+      cd1l = 0.0
+      call msk144_freq_search(cdat, fc, ifrq1, ifrq2, delf_, nfr, mask, cb, cd1l, x1, b1, cs1l, ccs1)
+      if (transfer(x1, 0) /= transfer(xmax, 0) .or. transfer(b1, 0) /= transfer(bestf, 0) .or. &
+          any(transfer(cs1l, (/0/)) /= transfer(csl, (/0/))) .or. any(transfer(ccs1, (/0/)) /= transfer(ccs, (/0/))) .or. &
+          any(transfer(cd1l(1:n), (/0/)) /= transfer(cdat2l(1:n), (/0/)))) &
+         error stop 'oracle: msk144_freq_search_trace differs from msk144_freq_search'
       write(*, '(a,1x,i0,2(1x,z8.8))') 'X', k, transfer(xmax, 0), transfer(bestf, 0)
       call prc('Y', k, csl, NSPM)
       call prr('Z', k, ccs, NSPM)
@@ -339,6 +354,19 @@ subroutine msk144_dump_w(c)
    common /mskcase/ kcase
    call prc('W', kcase, c, 2)
 end subroutine msk144_dump_w
+
+! the trace call msk144_freq_search_trace makes, each trial (after xcc=abs(cc))
+subroutine msk144_dump_trial(ifr, c, cc, xcc)
+   implicit none
+   integer :: ifr, kcase
+   complex :: c(864), cc(864)
+   real :: xcc(864)
+   common /mskcase/ kcase
+   write(*, '(a,1x,i0,1x,i0)') 'R', kcase, ifr
+   call prc('C', kcase, c, 864)
+   call prc('E', kcase, cc, 864)
+   call prr('M', kcase, xcc, 864)
+end subroutine msk144_dump_trial
 
 subroutine msk144_dump_g(c, nfft)
    implicit none

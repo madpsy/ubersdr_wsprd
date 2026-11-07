@@ -454,6 +454,8 @@ for a in $(find "$repo/tests/data/msk144/cases" -path '*/jt9-*' -name args.txt 2
     # several files in a command line, and --feed: the reference's outputs stored, made one process a file
     # (its decoder.f90 sets omp_set_dynamic(.true.) after the first file, so a multi-file run answers by load)
     [[ -f $d/stdin.txt || $(grep -o '\.wav' "$a" | wc -l) -gt 1 ]] && kind=stored-bare
+    # float-*: float WAVs, which only our port reads (the reference refuses them); stored outputs from the port
+    [[ $c == float-* ]] && kind=stored-bare
     add "msk144-$c/$v|$kind|-|$(cut -d' ' -f2- "$a")"
 done
 
@@ -640,10 +642,10 @@ if (( new_spread )); then
     for spec in "${cases[@]}"; do
         [[ ${spec%%|*} == msk144-* && ( -z $only || ${spec%%|*} =~ $only ) ]] && want=$((want + 1))
     done
-    # The floor, 395: the 367 runs of the corpus at Task 8, plus the final fix wave's 28 (odd-trunc and
-    # odd-stream, 4 variants each; 20 real-uacnj-* runs). Raise it with the corpus. Under a filter the floor is 0:
-    # the match count below guards that case.
-    floor=395; [[ -n $only ]] && floor=0
+    # The floor, 398: the 367 runs of the corpus at Task 8, plus the final fix wave's 28 (odd-trunc and
+    # odd-stream, 4 variants each; 20 real-uacnj-* runs), plus the 3 float-* runs. Raise it with the corpus.
+    # Under a filter the floor is 0: the match count below guards that case.
+    floor=398; [[ -n $only ]] && floor=0
     echo "jt9-compare: MSK144: $nmsk of $want cases ran (at least $floor expected)" >&2
     if (( nmsk < want || nmsk < floor )); then
         echo "jt9-compare: FAIL: MSK144 cases did not all run" >&2; fails=1

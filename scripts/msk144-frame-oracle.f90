@@ -31,6 +31,8 @@
 !   KY k nbadsync1 nbadsync2   the sync word errors
 !   KN k sav s2av ssig         the normalisation
 !   KL k i v...                llr(1:128) after 2*llr/sigma**2
+!   I, J, BZ, BV, BO, BH       bpdecode128_90's iterations: zn, tov, toc and tanhtoc
+!                              (scripts/msk144-bp-trace.f90)
 !   KD k nharderror niter |decoded77| |cw|    bpdecode128_90's answer
 !   KT k |c77| n3 i3           the message bits and its type
 !   R k nsuccess |msgreceived| the answer
@@ -79,6 +81,8 @@ program msk144_frame_oracle
    integer*1 :: m77(77), cw(128)
    integer :: kc
    common /frcase/ kc
+   logical :: ltrace
+   common /msktrace/ ltrace
    character(len=37) :: texts(40), lastmsg
    real :: sig, ph, dw
    integer, parameter :: nfl(6) = (/1, 3, 8, 14, 20, 28/)
@@ -88,6 +92,7 @@ program msk144_frame_oracle
 
    state = 20261106_8
    k = 0
+   ltrace = .true.   ! bpdecode128_90_trace prints every iteration (scripts/msk144-bp-trace.f90)
    lastmsg = ' '
 
    texts = ' '

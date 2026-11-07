@@ -455,6 +455,29 @@ mode (`bswl`): MSK40 messages between any pair of calls heard, and
 `<HHHH> RPT` for a hash that no call explains. Both stay off by default, as
 in `jt9`. Without them it decodes as WSJT-X's does.
 
+`jt9 --msk144` takes a mono 32-bit float `.wav` too, as the other modes do (ours:
+WSJT-X's refuses it). Each sample `x` enters the decoder as `x*32768.0f`, the 16-bit
+count it would have been, so a float file made from 16-bit samples decodes byte for
+byte as the 16-bit file does (`scripts/float-input-check.sh`, under every MSK144
+command line of the corpus, `--msk-shmsg` and `--msk-swl` too). Two things differ,
+and only for float files. `mskrtd` skips a block as silent when its rms is below
+one 16-bit count; a float file has no such quantisation floor (radiod's F32 can
+sit at -135 dBFS), so only a block of whole counts takes that test, and a very
+quiet float file decodes like a loud one (`float-level`). The same difference can
+change the printed SNR on very quiet float audio: a block that 16-bit input would
+skip as silent still updates the noise level, so a later decode prints the SNR it
+earned, where the 16-bit file prints a lower one (a test file at an rms of 0.7
+count: SNR 8 as float, 0 as rounded 16-bit). The float figure is the better one.
+A block with a NaN or an
+inf is skipped as silent as well, where it would otherwise poison the noise level
+for the rest of the file (`float-nan`); the run still exits 0 and prints
+`<DecodeFinished>`. The `decoded.txt` test uses the scaled values too, so a file
+quieter than rms 0.5 count leaves no `decoded.txt`, and a NaN among the first
+180000 samples makes that rms NaN, which writes the (empty) file whatever the
+level, as `decoder.f90`'s test does. These two cases have no
+reference output: their stored files come from this port. The 16-bit path
+keeps its parity with WSJT-X 3.2.0-rc1: the 395 reference runs still match.
+
 It matches WSJT-X's byte for byte, as for FT8: stdout, the exit status
 and the files left behind. The decoder follows WSJT-X's `decode_msk144.f90` and
 `mskrtd.f90`, with what they call (`msk144spd`, `msk144sync`,
@@ -811,6 +834,10 @@ cmake --build build
 
 A 32-bit ARM system (`armv7l`) builds the plain code by itself.
 
+The compiler must be GCC 9 or later, or Clang: some decoder code uses
+their vector extensions (`__builtin_convertvector` among them). MSVC
+cannot build it; the Windows build uses mingw-w64's GCC.
+
 **Windows**, cross-compiled on Linux with Docker (mingw-w64, FFTW built in,
 so `wsprd.exe` and `jt9.exe` are one file each that need nothing beside them):
 
@@ -846,13 +873,15 @@ nothing of WSJT-X built, in a few minutes: `scripts/wsprd-stored-check.sh`
 runs `wsprd` on every case in `tests/data/wsprd/cases` as WSJT-X's was run
 (stdout, the files written and the exit statuses byte for byte), and
 `scripts/jt9-wine-check.sh` runs `jt9` on every stored FST4W, FT8, FT4, FT2
-and MSK144 case whose inputs are here (367 of MSK144's 395 runs: the other 28
+and MSK144 case whose inputs are here (367 of the 395 MSK144 runs that have a reference, and the 3 float runs, 370 in all: the other 28
 use odd WAV files that only `--deep-check` makes; the script counts and prints
 them). The same script checks `jt9.exe` under wine. It has not yet run the
 MSK144 cases on a wine host.
 `scripts/float-input-check.sh` writes each 16-bit recording again as 32-bit
 float, the same samples, and requires `wsprd` (under four option sets) and
-`jt9 --fst4w` to leave the same files from it, byte for byte.
+`jt9 --fst4w` to leave the same files from it, byte for byte, and `jt9 --msk144` under
+every command line of the MSK144 corpus that reads 16-bit recordings, including the
+runs with several files and `--feed`, which carry state from file to file.
 `scripts/ft-float-feed-check.sh` decodes each FT8, FT4 and FT2 recording set as
 one run (one decoder for its files, in order) under three option sets, from
 the 16-bit files, from their float copies, and through `--feed` from each,
@@ -925,7 +954,7 @@ that need recorded periods not included here are skipped). Against the
 hybrid itself all 468 of FT2's cases, with 239 recorded 40 m periods, were
 identical. For MSK144, `scripts/msk144-oracle.sh` builds WSJT-X's `jt9` and `msk144sim`
 at the same commit in the same container and makes the corpus in
-`tests/data/msk144` (395 runs, listed in its `README.md`): simulated pings
+`tests/data/msk144` (395 runs with a reference, 398 with our float cases, listed in its `README.md`): simulated pings
 across SNR, frequency, width, number and period, WSJT-X's samples, 21 real
 slots, odd WAV files, several files in one run, MSK40 and SWL. `--deep-check`
 runs every one beside the reference, and all 395 match on x86-64 Linux. The

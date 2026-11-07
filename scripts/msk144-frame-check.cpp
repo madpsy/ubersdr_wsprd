@@ -26,6 +26,7 @@
 #include "ft8_maths.h"
 #include "msk144_decode.h"
 #include "msk144_ldpc.h"
+#include "msk144-bp-trace.h"
 
 namespace {
 
@@ -148,6 +149,7 @@ int main() {
     msk144::decode_trace.llr = t_llr;
     msk144::decode_trace.bp = t_bp;
     msk144::decode_trace.tag = t_tag;
+    bp_trace::install();  // bpdecode128_90's iterations, as the oracle's bpdecode128_90_trace prints them
 
     std::string line;
     while (std::getline(std::cin, line)) {
@@ -303,7 +305,8 @@ int main() {
             std::printf("AV %d %08X %08X %08X\n", kk, bits_of(y), bits_of(x), bits_of(ft8::atan2f_glibc(y, x)));
         } else if (tag == "KP" || tag == "KB" || tag == "KH" || tag == "KF" || tag == "KC" || tag == "KS" || tag == "KY" ||
                    tag == "KN" || tag == "KL" || tag == "KD" || tag == "KT" || tag == "R" || tag == "S" || tag == "O" ||
-                   tag == "Q" || tag == "END") {
+                   tag == "Q" || tag == "END" || tag == "I" || tag == "J" || tag == "BZ" || tag == "BV" || tag == "BO" ||
+                   tag == "BH") {
             continue;
         } else {
             std::fprintf(stderr, "msk144-frame-check: unknown line: %s\n", line.c_str());

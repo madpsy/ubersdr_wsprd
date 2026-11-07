@@ -2,7 +2,8 @@
 // output (scripts/msk144-ldpc-oracle.f90) on stdin, takes its L, C, P and T
 // lines as inputs, and prints every line as the reference printed it, the
 // results from src/msk144_ldpc.cpp (and ft8::tanhf_glibc) instead; the oracle's
-// I, J and R lines are not read, the port's trace hook and decoder make them.
+// R lines and trace lines (I, J, BZ, BV, BO, BH) are not read, the port's
+// decoder and its trace hooks (scripts/msk144-bp-trace.h) make them.
 // The two outputs must be identical byte for byte.
 //
 // License: GNU GPL v3 (as WSJT-X)
@@ -15,6 +16,7 @@
 
 #include "ft8_ldpc.h"
 #include "msk144_ldpc.h"
+#include "msk144-bp-trace.h"
 
 namespace {
 
@@ -30,21 +32,14 @@ float float_of(const std::string& hex) {
     return x;
 }
 
-// msk144_trace_print in the oracle: the same sums in the same order.
-void trace(int iter, const float zn[129], const float tov[4][129]) {
-    float s1 = 0.0f;
-    for (int i = 1; i <= 128; ++i) s1 = s1 + zn[i];
-    float s2 = 0.0f;
-    for (int j = 1; j <= 128; ++j)
-        for (int kk = 1; kk <= 3; ++kk) s2 = s2 + tov[kk][j];
-    std::printf("I %d %08X %08X %08X %08X %08X %08X %08X\n", iter, bits_of(s1), bits_of(s2), bits_of(zn[1]),
-                bits_of(zn[65]), bits_of(zn[128]), bits_of(tov[1][1]), bits_of(tov[2][64]));
-    std::printf("J %08X\n", bits_of(tov[3][128]));
-}
-
 }  // namespace
 
 int main() {
+    if (!msk144::bpdecode128_90_fast_tables_ok()) {
+        std::fprintf(stderr, "msk144-ldpc-check: FAST TABLES FAILED their checks: bpdecode128_90 runs the reference\n");
+        return 1;
+    }
+    std::fprintf(stderr, "msk144-ldpc-check: fast tables passed (bpdecode128_90 runs the edge-table path)\n");
     std::string line;
     int nrun = 0;  // decodes run: the oracle's END count
     float llr[128] = {};
@@ -62,9 +57,16 @@ int main() {
         } else if (line.rfind("R ", 0) == 0) {
             int nharderror = -99, iter = -99;
             signed char cw[128] = {};
-            msk144::bpdecode128_90_trace = want_trace ? trace : nullptr;
+            // the line-for-line reference first, on a copy of message77 (written only on success)
+            int rnh = -99, riter = -99;
+            signed char rm77[77], rcw[128] = {};
+            std::memcpy(rm77, m77, 77);
+            msk144::bpdecode128_90_reference(llr, maxiter, rm77, rcw, rnh, riter);
+            if (want_trace) bp_trace::install();
             msk144::bpdecode128_90(llr, maxiter, m77, cw, nharderror, iter);
-            msk144::bpdecode128_90_trace = nullptr;
+            bp_trace::remove();
+            if (rnh != nharderror || riter != iter || std::memcmp(rm77, m77, 77) != 0 || std::memcmp(rcw, cw, 128) != 0)
+                std::printf("MISMATCH bpdecode128_90 against bpdecode128_90_reference\n");
             signed char word[90];
             std::memcpy(word, cw, 90);
             const int nbadcrc = msk144::chkcrc13a(word) ? 0 : 1;

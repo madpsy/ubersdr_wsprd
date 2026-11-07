@@ -79,6 +79,13 @@ struct RtdState {
 std::string mskrtd(RtdState& st, packjt77::Packjt77& pk, const int16_t* id2, int nutc0, float tsec, int ntol,
                    int nrxfreq, int ndepth, const std::string& mycall12, const std::string& hiscall12, bool bshmsg,
                    bool bswl);
+// The same, from the NZ samples as floats in 16-bit counts (a float file's x*32768):
+// the body the int16 overload converts to. Ours: it also skips a block with a NaN or
+// inf, and takes the `rms < 1` silence gate only for a block of whole counts (see
+// msk144.cpp), so a 16-bit block decodes as before and a very quiet float block decodes.
+std::string mskrtd(RtdState& st, packjt77::Packjt77& pk, const float* d, int nutc0, float tsec, int ntol,
+                   int nrxfreq, int ndepth, const std::string& mycall12, const std::string& hiscall12, bool bshmsg,
+                   bool bswl);
 
 // decode_msk144_core(audio_samples, params, data_dir, completion): the
 // decode lines of one file's samples (audio, `nsamples` of them, the rest
@@ -88,6 +95,10 @@ std::string mskrtd(RtdState& st, packjt77::Packjt77& pk, const int16_t* id2, int
 // message_count (bshmsg and bswl as in mskrtd). The caller resets st and the
 // packjt77 tables first.
 int decode_msk144(RtdState& st, packjt77::Packjt77& pk, const int16_t* audio, long nsamples, int nutc, int ntr, int ntol,
+                  int nfqso, int ndepth, const std::string& mycall12, const std::string& hiscall12, bool bshmsg, bool bswl,
+                  std::ostream& out);
+// The same from float samples in 16-bit counts (x*32768 for a float file).
+int decode_msk144(RtdState& st, packjt77::Packjt77& pk, const float* audio, long nsamples, int nutc, int ntr, int ntol,
                   int nfqso, int ndepth, const std::string& mycall12, const std::string& hiscall12, bool bshmsg, bool bswl,
                   std::ostream& out);
 

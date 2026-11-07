@@ -42,7 +42,19 @@ static void update_recent_shmsgs(const std::string& message, std::array<std::str
 }
 
 // ---- mskrtd.f90:1-241 (btrain false; msk40spd at lines 129-134, the bswl branch at 221-237)
+// The 16-bit samples as the floats mskrtd does arithmetic on (d=id2): exact.
 std::string mskrtd(RtdState& st, packjt77::Packjt77& pk, const int16_t* id2, int nutc0, float tsec, int ntol,
+                   int nrxfreq, int ndepth, const std::string& mycall12, const std::string& hiscall12, bool bshmsg,
+                   bool bswl) {
+    float d16[NZ];
+    for (int i = 0; i < NZ; ++i) d16[i] = static_cast<float>(id2[i]);
+    return mskrtd(st, pk, static_cast<const float*>(d16), nutc0, tsec, ntol, nrxfreq, ndepth, mycall12, hiscall12,
+                  bshmsg, bswl);
+}
+
+// The one body: d_in holds the NZ samples in 16-bit counts (a 16-bit file's
+// samples, or a float file's x*32768).
+std::string mskrtd(RtdState& st, packjt77::Packjt77& pk, const float* d_in, int nutc0, float tsec, int ntol,
                    int nrxfreq, int ndepth, const std::string& mycall12, const std::string& hiscall12, bool bshmsg,
                    bool bswl) {
     // data iavpatterns/ 1,1,1,1,0,0,0,0, 0,0,1,1,1,1,0,0, 1,1,1,1,1,0,0,0, 1,1,1,1,1,1,1,0/, (8,NPATTERNS)
@@ -105,11 +117,23 @@ std::string mskrtd(RtdState& st, packjt77::Packjt77& pk, const int16_t* id2, int
     const int max_iterations = 10;
     (void)max_iterations;
     // d(1:NZ)=id2; rms=sqrt(sum(d(1:NZ)*d(1:NZ))/NZ)
-    for (int i = 0; i < NZ; ++i) d[i] = static_cast<float>(id2[i]);
+    // Ours, for float input (a 16-bit block always passes both tests): the
+    // reference's `rms < 1` is a silence gate in 16-bit counts, where one count
+    // is the quantisation step. A float block that is not whole counts has no
+    // such floor (radiod's F32 can sit near -135 dBFS, rms far below one
+    // count), so only a block of whole counts takes that gate; a block with a
+    // NaN or inf, or whose rms overflows, is skipped as silence (the decoder
+    // would divide by a NaN and keep it in pnoise for the rest of the file).
+    bool whole = true, finite = true;
+    for (int i = 0; i < NZ; ++i) {
+        d[i] = d_in[i];
+        finite = finite && std::isfinite(d[i]);
+        whole = whole && d[i] == std::nearbyint(d[i]);
+    }
     float sumsq = 0.0f;
     for (int i = 0; i < NZ; ++i) sumsq = sumsq + d[i] * d[i];
     const float rms = std::sqrt(sumsq / static_cast<float>(NZ));
-    if (rms < 1.0f) {
+    if (!finite || !std::isfinite(rms) || rms == 0.0f || (whole && rms < 1.0f)) {
         st.tsec0 = tsec;  // go to 999
         return line;
     }
@@ -246,22 +270,23 @@ std::string mskrtd(RtdState& st, packjt77::Packjt77& pk, const int16_t* id2, int
 }
 
 // ---- decode_msk144.f90:1-88
-int decode_msk144(RtdState& st, packjt77::Packjt77& pk, const int16_t* audio, long nsamples, int nutc, int ntr, int ntol,
-                  int nfqso, int ndepth, const std::string& mycall12, const std::string& hiscall12, bool bshmsg, bool bswl,
-                  std::ostream& out) {
+template <typename T>
+static int decode_msk144_body(RtdState& st, packjt77::Packjt77& pk, const T* audio, long nsamples, int nutc, int ntr,
+                              int ntol, int nfqso, int ndepth, const std::string& mycall12,
+                              const std::string& hiscall12, bool bshmsg, bool bswl, std::ostream& out) {
     constexpr int SAMPLING_RATE = 12000, BLOCK_SIZE = 7168, STEP_SIZE = BLOCK_SIZE / 2;
     int message_count = 0;
     // decode in 0.3s blocks
     const long sample_count = static_cast<long>(ntr) * SAMPLING_RATE;
-    std::array<int16_t, BLOCK_SIZE> buffer;
+    std::array<T, BLOCK_SIZE> buffer;
     for (long position = 1; position <= sample_count - BLOCK_SIZE + 1; position += STEP_SIZE) {
         // buffer = audio_samples(position:position+BLOCK_SIZE-1): what was never read is zero
         for (int i = 0; i < BLOCK_SIZE; ++i) {
             const long j = position - 1 + i;
-            buffer[static_cast<size_t>(i)] = j < nsamples ? audio[j] : static_cast<int16_t>(0);
+            buffer[static_cast<size_t>(i)] = j < nsamples ? audio[j] : static_cast<T>(0);
         }
         const float tsec = static_cast<float>(position) / static_cast<float>(SAMPLING_RATE);
-        std::string line = mskrtd(st, pk, buffer.data(), nutc, tsec, ntol, nfqso, ndepth, mycall12, hiscall12, bshmsg,
+        std::string line = mskrtd(st, pk, static_cast<const T*>(buffer.data()), nutc, tsec, ntol, nfqso, ndepth, mycall12, hiscall12, bshmsg,
                                     bswl);
         // line(1:1).ne.char(0): a line was made. line = line(1:index(line,char(0))-1), write(*,1001) line, a80
         if (!line.empty()) {
@@ -274,6 +299,20 @@ int decode_msk144(RtdState& st, packjt77::Packjt77& pk, const int16_t* audio, lo
         }
     }
     return message_count;
+}
+
+int decode_msk144(RtdState& st, packjt77::Packjt77& pk, const int16_t* audio, long nsamples, int nutc, int ntr, int ntol,
+                  int nfqso, int ndepth, const std::string& mycall12, const std::string& hiscall12, bool bshmsg, bool bswl,
+                  std::ostream& out) {
+    return decode_msk144_body(st, pk, audio, nsamples, nutc, ntr, ntol, nfqso, ndepth, mycall12, hiscall12, bshmsg, bswl,
+                              out);
+}
+
+int decode_msk144(RtdState& st, packjt77::Packjt77& pk, const float* audio, long nsamples, int nutc, int ntr, int ntol,
+                  int nfqso, int ndepth, const std::string& mycall12, const std::string& hiscall12, bool bshmsg, bool bswl,
+                  std::ostream& out) {
+    return decode_msk144_body(st, pk, audio, nsamples, nutc, ntr, ntol, nfqso, ndepth, mycall12, hiscall12, bshmsg, bswl,
+                              out);
 }
 
 }  // namespace msk144

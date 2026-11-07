@@ -7,7 +7,8 @@
 //
 // What it rests on: no multiply-adds fused (-ffp-contract=off, CMakeLists.txt);
 // float sums and products in the Fortran's order; glibc's tanhf (tanhf_glibc,
-// ft8_ldpc.h), which gfortran calls for tanh of a default real.
+// and bp_tanhf, eight at a time to the same bits: ft8_ldpc.h), which gfortran
+// calls for tanh of a default real.
 //
 // bpdecode128_90.f90, chkcrc13a.f90, crc13.cpp: Steven Franke, K9AN, and Joe
 // Taylor, K1JT, WSJT-X (GNU GPL v3), and so is this.
@@ -26,6 +27,12 @@ float platanh(float x);
 // unused), as the Fortran's arrays are.
 using Bpdecode128_90Trace = void (*)(int iter, const float zn[129], const float tov[4][129]);
 extern Bpdecode128_90Trace bpdecode128_90_trace;
+// The same for the messages from bits to checks: called after the tanh, in
+// each iteration whose messages are read again (iter < maxiterations), with
+// toc(1:11,1:38) and tanhtoc(1:11,1:38), 1-based in both indices as the
+// Fortran's; only rows 1..nrw(j) of check j are set (the rest are never read).
+using Bpdecode128_90MsgTrace = void (*)(int iter, const float toc[12][39], const float tanhtoc[12][39]);
+extern Bpdecode128_90MsgTrace bpdecode128_90_msg_trace;
 
 // bpdecode128_90(llr, apmask, maxiterations, message77, cw, nharderror, iter),
 // with apmask all zero, as msk144decodeframe passes it. message77 is written
@@ -35,6 +42,17 @@ extern Bpdecode128_90Trace bpdecode128_90_trace;
 // 0/1. The return value equals nharderror.
 int bpdecode128_90(const float llr[128], int maxiterations, signed char message77[77], signed char cw[128],
                    int& nharderror, int& niterations);
+// True when bpdecode128_90's edge tables passed their checks; false means every
+// call silently runs bpdecode128_90_reference. The piece check requires true.
+bool bpdecode128_90_fast_tables_ok();
+// The line-for-line translation bpdecode128_90 was optimised from, kept for
+// the side-by-side test and as its fallback: the same results and the same
+// trace.
+int bpdecode128_90_reference(const float llr[128], int maxiterations, signed char message77[77],
+                             signed char cw[128], int& nharderror, int& niterations);
+// out[l] = 2*platanh(-tmn[l]), l < 8, as bpdecode128_90 computes it eight at a
+// time (for the side-by-side test of its lanes against platanh).
+void platanh2_n8(const float tmn[8], float out[8]);
 
 // chkcrc13a(decoded, nbadcrc) with nbadcrc == 0: true when the 13 bits after
 // the 77 of decoded(1:90) are the CRC of the 77 (bits 0/1).
