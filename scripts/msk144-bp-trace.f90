@@ -1,7 +1,7 @@
 ! The trace printers of bpdecode128_90_trace (the reference's
 ! lib/bpdecode128_90.f90 with two calls added by scripts/msk144-piece-check.sh),
 ! shared by the ldpc and frame oracles; scripts/msk144-bp-trace.h prints the same
-! from the port's hooks (src/msk144_ldpc.h).
+! from our hooks (src/msk144_ldpc.h).
 !
 !   I iter zn-sum tov-sum zn(1) zn(65) zn(128) tov(1,1) tov(2,64)
 !   J tov(3,128)            checksums, at the top of each iteration

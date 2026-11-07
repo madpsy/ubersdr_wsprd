@@ -12,7 +12,7 @@
 ! decodes, msk144_frame_hook, which runs the library's msk144decodeframe on the
 ! frame itself (it corrects the frame in place, as it does in the library's
 ! msk144spd, so the copy's ct, softbits and msgreceived are the library's) and
-! prints a hash of what it was given and what it answered: the port's driver
+! prints a hash of what it was given and what it answered: our driver
 ! runs its own msk144decodeframe (src/msk144_decode.cpp) on the frames its own
 ! msk144spd cuts, and prints the same.
 !
@@ -178,7 +178,7 @@ program msk144_sync_oracle
    call print_slice(99, cl, NLONG)
    call check_synbits()
    ! check_synbits runs the library's decoder and leaves the shared packjt77 tables (calls, recent_calls, hashes)
-   ! filled: the port starts empty, so start the cases from the same empty state
+   ! filled: our jt9 starts empty, so start the cases from the same empty state
    calls10 = ''; calls12 = ''; calls22 = ''; recent_calls = ''; ihash22 = -1; nzhash = 0
    ! ---- synthetic blocks: eight repeats of one frame at 1500 Hz, so that the real frame decoder meets frames
    ! it refuses. The 77 bits: one that unpacks to

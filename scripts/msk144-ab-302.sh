@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# The A/B of Task 8: WSJT-X 3.0.2's jt9 against the stored 3.2.0-rc1 outputs
-# (tests/data/msk144/cases, which the port matches), run by run.
+# The A/B: WSJT-X 3.0.2's jt9 against the stored 3.2.0-rc1 outputs
+# (tests/data/msk144/cases, which our jt9 matches), run by run.
 #
-#   scripts/msk144-ab-302.sh [JT9]     JT9 defaults to /opt/git/sigmond/wsjtx/build-sigmond/jt9
+#   scripts/msk144-ab-302.sh JT9       JT9 is a WSJT-X 3.0.2 jt9
 #   MSK144_ODD=DIR                     the odd WAVs (@I/ in args.txt), default ~/.cache/msk144-oracle/inputs,
 #                                      where scripts/msk144-oracle.sh corpus puts them
 #
@@ -15,7 +15,7 @@
 # the files left in the directory. Prints SAME or DIFF per run, then a count.
 set -u
 repo=$(cd "$(dirname "$0")/.." && pwd)
-jt9=${1:-/opt/git/sigmond/wsjtx/build-sigmond/jt9}
+jt9=${1:?usage: scripts/msk144-ab-302.sh JT9}
 odd=${MSK144_ODD:-$HOME/.cache/msk144-oracle/inputs}
 work=$(mktemp -d "${TMPDIR:-/tmp}/msk144-ab.XXXXXX")
 unset OMP_DYNAMIC OMP_THREAD_LIMIT

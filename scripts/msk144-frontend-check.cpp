@@ -1,4 +1,4 @@
-// The port's side of scripts/msk144-piece-check.sh frontend: reads the
+// Our side of scripts/msk144-piece-check.sh frontend: reads the
 // oracle's output (scripts/msk144-frontend-oracle.f90) on stdin, takes its A,
 // D, B, T and S lines as inputs (and its O arrays as the inputs of tweak1 and
 // the frequency search), and prints every line as the reference printed it,
@@ -111,7 +111,7 @@ int main() {
         std::array<double, 5> pc{};
     } cur;
     int curk = -1;
-    int oskip = -1;  // the case whose H..O lines the port has printed
+    int oskip = -1;  // the case whose H..O lines our jt9 has printed
     int tskip = -1, sskip = -1;
     msk144::analytic_trace = trace;
     while (std::getline(std::cin, line)) {

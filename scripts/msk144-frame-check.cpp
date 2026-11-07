@@ -1,8 +1,8 @@
-// The port's side of scripts/msk144-piece-check.sh frame: reads the oracle's
+// Our side of scripts/msk144-piece-check.sh frame: reads the oracle's
 // output (scripts/msk144-frame-oracle.f90) on stdin, takes its PK, C, RUN, QS,
 // EN, GM, FM, AT and AV lines as inputs, and prints every line as the
 // reference printed it, the results from src/msk144_decode.cpp instead (the
-// trace lines through the port's hooks). The two outputs must be identical
+// trace lines through our hooks). The two outputs must be identical
 // byte for byte.
 //
 // The module packjt77's state is shared by the reference's calls: the driver
@@ -33,7 +33,7 @@ namespace {
 using msk144::cfloat;
 
 // the bits of a float, a NaN as the default one: BLIND SPOT: neither side compares the sign and payload of a NaN
-// (the oracle's copy and the library are different objects, and x86 returns the first operand's NaN), so a port
+// (the oracle's copy and the library are different objects, and x86 returns the first operand's NaN), so a decoder
 // that gets a NaN's sign or payload wrong passes (the atan2 sweeps' hashw uses raw bits)
 uint32_t bits_of(float x) {
     if (x != x) return 0x7FC00000u;
@@ -162,7 +162,7 @@ int main() {
             size_t after;
             const std::string text = field37(line, 0, &after);
             std::istringstream is2(line.substr(after));
-            is2 >> i3 >> n3;  // the oracle's, not used: the port makes its own
+            is2 >> i3 >> n3;  // the oracle's, not used: our jt9 makes its own
             const bool nosave = tag == "PN";  // record_tx_hashes false: pack77 (these texts pack, so as the fallback does)
             const msk144::Packjt77::Packed p = nosave ? pk.pack77(text, false) : pk.pack77_legacy_truncating_fallback(text);
             std::printf("%s %d |%s| %d %d %s\n", tag.c_str(), it, text.c_str(), p.i3, p.n3, p.c77.c_str());

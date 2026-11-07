@@ -112,7 +112,7 @@ EOF
     echo "$stem 15" >> "$manifest"
 fi
 
-# Task 6's inputs (the Review Focus cases of scripts/msk144-oracle.sh focus),
+# The behaviour cases' inputs (the cases of scripts/msk144-oracle.sh focus),
 # listed in MANIFEST.focus, not MANIFEST: the corpus runs no variants on them.
 #   hash-a, hash-b, hash-ab: a ping of "K1ABC W9XYZ EN37" at 3 s; a ping of
 #       "<W9XYZ> PJ4/K1ABC RRR" at 9 s (a hashed call: it prints <...> unless the
@@ -127,7 +127,7 @@ fi
 #       before it would show in the SNR
 #   freq-edge-f0800: the carrier at 800 Hz, +8 dB: -f and -F reach it from
 #       the band's lower edge (-f 200 -F 700, -f 0, a window cut at 0 Hz)
-#   swl-state-a, swl-state-b (Task 7): a ping of "N0ABC W1AW EN34" at +10 dB, and three
+#   swl-state-a, swl-state-b: a ping of "N0ABC W1AW EN34" at +10 dB, and three
 #       pings of the MSK40 frame "<N0ABC W1AW> RRR" at +8 dB (jt9's calls are K1ABC
 #       and W9XYZ, so the hash is none the decoder is asked for). Run with
 #       --msk-swl, files b, a, b: the pair's hash is in the SWL table when the

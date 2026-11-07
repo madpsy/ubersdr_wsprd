@@ -71,6 +71,10 @@ decoders=(
     ft8.cpp ft8_frontend.cpp ft8_jt9.cpp ft8_ldpc.cpp ft8_maths.cpp
     ft_fast_subtract.cpp packjt77.cpp wsprd_osd.cpp
 )
+# jt9_cli.cpp reaches MSK144's too (jt9.cjs: jt9 -k).
+for f in msk144_ldpc.cpp msk_frontend.cpp msk144_sync.cpp msk144_decode.cpp msk40.cpp msk144.cpp msk144_jt9.cpp; do
+    [ -f "$root/src/$f" ] && decoders+=("$f")
+done
 for f in ft2_sync.cpp ft4_candidates.cpp ft4_metrics.cpp ft4_sync.cpp ft4_wave.cpp; do
     [ -f "$root/src/$f" ] && decoders+=("$f")
 done

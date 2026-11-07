@@ -1,14 +1,14 @@
-// The port's side of scripts/msk144-piece-check.sh sync: reads the oracle's
+// Our side of scripts/msk144-piece-check.sh sync: reads the oracle's
 // output (scripts/msk144-sync-oracle.f90) on stdin, takes its I, L, J, K, W,
 // SYN and SPD lines as inputs, and prints every line as the reference printed
 // it, the results from src/msk144_sync.cpp instead (the trace lines through
-// the port's hooks). The two outputs must be identical byte for byte.
+// our hooks). The two outputs must be identical byte for byte.
 //
-// msk144spd's frame decoder is the port's own (src/msk144_decode.cpp): it
-// decodes the frames the port's msk144spd cuts, in place as the reference's
+// msk144spd's frame decoder is our own (src/msk144_decode.cpp): it
+// decodes the frames our msk144spd cuts, in place as the reference's
 // does, and the F lines (a hash of the frame it was given, and what the
 // decoder answered), the X, U (softbits) and V (ct) lines after each
-// msk144spd are all the port's: a wrong frame, answer, softbits, ct or
+// msk144spd are all our: a wrong frame, answer, softbits, ct or
 // msgreceived shows. One Packjt77 serves the whole run, as the reference's
 // module packjt77 does.
 //
@@ -161,7 +161,7 @@ void make_input(int s, int off, int n, int nanidx, int infidx, float scale, cflo
 }  // namespace
 
 int main() {
-    // the oracle's whole output (its F, U and V lines, and the like, are what the port's own lines are compared with)
+    // the oracle's whole output (its F, U and V lines, and the like, are what our own lines are compared with)
     std::vector<std::string> lines;
     std::string line;
     while (std::getline(std::cin, line)) lines.push_back(line);

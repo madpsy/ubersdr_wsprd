@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# One piece of the MSK144 port against the reference, byte for byte:
+# One piece of the MSK144 decoder against the reference, byte for byte:
 #
 #   scripts/msk144-piece-check.sh PIECE
 #
 # builds scripts/msk144-PIECE-oracle.f90 against WSJT-X's own library
 # (scripts/msk144-oracle.sh fortran, in the wsjtx-oracle image) and
-# scripts/msk144-PIECE-check.cpp against the port's sources with jt9's
+# scripts/msk144-PIECE-check.cpp against our sources with jt9's
 # floating-point flags (CMakeLists.txt's FT8_FP_OPTIONS), runs the oracle,
 # gives its output to the driver on stdin, and diffs the two outputs. Exit 0
 # when they are identical. The oracle makes its own fixed inputs and prints
 # them with its results; the driver reads the inputs back out of that output
-# and prints the port's results in the same format.
+# and prints our results in the same format.
 #
 # A later piece adds its oracle, its driver, and one line to the table below
-# (the port's sources that driver links).
+# (our sources that driver links).
 #
 # ldpc also checks intermediate values: the oracle gets, appended, a copy of
 # the reference's lib/bpdecode128_90.f90 (sed: renamed bpdecode128_90_trace,
@@ -21,11 +21,11 @@
 # msk144_trace_print, which prints zn and tov, every value's bits, and
 # checksums of them; after the tanh, msk144_trace_msg, which prints every toc
 # and tanhtoc, in each iteration whose messages are read again) and
-# scripts/msk144-bp-trace.f90 (those printers), and the port's optional hooks
+# scripts/msk144-bp-trace.f90 (those printers), and our optional hooks
 # (bpdecode128_90_trace and bpdecode128_90_msg_trace in src/msk144_ldpc.h,
 # through scripts/msk144-bp-trace.h) print the same. Every vector is traced.
 # The driver also runs the line-for-line bpdecode128_90_reference beside the
-# port's decoder and prints a MISMATCH line (which the oracle never prints) if
+# decoder in use and prints a MISMATCH line (which the oracle never prints) if
 # their answers differ. The sed anchors are checked: the script stops if the
 # reference moved.
 #
@@ -33,12 +33,12 @@
 # of the reference's lib/analytic.f90 (sed: renamed analytic_trace, plus two
 # calls, one before the filter's `if( beq )`, one before `c(1)=0.5*c(1)` and
 # one after it, that print the filter response h, the equalizer corr, and c
-# after the forward FFT, after the filter and after the half of the DC term), and the port's hook (analytic_trace in
+# after the forward FFT, after the filter and after the half of the DC term), and our hook (analytic_trace in
 # src/msk_frontend.h) prints the same. It also gets a copy of the reference's
 # lib/msk144_freq_search.f90 (sed: renamed msk144_freq_search_trace, plus one
 # call after `xcc=abs(cc)` that prints each trial's averaged frames c, its
 # correlation cc and its magnitudes xcc), checked against the library's
-# routine, and the port's hook (freq_search_trace in src/msk_frontend.h) prints
+# routine, and our hook (freq_search_trace in src/msk_frontend.h) prints
 # the same: every trial of every search, not only the one that wins. It also
 # runs msk144_freq_search once per trial frequency, for each trial's
 # correlation peak. The driver links FFTW (-lfftw3f).
@@ -52,10 +52,10 @@
 # candidates, each call of msk144sync, and where it calls msk144decodeframe a
 # hook that runs the reference's frame decoder, on the frame itself (in place,
 # as the library's msk144spd does), and prints a hash of what it was given and
-# what it answered). The port's hooks (sync_trace and spd_trace in
+# what it answered). Our hooks (sync_trace and spd_trace in
 # src/msk144_sync.h) print the same, its frame decoder is the real one
 # (src/msk144_decode.cpp), and the oracle's ct, softbits and msgreceived after
-# msk144spd (success or failure) are compared with the port's. Every case also
+# msk144spd (success or failure) are compared with our. Every case also
 # runs the library's routines and the oracle stops if a copy's results differ
 # from them (ct included).
 #
@@ -83,7 +83,7 @@
 # hooks (decode_trace in src/msk144_decode.h) print the same. The module packjt77's
 # tables are shared state: the driver makes the same pack77 and unpack77 calls in the
 # same order (the lines PK, RUN and QS). It also checks encode_128_90, genmsk_128_90,
-# fmtmsg and atan2 (the port's atan2f_glibc against the container's glibc 2.39).
+# fmtmsg and atan2 (our atan2f_glibc against the container's glibc 2.39).
 #
 # msk40 (MSK40, WSJT-X's bshmsg: scripts/msk40-oracle.f90 and scripts/msk40-check.cpp, not msk144-msk40-*)
 # checks bpdecode40, encode_msk40, hash, update_msk40_hasharray, msk40decodeframe, msk40sync and msk40spd. The
@@ -305,7 +305,7 @@ run_oracle "$oracle" "$work/oracle.out"
 
 # sync: the release jt9 links the OpenMP variant of the library (msk144sync then runs
 # min(4, OMP_GET_MAX_THREADS()) threads, each with a slice of the trial frequencies, merged by a strict >).
-# The port is serial. The same oracle, linked against libwsjt_fort_omp.a with -fopenmp and run with four
+# Our jt9 is serial. The same oracle, linked against libwsjt_fort_omp.a with -fopenmp and run with four
 # threads (a full team: OMP_DYNAMIC=false, OMP_THREAD_LIMIT unset), must print the same.
 if [[ $piece == sync ]]; then
     oracle_omp=$("$repo/scripts/msk144-oracle.sh" fortran "$oracle_full" "msk144-$piece-oracle-omp" omp)
@@ -326,7 +326,7 @@ if [[ $piece == msk40 ]]; then
     done
 fi
 
-# the driver (no output file if the port is missing: the link fails)
+# the driver (no output file if our jt9 is missing: the link fails)
 rm -f "$work/driver"
 "$cxx" "${flags[@]}" "$driver_src" "${srcs[@]}" -lfftw3f -lm -lpthread -o "$work/driver"
 "$work/driver" < "$work/oracle.out" > "$work/driver.out" 2> "$work/driver.err" ||
@@ -352,7 +352,7 @@ if cmp -s "$work/oracle.out" "$work/driver.out"; then
         exit 0
     fi
     if [[ $piece == sync ]]; then
-        echo "msk144-piece-check: sync: identical, and the OpenMP library at 4 threads the same ($(wc -l < "$work/oracle.out") lines: $(grep -c '^SYN' "$work/oracle.out") msk144sync and $(grep -c '^SPD' "$work/oracle.out") msk144spd runs; $(awk '$1 == "X" && $3 == 1 && $4 !~ /^\|/' "$work/oracle.out" | wc -l) msk144sync successes; $(grep -c '^F ' "$work/oracle.out") frame decodes by the port's own decoder ($(grep -c '^F .* [1-9][0-9]* |' "$work/oracle.out") decoded); $(grep -c '^T' "$work/oracle.out") spd steps, $(grep -c '^[LJKW] ' "$work/oracle.out") piece cases)"
+        echo "msk144-piece-check: sync: identical, and the OpenMP library at 4 threads the same ($(wc -l < "$work/oracle.out") lines: $(grep -c '^SYN' "$work/oracle.out") msk144sync and $(grep -c '^SPD' "$work/oracle.out") msk144spd runs; $(awk '$1 == "X" && $3 == 1 && $4 !~ /^\|/' "$work/oracle.out" | wc -l) msk144sync successes; $(grep -c '^F ' "$work/oracle.out") frame decodes by our own decoder ($(grep -c '^F .* [1-9][0-9]* |' "$work/oracle.out") decoded); $(grep -c '^T' "$work/oracle.out") spd steps, $(grep -c '^[LJKW] ' "$work/oracle.out") piece cases)"
         exit 0
     fi
     echo "msk144-piece-check: $piece: identical ($(wc -l < "$work/oracle.out") lines, $(grep -c '^R' "$work/oracle.out") decodes run, $(grep -c '^I' "$work/oracle.out") traced iterations ($(grep -c '^BO' "$work/oracle.out") with their messages), $(grep -c '^P' "$work/oracle.out") platanh and $(grep -c '^T' "$work/oracle.out") tanh values, $(awk '$1 == "R" && $4 >= 0' "$work/oracle.out" | wc -l) decoded, $(grep -c '^C' "$work/oracle.out") CRC checks)"

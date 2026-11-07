@@ -116,7 +116,7 @@ done < <(find "$repo/tests/data/fst4w/cases" -name args.txt | sort)
 # FT8, FT4 and FT2: run every case whose inputs are here, then compare.
 ft8=() nft4=0 nft2=0 nmsk=0 ninput=0 ninput_msk=0
 usage_text=$(jt9 -h 2> /dev/null | tr -d '\r' || true)
-# Our port lists --spread (the WSJT-X reference does not). With it, every MSK144
+# Our jt9 lists --spread (the WSJT-X reference does not). With it, every MSK144
 # case runs, the shmsg and swl variants (--msk-shmsg, --msk-swl) too, and fails
 # when an option is missing: a binary that lists --spread must run all of
 # them. Without --spread (the reference as the jt9 under test) the usage
@@ -207,9 +207,9 @@ echo "jt9-wine-check: MSK144: $nmsk cases ran, $msk_left left out for lack of an
 echo "jt9-wine-check: $ninput cases left out for their @I/ inputs, $ninput_msk of them MSK144's (scripts/jt9-compare.sh makes those WAVs; --deep-check runs them)" >&2
 if [[ $usage_text == *--spread* ]] && [[ -z ${JT9_WINE_ONLY:-} ]]; then
     # The floor: 347 MSK144 cases that run here, plus 20 for the real UACNJ slots (recordings/msk144-uacnj), plus
-    # the 3 float-* runs (recordings/msk144-float; the float WAVs only our port reads). The 347 is
-    # the 367 runs of the corpus as it stood at Task 8, less the 20 @I/ runs (odd-stereo, -rate11025, -bits8,
-    # -header and -tiny, 4 variants each). The final fix wave added odd-trunc and odd-stream (8 more @I/ runs,
+    # the 3 float-* runs (recordings/msk144-float; the float WAVs only our jt9 reads). The 347 is
+    # 367 runs of the first corpus, less the 20 @I/ runs (odd-stereo, -rate11025, -bits8,
+    # -header and -tiny, 4 variants each). Later cases added odd-trunc and odd-stream (8 more @I/ runs,
     # left out too: ninput_msk counts them) and the 20 real-uacnj runs. Raise it with the corpus. Nothing may
     # be left out for lack of an option, and the @I/ runs left out may not number fewer than the 28 there are.
     (( nmsk < 370 )) && { echo "jt9-wine-check: FAIL: only $nmsk of the 370 MSK144 cases ran" >&2; fail=$((fail + 1)); }

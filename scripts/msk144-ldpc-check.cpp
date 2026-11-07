@@ -1,8 +1,8 @@
-// The port's side of scripts/msk144-piece-check.sh ldpc: reads the oracle's
+// Our side of scripts/msk144-piece-check.sh ldpc: reads the oracle's
 // output (scripts/msk144-ldpc-oracle.f90) on stdin, takes its L, C, P and T
 // lines as inputs, and prints every line as the reference printed it, the
 // results from src/msk144_ldpc.cpp (and ft8::tanhf_glibc) instead; the oracle's
-// R lines and trace lines (I, J, BZ, BV, BO, BH) are not read, the port's
+// R lines and trace lines (I, J, BZ, BV, BO, BH) are not read, our
 // decoder and its trace hooks (scripts/msk144-bp-trace.h) make them.
 // The two outputs must be identical byte for byte.
 //

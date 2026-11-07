@@ -65,7 +65,7 @@ void msk144signalquality(const cfloat* cframe, float snr, float freq, float t0, 
 
 // genmsk_128_90(msg0, ichk, msgsent, i4tone, itype) for a decoded message:
 // msg0 and msgsent are 37 characters, i4tone 144 values (0/1). The two
-// branches the reference sends elsewhere are not ported, since a message the
+// branches the reference sends elsewhere are left out, since a message the
 // decoder returns cannot reach them: a message starting '@' (the fixed tone;
 // the decoder's alphabet has no '@') and one starting '<' with a blank
 // before its '>' (an MSK40 short message, genmsk40; a decoded call has no

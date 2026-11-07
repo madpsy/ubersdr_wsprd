@@ -14,7 +14,7 @@
 ! line, "TAG k first-index values", complex values as re, im pairs. The module
 ! packjt77's tables are shared state, so the driver makes the same calls in
 ! the same order (PK, RUN, QS lines); the frame decoder runs twice here (the
-! copy, then the library), the port's once: what it saves is the same calls
+! copy, then the library), our once: what it saves is the same calls
 ! again.
 !
 ! Lines, in the order a case prints them
@@ -55,7 +55,7 @@
 !
 ! Blind spot: NaNs compare equal whatever their sign and payload, and print as
 ! the default NaN (cbits below): the instrumented copy and the library are
-! different objects, and x86 returns the first operand's NaN. A port that
+! different objects, and x86 returns the first operand's NaN. A decoder that
 ! gets a NaN's sign or payload wrong passes here (the atan2 sweeps hash raw bits).
 !
 ! License: GNU GPL v3 (as WSJT-X)

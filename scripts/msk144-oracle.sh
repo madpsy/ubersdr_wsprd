@@ -3,12 +3,12 @@
 # libwsjt_fort.a at 567ad29ce (3.2.0-rc1), built by WSJT-X's CMake in the
 # wsjtx-oracle image (docker/wsjtx-oracle.Dockerfile: Ubuntu 24.04, gfortran
 # 13.3, FFTW 3.3.10, as scripts/fst4w-oracle.sh uses), and the corpus
-# tests/data/msk144 that every piece of the port is checked against.
+# tests/data/msk144 that every piece of our jt9 is checked against.
 #
 #   scripts/msk144-oracle.sh build         the three builds, the two-build check
 #   scripts/msk144-oracle.sh corpus        inputs, the cases run, fixtures stored
-#   scripts/msk144-oracle.sh focus         Task 6's cases (repeat-across-files, lastmode-*,
-#                                          ntol-wide, freq-edge, off-grid) and Task 7's swl-state and swl-pair, one
+#   scripts/msk144-oracle.sh focus         the behaviour cases (repeat-across-files, lastmode-*,
+#                                          ntol-wide, freq-edge, off-grid) and swl-state and swl-pair, one
 #                                          reference process a file
 #   scripts/msk144-oracle.sh extra         the final review's cases: odd-trunc, odd-stream (a WAV cut
 #                                          mid-data; the streaming size 0xFFFFFFFF) and real-uacnj-* (20
@@ -349,7 +349,7 @@ corpus)
 
 
 # ---------------------------------------------------------------- focus
-# Task 6's cases, stored in the corpus's layout beside the others (the corpus
+# The behaviour cases, stored in the corpus's layout beside the others (the corpus
 # step is not run again): the command line's behaviours that each look wrong
 # and must stay as they stand. One reference process a file, with OMP_DYNAMIC
 # and OMP_THREAD_LIMIT unset: after its first file the reference's decoder.f90
@@ -425,9 +425,9 @@ focus)
              "1801 5000" "1802 5000" "1803 5000"; do
         set -- $a; single freq-edge "f$1-F$2" "$edge" -a . -k -p 15 -f $1 -F $2 -d 3
     done
-    # SWL mode across files (Task 7): the MSK40 pair hash of the first decode must not outlive its file. The
+    # SWL mode across files: the MSK40 pair hash of the first decode must not outlive its file. The
     # first and last files hold the MSK40 pings alone; the middle one the standard message that gives the
-    # pair. One process a file, the reference's table is always fresh; a port that kept it would print the
+    # pair. One process a file, the reference's table is always fresh; a decoder that kept it would print the
     # last file's line another way
     MULTI_B="$B --msk-swl" multi swl-state all "$swlb" "$swla" "$swlb"
     # and within one file: the standard message at 5 s, then the MSK40 pings at 7 s and 11 s that its calls explain

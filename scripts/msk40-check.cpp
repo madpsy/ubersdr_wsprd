@@ -1,13 +1,13 @@
-// The port's side of scripts/msk144-piece-check.sh msk40: reads the oracle's
+// Our side of scripts/msk144-piece-check.sh msk40: reads the oracle's
 // output (scripts/msk40-oracle.f90) on stdin, takes its EN, HA, PK, NH, BI,
 // FP, FC, RUN, YP, SC, YR, ZP, ZB and ZR lines as inputs, and prints every
 // line as the reference printed it, the results from src/msk40.cpp instead
-// (the trace lines through the port's hooks). The two outputs must be
+// (the trace lines through our hooks). The two outputs must be
 // identical byte for byte.
 //
 // The module packjt77's state is shared by the reference's calls (the recent
 // calls): the driver makes the same pack77 and unpack77 calls on one Packjt77
-// in the order the oracle's lines come. nhasharray is the port's Msk40State,
+// in the order the oracle's lines come. nhasharray is our Msk40State,
 // updated where the oracle's NH line is.
 //
 // While msk40spd runs, the frame decoder's traces are off (the oracle's copy

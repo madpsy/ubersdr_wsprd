@@ -62,7 +62,7 @@
 !
 ! Blind spot: NaNs compare equal whatever their sign and payload, and print
 ! as the default NaN (cbits below): the instrumented copies and the library
-! are different objects, and x86 returns the first operand's NaN. A port that
+! are different objects, and x86 returns the first operand's NaN. A decoder that
 ! gets a NaN's sign or payload wrong passes here.
 !
 ! License: GNU GPL v3 (as WSJT-X)

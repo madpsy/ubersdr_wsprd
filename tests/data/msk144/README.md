@@ -2,7 +2,7 @@
 
 The reference outputs for `jt9 -k` (`--msk144`): WSJT-X 3.2.0-rc1, commit
 567ad29ce, built in the `wsjtx-oracle` image by `scripts/msk144-oracle.sh`.
-Every piece of the port checks itself against these files, or against a small
+Every piece of our jt9 checks itself against these files, or against a small
 Fortran oracle built from the same tree.
 
 ## Regenerate
@@ -62,12 +62,12 @@ own paths.
 `shmsg` and `swl` exist for the samples, the real slot, the SNR sweep, the
 message types, the pings, the MSK40 cases, the two `msk144sim` cases, silence,
 noise and the clipped file. Our jt9 takes `--msk-shmsg` and `--msk-swl` (long
-options only, off by default; Task 7): the reference has no such option to run
+options only, off by default): the reference has no such option to run
 beside, so `jt9-compare.sh` and `jt9-wine-check.sh` check those two variants
 against the stored outputs, and run them against any jt9 whose usage lists
 both options.
 
-## Task 6's cases (`scripts/msk144-oracle.sh focus`)
+## The behaviour cases (`scripts/msk144-oracle.sh focus`)
 
 Behaviours that each look wrong and must stay as the reference has them. Made
 one reference process per file with `OMP_DYNAMIC` and `OMP_THREAD_LIMIT` unset:
@@ -86,20 +86,20 @@ runs `--feed` with `stdin.txt` (paths from the repository's root) as stdin.
 | `ntol-wide`           | `-F 300`, `1000`, `1001`, `5000` on a -200 Hz offset (jt9.f90 limits `-F` to 1000); the `f2000` runs of `freq-edge` cover `-F` above 1000 from the other side |
 | `freq-edge`           | `-f 0`, `200`, `800`, `1801`, `1802`, `1803`, `2000`, `6000`, `9000` with `-F` 200 to 5000, on an 800 Hz carrier. `-f 1801`, `1802` and `1803` (each with `-F 5000`) sit 1001, 1002 and 1003 Hz from the carrier, where a limit of 1001 would answer differently; `-f 2000` (with `-F 5000` and `-F 1000`) is 1200 Hz away, past what the limit of 1000 reaches |
 | `offgrid-sm06`, `offgrid-sm04` | `d1`, `d3`: a 1 s ping at -6 dB and at -4 dB on a 1537 Hz carrier, which lies on none of the averaging searches' frequency grids: `-d 1` (short pings only) misses it and `-d 3` (the averages) finds it, so msk144sync's step of 10/navg Hz shows |
-| `swl-state` (Task 7) | `files`, `feed`: `--msk-swl` on three files: three pings of the MSK40 frame `<N0ABC W1AW> RRR`, a standard message from `N0ABC` to `W1AW`, the MSK40 file again. The reference (one process a file, patched build with `MSK144_SWL=1`) prints `<1591> RRR` for both MSK40 files: its table of recent-call hashes is empty at the start of each. A port that kept the table of hashes (but not the calls, which each file starts without) from the middle file into the last would print `< > RRR` there |
-| `swl-pair` (Task 7) | `swl`: `--msk-swl` on one file: the standard message at 5 s, which gives the decoder `N0ABC` and `W1AW`, and the MSK40 pings of `<N0ABC W1AW> RRR` around it. The ping before it prints as `<1591> RRR`, the one after it by the pair's calls: the table of recent-call hashes is made when the standard message decodes |
+| `swl-state` | `files`, `feed`: `--msk-swl` on three files: three pings of the MSK40 frame `<N0ABC W1AW> RRR`, a standard message from `N0ABC` to `W1AW`, the MSK40 file again. The reference (one process a file, patched build with `MSK144_SWL=1`) prints `<1591> RRR` for both MSK40 files: its table of recent-call hashes is empty at the start of each. A decoder that kept the table of hashes (but not the calls, which each file starts without) from the middle file into the last would print `< > RRR` there |
+| `swl-pair` | `swl`: `--msk-swl` on one file: the standard message at 5 s, which gives the decoder `N0ABC` and `W1AW`, and the MSK40 pings of `<N0ABC W1AW> RRR` around it. The ping before it prints as `<1591> RRR`, the one after it by the pair's calls: the table of recent-call hashes is made when the standard message decodes |
 
 Their inputs are listed in `recordings/msk144-sim/MANIFEST.focus` (made by
 `scripts/msk144-sim-grid.sh`, which gives `corpus` no variants on them).
 
-## The final fix wave's cases (`scripts/msk144-oracle.sh extra`)
+## The later cases (`scripts/msk144-oracle.sh extra`)
 
 Made one reference process per file, `OMP_DYNAMIC` and `OMP_THREAD_LIMIT` unset.
 
 | case | variants and what they show |
 |------|-----------------------------|
-| `odd-trunc`  | `d1`, `d3`, `defaults`, `ms`: a WAV whose header says 15 s but whose file stops at 9 s (cut from `181211_120500`). The reference and the port print `WAV chunk extends beyond end of file` and exit 2. 3.0.2 decoded the 9 s that were there and exited 0 (`AB-3.0.2.md`) |
-| `odd-stream` | the same four: a WAV with the streaming writers' placeholder size 0xFFFFFFFF in both headers, the full 15 s of data. The reference and the port print `WAV chunk has an invalid size` and exit 2; 3.0.2 decoded the file and exited 0 |
+| `odd-trunc`  | `d1`, `d3`, `defaults`, `ms`: a WAV whose header says 15 s but whose file stops at 9 s (cut from `181211_120500`). The reference and our jt9 print `WAV chunk extends beyond end of file` and exit 2. 3.0.2 decoded the 9 s that were there and exited 0 (`AB-3.0.2.md`) |
+| `odd-stream` | the same four: a WAV with the streaming writers' placeholder size 0xFFFFFFFF in both headers, the full 15 s of data. The reference and our jt9 print `WAV chunk has an invalid size` and exit 2; 3.0.2 decoded the file and exited 0 |
 | `real-uacnj-*` | `ms` only: 20 real 30 s slots from UACNJ's meteor-scatter archive (50.260 MHz, slots of 2026-11-04 to 2026-11-06), run as UACNJ's station runs them, `-Y --msk144 -p 30 -f 1500 -F 200 -d 3 -a .` (its `tr_period_sec` is 30) |
 
 The two odd WAVs are `@I/` inputs, made by `scripts/jt9-compare.sh`'s generator
@@ -110,7 +110,7 @@ the frontend status). Station data of this kind is public.
 ## The float cases (ours: no reference)
 
 WSJT-X's `jt9` refuses a float WAV for MSK144, so these cases have no
-reference output. Their stored files come from our port (scripts/msk144-float-inputs.py
+reference output. Their stored files come from our jt9 (scripts/msk144-float-inputs.py
 makes the two inputs in `recordings/msk144-float/` from `181211_120500`), and
 `jt9-compare.sh` and `jt9-wine-check.sh` check them against those files alone.
 Run `scripts/float-input-check.sh` for the other direction: every 16-bit case run
@@ -118,17 +118,15 @@ again on its float copy must leave the same files.
 
 | case          | variants | what it shows |
 |---------------|----------|---------------|
-| `float-nan`   | `ms`, `swl` | a float file with NaN, +inf and -inf written over it: 10 NaN, one +inf and one -inf in the first 0.6 s (the first non-silent block, where a NaN would become the noise level for the whole file and print every SNR as 0), then more away from the decode. The port exits 0 at the normal speed, prints the decode at 8.7 s with its true SNR (8) and `<DecodeFinished>`. A block with a non-finite sample counts as silent. It writes `decoded.txt` (empty), because a NaN in the first 180000 samples makes the rms NaN and `!(rms < 0.5)` holds, as in `decoder.f90`'s semantics |
+| `float-nan`   | `ms`, `swl` | a float file with NaN, +inf and -inf written over it: 10 NaN, one +inf and one -inf in the first 0.6 s (the first non-silent block, where a NaN would become the noise level for the whole file and print every SNR as 0), then more away from the decode. Our jt9 exits 0 at the normal speed, prints the decode at 8.7 s with its true SNR (8) and `<DecodeFinished>`. A block with a non-finite sample counts as silent. It writes `decoded.txt` (empty), because a NaN in the first 180000 samples makes the rms NaN and `!(rms < 0.5)` holds, as in `decoder.f90`'s semantics |
 | `float-level` | `ms` | the same samples times 2^-20 (an rms far below one 16-bit count). It decodes the same line as `sample-181211_120500`. It leaves no `decoded.txt`: that file's rms test (`decoder.f90`) (`decoder.f90:104-107`: `!(rms < 0.5)` over the first 180000 samples) runs on the scaled values, and finds a quiet file |
 
 ## Inputs
 
 **WSJT-X's samples.** `181211_120500.wav` and `181211_120800.wav` come from
 `samples/MSK144/` in the 567ad29ce tree. `160915_113100.wav` and
-`160915_113230.wav` are not in that tree or in 3.0.2's. They came from an
-earlier session's scratch directory, where someone had fetched them from
-WSJT-X's sample download (https://sourceforge.net/projects/wsjt/files/samples/MSK144/);
-the session kept no record of the exact URL. Both are 12 kHz mono 16-bit,
+`160915_113230.wav` are not in that tree or in 3.0.2's. They come from
+WSJT-X's sample download (https://sourceforge.net/projects/wsjt/files/samples/MSK144/). Both are 12 kHz mono 16-bit,
 15 s. Neither decodes with the reference (the 2016 recordings predate the
 128/90 LDPC format of 2019), so they test the no-decode path on real audio.
 
@@ -147,7 +145,7 @@ swept with the others at their base (`K1ABC W9XYZ EN37`, 1500 Hz, one ping
 - `pings1-*`, `pings3-*`: one and three pings a slot, at 0 and +6 dB
 - `tr30-*`: T/R 30 s, two pings, at -2, +4, +10 dB; `tr30-wide-s04` has width 2.5 s
 - `msg-*`: CQ, report, RRR, prefix, suffix, free text, at +6 dB
-- `msk40-*`: four MSK40 frames (`<K1ABC W9XYZ> +03` and three more), for Task 7's short-message flag
+- `msk40-*`: four MSK40 frames (`<K1ABC W9XYZ> +03` and three more), for the short-message flag
 - `odd-*`: `silence` (zeros), `noise` (noise alone), `tr30-run-p15` (30 s file with `-p 15`), `short7` (7 s file, `-p 15`), `clipped` (`181211_120800` at 40x gain, clipped); and `stereo`, `rate11025`, `bits8`, `header`, `tiny`, made by `scripts/jt9-compare.sh`'s own generator (`@I/` in `args.txt`)
 
 **Real.** `msk144_261023_105030.wav`: 30 s of 6 m (50.260 MHz) audio from
@@ -155,15 +153,13 @@ AC0G/B4's meteor-scatter recorder, slot start 2026-10-23 10:50:30 UTC. Its
 sidecar JSON records one decode, `C67MIP/P BI7CEG/P NN73` at -8 dB, and a
 frontend status of "partial" (radiod status packets missing for part of the
 slot). Two cases run it: `real-261023-p30`
-(T/R 30 s) and `real-261023-p15` (its first 15 s). Copied from
-`proofs/agu-2026/spectrum/data/`.
+(T/R 30 s) and `real-261023-p15` (its first 15 s).
 
 **UACNJ's slots.** `recordings/msk144-uacnj/*.wav` and their `.json`
 sidecars: 20 slots of meteor-scatter's archive at UACNJ, 6 m, 30 s each. Cases
 `real-uacnj-YYMMDD_HHMMSS`. Each runs at `-p 30`, as UACNJ's station runs
 meteor-scatter (`tr_period_sec = 30` in its configuration; meteor-scatter's own
-code default is 15), so the reference reads the whole slot. They are a
-sample, not the hour the design (section 7) asks for.
+code default is 15), so the reference reads the whole slot.
 
 ## What the reference does here
 
@@ -171,6 +167,6 @@ sample, not the hour the design (section 7) asks for.
   `release` and `o2` agree on all 268 runs of the plain variants.
 - On the SNR sweep, depth 1 decodes down to -2 dB and depth 3 down to -4 dB. At -6 dB and below nothing decodes.
 - `-F 200` reaches all four +-200 Hz offsets at depth 3; at depth 1 three of the four fail. `defaults` (`-F 20`) loses every offset but 0.
-- MSK40 frames decode only under `shmsg` or `swl`, and not all of them: `msk40-rpt03` decodes under neither, `msk40-r03` only under `swl`. The port must reproduce that.
+- MSK40 frames decode only under `shmsg` or `swl`, and not all of them: `msk40-rpt03` decodes under neither, `msk40-r03` only under `swl`. Our jt9 must reproduce that.
 - The clipped file still decodes (two lines, as the unclipped sample).
 - The stereo, 11025 Hz and 8-bit files end with status 2 and a line on stderr; the header-only and tiny files end 0.

@@ -14,7 +14,7 @@
 // (packjt77's recent_calls), and prints "<HHHH> RPT" for a hash it cannot
 // resolve.
 //
-// What the reference saves from call to call, and the port keeps in an
+// What the reference saves from call to call, and our jt9 keeps in an
 // Msk40State: mskrtd's nhasharray (the hashes of the recent calls, zero
 // until update_msk40_hasharray first runs), and msk40decodeframe's mycall0,
 // hiscall0 and ihash. It is part of mskrtd's RtdState (src/msk144.h), so it

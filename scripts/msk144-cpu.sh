@@ -9,9 +9,9 @@
 # jt9 can be given), less the 24 runs on which 3.0.2's jt9 stops early or
 # differently (all of freq-edge, 7 of which differ: bounds-check abort;
 # odd-bits8, odd-rate11025, odd-stereo: it reads what 3.2.0-rc1 refuses), and
-# less the cases the final fix wave added (odd-trunc, odd-stream, real-uacnj-*):
-# the README's table is the corpus of 276 processes as it stood at Task 8. The
-# same work for the port, 3.2.0-rc1 and 3.0.2.
+# less the later cases (odd-trunc, odd-stream, real-uacnj-*):
+# the README's table is this set of 276 processes. The
+# same work for our jt9, 3.2.0-rc1 and 3.0.2.
 #
 # Prints, per repeat, user, system and real seconds, and the load average before
 # and after. Set OMP_NUM_THREADS=1 for a single thread; MSK144_ODD is the odd

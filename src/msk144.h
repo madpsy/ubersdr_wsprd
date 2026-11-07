@@ -6,7 +6,7 @@
 // mskrtd keeps state from call to call in `save`d variables: the dupe
 // checker's last message and SNR, the noise level, the last time, the
 // period's UTC. Here that state is an RtdState, one per file: WSJT-X's jt9
-// runs one process per file, so the state never crosses files, and the port
+// runs one process per file, so the state never crosses files, and our jt9
 // resets it (and the packjt77 tables, msk144_reset_packjt77()) at the start
 // of every file, --feed included. That covers the MSK40 hash table and the
 // recent SWL messages too (nhasharray, recent_shmsgs).

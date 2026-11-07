@@ -1,6 +1,6 @@
 # MSK144: WSJT-X 3.0.2 against 3.2.0-rc1
 
-The stations run 3.0.2's `jt9` today. The port follows 3.2.0-rc1 (commit
+Our jt9 follows 3.2.0-rc1 (commit
 `567ad29ce`) and matches it byte for byte on all 395 stored runs. This file
 lists where 3.0.2 (commit `ccdfaf3c1`) differs from those stored outputs, and
 which WSJT-X change explains each difference. The A/B lists differences. It
@@ -10,8 +10,7 @@ Run it with `scripts/msk144-ab-302.sh [JT9]`.
 
 ## What ran
 
-- **3.0.2's jt9**: `/opt/git/sigmond/wsjtx/build-sigmond/jt9` on this host
-  (x86-64), as sigmond builds it: Release with `-march=native -O3
+- **3.0.2's jt9**: a build on x86-64: Release with `-march=native -O3
   -fbounds-check -funroll-all-loops`, OpenMP linked. One process per file,
   `OMP_DYNAMIC` and `OMP_THREAD_LIMIT` unset, each run in a fresh directory,
   as the 3.2.0-rc1 references were made.
@@ -26,10 +25,10 @@ Run it with `scripts/msk144-ab-302.sh [JT9]`.
 - **Result**: 287 runs the same, 34 different. The 20 real UACNJ slots
   (`real-uacnj-*`, run at `-p 30` as the station runs them, 28 decode
   lines between them) all agree, character for character. The 8 new differences, from the truncated and
-  the streaming-header file, come from the final fix wave (cause 3 below).
+  the streaming-header file, come from the later cases (cause 3 below).
 
 The 34 fall into three causes. The table that follows, and its count of 26,
-stand for the 293 runs of Task 8, before that wave added `odd-trunc` and
+stand for the 293 runs before the later cases added `odd-trunc` and
 `odd-stream` (cause 3, 8 runs). A second build separates source from build
 flags: 3.0.2's source, built in the `wsjtx-oracle` image with 3.0.2's own
 CMake and no `-march=native`, gives the same 26 differences, so none comes
@@ -42,7 +41,7 @@ each:
 | plus `c7df4aced` (`msk144sync.f90`) | 19 |
 | plus `c7df4aced` and `591214b05`'s `msk144spd.f90`, `msk_spectrum.f90` | 12 |
 
-The last twelve come from `71f683f9e`, and the 8 runs of the final wave with
+The last twelve come from `71f683f9e`, and the 8 runs of the later cases with
 them. That attribution rests on the error texts, which first appear in that
 commit (`git log -S`). We did not rebuild with it.
 
@@ -50,7 +49,7 @@ commit (`git log -S`). We did not rebuild with it.
 
 ### 1. `msk144sync` passed the wrong array element: 7 runs
 
-| run | 3.2.0-rc1 (the port) | 3.0.2 |
+| run | 3.2.0-rc1 (our jt9) | 3.0.2 |
 |---|---|---|
 | `sample-181211_120800/d1`, `/d3`, `/ms` | `1455` Hz | `1453` Hz |
 | `odd-clipped/d1`, `/d3`, `/ms` | `1455` Hz | `1453` Hz |
@@ -88,7 +87,7 @@ Christle, 2026-08-18). 3.0.2's `msk144spd` computes the high and low tone
 windows with `nint` and indexes `ismask` with them even when `-f` and `-F`
 push the window past bins 1 to 864. 3.2.0-rc1 clips the window first
 (`msk_clip_spectrum_window` in the new `lib/msk_spectrum.f90`) and returns
-when nothing remains. The abort belongs to the sigmond build's
+when nothing remains. The abort belongs to that build's
 `-fbounds-check`. 3.2.0-rc1's CMake dropped that flag (`b954366c8`, "remove
 bounds checks and limit loop unrolling"). A 3.0.2 without the flag would index
 outside the array without stopping. We did not build that one. Confirmed by
@@ -100,10 +99,10 @@ The same commit also adds the finiteness checks, the `nstep` cap and the
 
 ### 3. Input validation in `jt9`: 20 runs
 
-`odd-bits8`, `odd-rate11025` and `odd-stereo` (Task 8), and `odd-trunc` and
-`odd-stream` (the final fix wave), each at `d1`, `d3`, `defaults` and `ms`.
+`odd-bits8`, `odd-rate11025` and `odd-stereo`, and `odd-trunc` and
+`odd-stream`, each at `d1`, `d3`, `defaults` and `ms`.
 
-| | 3.2.0-rc1 (the port) | 3.0.2 |
+| | 3.2.0-rc1 (our jt9) | 3.0.2 |
 |---|---|---|
 | 8-bit, stereo WAV | stderr `jt9: cannot read WAV file ...: unsupported WAV format; expected mono 16-bit PCM`, `STOP 2`, exit 2 | ` EOF on input file ...`, `<DecodeFinished>   0   0        0`, exit 0 |
 | 11025 Hz WAV | stderr `jt9: unsupported 11025 Hz WAV sample rate for the selected mode`, `STOP 2`, exit 2 | the same ` EOF` line, exit 0 |
@@ -121,14 +120,13 @@ end of the file (`WAV chunk extends beyond end of file`) or has the size
 0xFFFFFFFF (`WAV chunk has an invalid size`). It is the only commit between
 the two (`git log -S'extends beyond end of file' ccdfaf3c1..567ad29ce -- lib`)
 that adds those texts. The earlier `readwav.f90` read what the file held and
-reported ` EOF on input file`. The port's WAV reader follows 3.2.0-rc1.
+reported ` EOF on input file`. Our WAV reader follows 3.2.0-rc1.
 
 What this means for callers: with 3.0.2 a slot that a recorder was still
 writing, or that a crash cut short, gave its partial decodes and exit 0.
-With 3.2.0-rc1 and the port it gives no decode and exit 2. A caller should write
+With 3.2.0-rc1 and our jt9 it gives no decode and exit 2. A caller should write
 each WAV whole (to a temporary name, then rename) before it runs jt9, and read
-exit 2 as "slot unreadable", not as a decoder fault. We ran 3.0.2
-(`/opt/git/sigmond/wsjtx/build-sigmond/jt9`) on both files to confirm the right
+exit 2 as "slot unreadable", not as a decoder fault. We ran 3.0.2 on both files to confirm the right
 column.
 
 ## Changes between the two that no corpus run shows

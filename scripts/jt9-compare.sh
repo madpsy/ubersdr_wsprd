@@ -454,7 +454,7 @@ for a in $(find "$repo/tests/data/msk144/cases" -path '*/jt9-*' -name args.txt 2
     # several files in a command line, and --feed: the reference's outputs stored, made one process a file
     # (its decoder.f90 sets omp_set_dynamic(.true.) after the first file, so a multi-file run answers by load)
     [[ -f $d/stdin.txt || $(grep -o '\.wav' "$a" | wc -l) -gt 1 ]] && kind=stored-bare
-    # float-*: float WAVs, which only our port reads (the reference refuses them); stored outputs from the port
+    # float-*: float WAVs, which only our jt9 reads (the reference refuses them); stored outputs from our jt9
     [[ $c == float-* ]] && kind=stored-bare
     add "msk144-$c/$v|$kind|-|$(cut -d' ' -f2- "$a")"
 done
@@ -578,8 +578,8 @@ fi | grep -q -- '--ft2' && stock_ft2=1
 
 # What NEW's usage lists: --spread (ours; the reference has none), and
 # MSK144's two switches.
-# new_spread marks NEW as our port (it lists --spread; the WSJT-X reference
-# does not). With our port under test nothing of MSK144 is skipped: a missing
+# new_spread marks NEW as our jt9 (it lists --spread; the WSJT-X reference
+# does not). With our jt9 under test nothing of MSK144 is skipped: a missing
 # --msk144, --msk-shmsg or --msk-swl makes those cases run and FAIL. Only the
 # reference as NEW (its own cases against itself) skips shmsg and swl.
 new_spread=0 new_shmsg=0
@@ -635,14 +635,14 @@ for r in "$work"/results/*; do
     if grep -q '^FAIL' "$r"; then cat "$r"; fails=1; fi
 done
 grep -h '^SKIP' "$work"/results/* 2>/dev/null
-# Our port must run every MSK144 case there is: no skips, none missing.
+# Our jt9 must run every MSK144 case there is: no skips, none missing.
 if (( new_spread )); then
     nmsk=$(grep -lE '^(PASS|FAIL)' "$work"/results/msk144-* 2>/dev/null | wc -l)
     want=0
     for spec in "${cases[@]}"; do
         [[ ${spec%%|*} == msk144-* && ( -z $only || ${spec%%|*} =~ $only ) ]] && want=$((want + 1))
     done
-    # The floor, 398: the 367 runs of the corpus at Task 8, plus the final fix wave's 28 (odd-trunc and
+    # The floor, 398: 367 runs of the first corpus, plus 28 more (odd-trunc and
     # odd-stream, 4 variants each; 20 real-uacnj-* runs), plus the 3 float-* runs. Raise it with the corpus.
     # Under a filter the floor is 0: the match count below guards that case.
     floor=398; [[ -n $only ]] && floor=0

@@ -71,8 +71,7 @@ const Opt OPTS[] = {
      ""},
     {"feed", false, 0,
      "Ours (FT8, FT4, FT2, MSK144): read WAV paths from stdin, one a line (PATH or PATH HHMMSS), and decode each as it arrives "
-     "with one decoder for all, as one jt9 -s does period after period (MSK144: each file starts afresh, and float WAVs "
-     "are refused); after each file's lines and <DecodeFinished>, <FileDone> PATH N",
+     "with one decoder for all, as one jt9 -s does period after period (MSK144: each file starts afresh); after each file's lines and <DecodeFinished>, <FileDone> PATH N",
      ""},
     {"msk-shmsg", false, 0,
      "Ours (MSK144): also decode MSK40 short messages (WSJT-X's bshmsg), \"<MYCALL HISCALL> RPT\"; off by default, as in WSJT-X's jt9",

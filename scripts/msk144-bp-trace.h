@@ -1,4 +1,4 @@
-// The port's side of scripts/msk144-bp-trace.f90: the hooks of
+// Our side of scripts/msk144-bp-trace.f90: the hooks of
 // src/msk144_ldpc.h printing bpdecode128_90's iterations as the oracle's
 // bpdecode128_90_trace does (the I, J, BZ, BV, BO and BH lines), for
 // scripts/msk144-ldpc-check.cpp and scripts/msk144-frame-check.cpp.
