@@ -1,18 +1,23 @@
 // ft.mjs (the JavaScript API) given what jt9's file mode reads of each WAV
-// and the parameters it decodes with (ft8_jt9.cpp's, ft4_jt9.cpp's and
-// ft2_jt9.cpp's params_of, jt9's defaults), one Decoder for all the files as
-// one jt9 run: its text must be the native jt9's stdout (less its
-// " EOF on input file" lines). wasm/check.sh runs it.
+// and the parameters it decodes with (ft8_jt9.cpp's, ft4_jt9.cpp's,
+// ft2_jt9.cpp's and msk144_jt9.cpp's params_of, jt9's defaults), one Decoder
+// for all the files as one jt9 run: its text must be the native jt9's stdout
+// (less its " EOF on input file" lines). wasm/check.sh runs it.
 //
 //   node wasm/check-api.mjs -8|-5|--ft2 DEPTH NATIVE_STDOUT WAV...
+//   node wasm/check-api.mjs "-k -p P -F TOL [--msk-shmsg] [--msk-swl]" DEPTH NATIVE_STDOUT WAV...
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import createFt from "./dist/jt9/ft.mjs";
 
-const [flag, depthArg, nativeOut, ...wavs] = process.argv.slice(2);
-const mode = { "-8": "ft8", "-5": "ft4", "--ft2": "ft2" }[flag];
+const [flags, depthArg, nativeOut, ...wavs] = process.argv.slice(2);
+const words = flags.split(/\s+/).filter(Boolean);
+const flag = words[0];
+const mode = { "-8": "ft8", "-5": "ft4", "--ft2": "ft2", "-k": "msk144" }[flag];
+const arg = (k, d) => (words.includes(k) ? Number(words[words.indexOf(k) + 1]) : d);
 // The samples jt9's file mode decodes: FT8 50 blocks of 3456, FT4 21, FT2 10.
-const take = { ft8: 50 * 3456, ft4: 21 * 3456, ft2: 10 * 3456 }[mode];
+// MSK144: the whole file (the decoder takes what jt9 reads of it).
+const take = { ft8: 50 * 3456, ft4: 21 * 3456, ft2: 10 * 3456, msk144: undefined }[mode];
 
 // jt9's WAV reader's samples, 16-bit or 32-bit float.
 function readWav(path) {
@@ -47,6 +52,11 @@ function nutc(path) {
 
 const options = { depth: Number(depthArg), freqLow: 200, freqHigh: 4000, rxFreq: 1500, myCall: "K1ABC", hisCall: "W9XYZ" };
 if (mode === "ft8") Object.assign(options, { txFreq: 0, apWidth: 75, hisGrid: "EN37" });
+if (mode === "msk144") {
+  // jt9 -k's: -p, -f 1500, -F (default 20), -c K1ABC, -x W9XYZ, and ours
+  Object.assign(options, { period: arg("-p", 60), rxFreq: arg("-f", 1500), tolerance: arg("-F", 20),
+    shortMessages: words.includes("--msk-shmsg"), swl: words.includes("--msk-swl") });
+}
 
 const ft = await createFt();
 const dec = new ft.Decoder(mode);

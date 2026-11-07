@@ -31,12 +31,11 @@
 
 namespace msk144 {
 
-// MSK144 decoding is NOT thread-safe, and not re-entrant. jt9 runs one file at a time, so it never
-// matters there; it would if a program ever ran MSK144 on several threads. Two things hold state that
-// no per-file reset reaches or that no caller owns:
+// MSK144 decoding on several threads at once: each with an RtdState and a Packjt77 of its own
+// (decode_msk144's st and pk), as a program decoding several dials gives each. What is shared:
 //   - analytic() (msk_frontend.cpp) keeps the Fortran's `save` variables (the filter h, the equalizer
-//     corr, nfft0, aclast, pclast) in function statics, shared by every caller;
-//   - decode_msk144() (msk144_decode.cpp) uses one global Packjt77 for the call hashes.
+//     corr, nfft0, aclast, pclast) in function statics, shared by every caller, under a lock;
+//   - msk144_packjt77() is one global Packjt77, jt9's (msk144_jt9.cpp): a caller with its own passes that.
 // RtdState::reset() at the start of each file (msk144_jt9.cpp) restores what mskrtd saves, and the
 // MSK144 Packjt77 as well. It does not make the decoder stateless: analytic's statics cross files, and
 // stay right only because nothing can make them differ from a fresh process (mskrtd always calls it

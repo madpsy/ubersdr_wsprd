@@ -31,7 +31,7 @@ void fft_c2c_inplace(cfloat* a, int nfft, int isign);
 // passband d(1:npts), zero-padded to nfft, in c(1:nfft). pc holds the five
 // static phase coefficients; beq turns the static equalizer on. Like the
 // Fortran's, it keeps its filter response (and the equalizer's table) from
-// call to call, remade when nfft (pc) changes: not thread-safe.
+// call to call, remade when nfft (pc) changes: one call at a time (a lock).
 void analytic(const float* d, int npts, int nfft, cfloat* c, std::array<double, 5>& pc, bool beq);
 
 // tweak1(ca, jz, f0, cb): ca(1:jz) shifted by f0 Hz at 12000 Hz sampling

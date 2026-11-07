@@ -1,7 +1,8 @@
 # ubersdr-jt9-wasm
 
-FT8, FT4 and FT2 decoders in WebAssembly, decoding as WSJT-X's `jt9` does
-(WSJT-X 567ad29ce for FT8 and FT4; WSJT-X improved 3.2.0's logic for FT2).
+FT8, FT4, FT2 and MSK144 decoders in WebAssembly, decoding as WSJT-X's `jt9`
+does (WSJT-X 567ad29ce for FT8, FT4 and MSK144; WSJT-X improved 3.2.0's logic
+for FT2).
 Runs in browsers, Web Workers and Node 18+.
 
 Against WSJT-X's own outputs, 299 of 305 test cases are identical, byte
@@ -52,6 +53,24 @@ Each decode has `snr`, `dt` (s), `freq` (Hz), `message`, `lowConfidence`
 A decode takes time: about 1-2 s for a busy FT8 period at depth 2. Run it
 in a Web Worker in a browser.
 
+### MSK144
+
+```js
+const msk = new ft.Decoder("msk144");
+// One period's 12 kHz audio from its start, 15 s (or 30: period: 30).
+const r = msk.decode(samples, 120500, { rxFreq: 1500, tolerance: 200 });
+for (const d of r.decodes) console.log(d.snr, d.dt, d.freq, d.message);
+```
+
+Each period is decoded afresh, as `jt9 -k` decodes each file. Options, as
+`jt9 -k` reads them: `period` (15, as `-p`), `rxFreq` (1500, `-f`),
+`tolerance` (200, `-F`, at most 1000), `depth` (3, `-d`: 1 short pings
+only, 2 and 3 also the averages over frames), `myCall` and `hisCall` (blank),
+`shortMessages` (false: MSK40's `<MYCALL HISCALL> RPT`) and `swl` (false:
+MSK40 between any calls heard, `<HHHH> RPT` for an unknown hash). Each decode
+has `snr`, `dt` (s), `freq` (Hz), `message` and `line`; `r.count` is the
+number of decodes.
+
 In a browser bundler, `ft.wasm` is fetched next to `ft.mjs`. To serve it
 from somewhere else, pass `locateFile`:
 `createFt({ locateFile: (f) => "/static/" + f })`.
@@ -59,7 +78,7 @@ from somewhere else, pass `locateFile`:
 ## jt9 on Node
 
 `jt9.cjs` is the `jt9` command line (FT8 `-8`, FT4 `-5`, FT2 `--ft2`,
-FST4W `-W`) on the real file system, for Node:
+MSK144 `-k`, FST4W `-W`) on the real file system, for Node:
 
     npx jt9-wasm -8 -d 2 261012_193500.wav
 

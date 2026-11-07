@@ -23,6 +23,44 @@ export interface DecodeOptions {
   fastSubtract?: boolean;
 }
 
+/** MSK144's, as jt9 -k reads them */
+export interface MskDecodeOptions {
+  /** The period, s: 15 or 30 (default 15), as jt9's -p */
+  period?: number;
+  /** Audio frequency, Hz (default 1500), as -f */
+  rxFreq?: number;
+  /** Hz either side of rxFreq (default 200, at most 1000), as -F */
+  tolerance?: number;
+  /** 1 short pings only, 2 or 3 also the averages over frames (default 3), as -d */
+  depth?: number;
+  /** Blank by default */
+  myCall?: string;
+  hisCall?: string;
+  /** MSK40 short messages to myCall and hisCall, "<MYCALL HISCALL> RPT" (default false) */
+  shortMessages?: boolean;
+  /** SWL mode: MSK40 messages between any calls heard, "<HHHH> RPT" for an unknown hash (default false) */
+  swl?: boolean;
+}
+
+export interface MskDecode {
+  snr: number;
+  /** Seconds into the period */
+  dt: number;
+  /** Audio frequency, Hz */
+  freq: number;
+  message: string;
+  /** The line jt9 prints */
+  line: string;
+}
+
+export interface MskDecodeResult {
+  decodes: MskDecode[];
+  /** The number of decodes */
+  count: number;
+  /** jt9's stdout for the period */
+  text: string;
+}
+
 export interface Decode {
   snr: number;
   /** Seconds */
@@ -60,8 +98,24 @@ export interface Decoder {
   delete(): void;
 }
 
+/** MSK144: each period decoded afresh, as jt9 -k decodes each file */
+export interface MskDecoder {
+  readonly mode: "msk144";
+  /**
+   * One period's 12 kHz audio from its start (options.period long; shorter
+   * is zero-filled, longer is cut as jt9 cuts it). Float32Array is -1..1,
+   * Int16Array as is. utc: HHMMSS.
+   */
+  decode(samples: Float32Array | Int16Array, utc: number, options?: MskDecodeOptions): MskDecodeResult;
+  /** Frees the decoder's memory */
+  delete(): void;
+}
+
 export interface FtModule {
-  Decoder: new (mode: "ft8" | "ft4" | "ft2") => Decoder;
+  Decoder: {
+    new (mode: "msk144"): MskDecoder;
+    new (mode: "ft8" | "ft4" | "ft2"): Decoder;
+  };
 }
 
 export default function createFt(moduleOverrides?: object): Promise<FtModule>;

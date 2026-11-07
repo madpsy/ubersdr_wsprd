@@ -3,8 +3,8 @@
 # same source, byte for byte, on the recordings here:
 #
 #   - jt9.cjs (the command line under Node) and the native jt9 on each FT8,
-#     FT4 and FT2 recording set as one run, at depths 1 to 3: stdout and
-#     decoded.txt
+#     FT4, FT2 and MSK144 recording set as one run, at depths 1 to 3: stdout
+#     and decoded.txt (MSK144's also with --msk-swl and --msk-shmsg)
 #   - ft.mjs (the JavaScript API, wasm/check-api.mjs) given what jt9's file
 #     mode reads and its parameters: every period's lines as the native
 #     jt9's
@@ -30,13 +30,15 @@ work=${3:-$here/build/check}
 command -v node >/dev/null || { echo "node is needed" >&2; exit 2; }
 
 failed=0
-run_set() {  # name, mode flag, depth, files...
+run_set() {  # name, mode flags (one word, split here), depth, files...
     local name=$1 flag=$2 d=$3; shift 3
     local dir=$work/$name-d$d
     rm -rf "$dir"
     mkdir -p "$dir/native" "$dir/wasm"
-    (cd "$dir/native" && "$native" "$flag" -d "$d" "$@" > stdout)
-    (cd "$dir/wasm" && node "$here/dist/jt9/jt9.cjs" "$flag" -d "$d" "$@" > stdout)
+    local -a fl
+    read -r -a fl <<< "$flag"
+    (cd "$dir/native" && "$native" "${fl[@]}" -d "$d" "$@" > stdout)
+    (cd "$dir/wasm" && node "$here/dist/jt9/jt9.cjs" "${fl[@]}" -d "$d" "$@" > stdout)
     local ok=true
     for f in stdout decoded.txt; do
         if [ -f "$dir/native/$f" ] || [ -f "$dir/wasm/$f" ]; then
@@ -83,14 +85,20 @@ run_wsprd() {
 }
 
 sets=()
-for s in ft8-sim:-8 ft8-real:-8 ft4-sim:-5 ft4-real:-5 ft2-sim:--ft2; do
+# MSK144: its 15 s sets at -p 15 (the 30 s simulations' first 15 s), the
+# real 30 s slots at -p 30, all at -F 200; the simulations again with
+# --msk-swl (MSK40 for any pair of calls) and --msk-shmsg.
+for s in ft8-sim:-8 ft8-real:-8 ft4-sim:-5 ft4-real:-5 ft2-sim:--ft2 \
+         "msk144-samples:-k -p 15 -F 200" "msk144-sim:-k -p 15 -F 200" "msk144-float:-k -p 15 -F 200" \
+         "msk144-real:-k -p 30 -F 200" "msk144-uacnj:-k -p 30 -F 200" \
+         "msk144-sim:-k -p 15 -F 200 --msk-swl" "msk144-sim:-k -p 15 -F 200 --msk-shmsg"; do
     [ -n "$(ls "$root/recordings/${s%%:*}"/*.wav 2>/dev/null)" ] && sets+=("$s")
 done
-[ ${#sets[@]} -gt 0 ] || { echo "no FT8, FT4 or FT2 recordings under recordings/" >&2; exit 2; }
+[ ${#sets[@]} -gt 0 ] || { echo "no FT8, FT4, FT2 or MSK144 recordings under recordings/" >&2; exit 2; }
 echo "the wasm builds against $native and $native_wsprd"
 for s in "${sets[@]}"; do
     mapfile -t wavs < <(ls "$root/recordings/${s%%:*}"/*.wav)
-    for d in 1 2 3; do run_set "${s%%:*}" "${s#*:}" "$d" "${wavs[@]}"; done
+    for d in 1 2 3; do run_set "${s%%:*}$(tr -d ' ' <<< "${s#*:}" | grep -o -- '--msk-[a-z]*' || true)" "${s#*:}" "$d" "${wavs[@]}"; done
 done
 
 # WSPR: the 40 m periods (7.0386 MHz), WSJT-X's sample (14.0956), the

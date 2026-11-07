@@ -117,6 +117,10 @@ constexpr int NFFTMAX = 1024 * 1024;
 }  // namespace
 
 void analytic(const float* d, int npts, int nfft, cfloat* c, std::array<double, 5>& pc, bool beq) {
+    // The Fortran's saved variables below are shared by every caller: one
+    // call at a time (a program decoding several dials at once).
+    static std::mutex mu;
+    std::lock_guard<std::mutex> lock(mu);
     // save corr, nfft0, h, ac, aclast, pclast, pi, t, beta
     static std::vector<float> h(NFFTMAX / 2 + 1);          // real h(NFFTMAX/2), 1-based: h[i-1]
     static std::vector<cfloat> corr(NFFTMAX / 2 + 1);      // complex corr(NFFTMAX/2)

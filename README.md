@@ -61,10 +61,10 @@ your operating system and CPU from the
 | `wsprd-linux-x86_64` | Linux on an x86-64 CPU with AVX2 |
 | `wsprd-linux-aarch64` | Linux on 64-bit ARM (NEON): a Raspberry Pi 3, 4, 5 or Zero 2 W on a 64-bit OS, for one |
 | `wsprd-windows-x86_64.exe` | 64-bit Windows 10 or 11 on an x86-64 CPU with AVX2; nothing else to install |
-| `jt9-linux-x86_64` | `jt9` (FST4W, FT8, FT4 and FT2) for Linux on an x86-64 CPU with AVX2 |
-| `jt9-linux-aarch64` | `jt9` (FST4W, FT8, FT4 and FT2) for Linux on 64-bit ARM |
-| `jt9-windows-x86_64.exe` | `jt9` (FST4W, FT8, FT4 and FT2) for 64-bit Windows 10 or 11 on an x86-64 CPU with AVX2 |
-| `jt9-wasm.tgz` | the FT8, FT4 and FT2 decoders in WebAssembly, for JavaScript (a browser, a Web Worker or Node): see [WebAssembly](#webassembly-wspr-ft8-ft4-and-ft2-in-javascript) |
+| `jt9-linux-x86_64` | `jt9` (FST4W, FT8, FT4, FT2 and MSK144) for Linux on an x86-64 CPU with AVX2 |
+| `jt9-linux-aarch64` | `jt9` (FST4W, FT8, FT4, FT2 and MSK144) for Linux on 64-bit ARM |
+| `jt9-windows-x86_64.exe` | `jt9` (FST4W, FT8, FT4, FT2 and MSK144) for 64-bit Windows 10 or 11 on an x86-64 CPU with AVX2 |
+| `jt9-wasm.tgz` | the FT8, FT4, FT2 and MSK144 decoders in WebAssembly, for JavaScript (a browser, a Web Worker or Node): see [WebAssembly](#webassembly-wspr-ft8-ft4-and-ft2-in-javascript) |
 | `wsprd-wasm.tgz` | `wsprd` in WebAssembly, for JavaScript likewise |
 
 **The CPU: the prebuilt binaries need AVX2 on x86-64 (Linux and Windows)
@@ -218,7 +218,7 @@ float file because its level is its own: only an all-zero file counts as
 silent (a 16-bit file whose first 15 s have an RMS under 0.5 is skipped, but
 an unscaled SDR's quiet band sits far below that), and the noise blanker's
 histogram puts |x| of 32768 and over in its top bin, which no 16-bit sample
-reaches. FT8, FT4 and FT2 take float files too (below).
+reaches. FT8, FT4, FT2 and MSK144 take float files too (below).
 
 ## jt9: FT8
 
@@ -539,11 +539,12 @@ Run by jt9-decode, against WSJT-X 3.1.0's own `jt9` run by it on the same
 recorded periods (FT8 and FT4 at every depth: 27 periods, 1,135 decodes), every
 decode line was the same.
 
-## WebAssembly: WSPR, FT8, FT4 and FT2 in JavaScript
+## WebAssembly: WSPR, FT8, FT4, FT2 and MSK144 in JavaScript
 
 Each release has two packages for JavaScript in a browser, a Web Worker or
 Node 18 or later, nothing else to install: `wsprd-wasm.tgz`, `wsprd`, and
-`jt9-wasm.tgz`, `jt9`'s FT8, FT4 and FT2 decoders, built to WebAssembly.
+`jt9-wasm.tgz`, `jt9`'s FT8, FT4, FT2 and MSK144 decoders, built to
+WebAssembly.
 
 ### wsprd-wasm.tgz
 
@@ -581,10 +582,10 @@ against the native `wsprd`'s 0.11 s (x86-64, `-C 500 -o 4`).
 
 ### jt9-wasm.tgz
 
-`jt9-wasm.tgz` is the same FT8, FT4 and FT2 decoders
+`jt9-wasm.tgz` is the same FT8, FT4, FT2 and MSK144 decoders
 built to WebAssembly, for a browser, a Web Worker or Node 18 or later, with
-nothing else to install. They decode as `jt9` does: on every FT8, FT4 and
-FT2 recording here, at depths 1 to 3, the same output byte for byte.
+nothing else to install. They decode as `jt9` does: on every FT8, FT4, FT2 and
+MSK144 recording here, at depths 1 to 3, the same output byte for byte.
 Against WSJT-X's own outputs, 299 of 305 test cases are identical; in the
 other six a few decodes differ (weak a-priori decodes at -25 dB, and in one
 43-period run three decodes of one crowded period): WebAssembly has no
@@ -604,14 +605,17 @@ const dec = new ft.Decoder("ft8");          // "ft8", "ft4" or "ft2"
 // 3.75 s): a Float32Array (-1..1) or an Int16Array. utc as HHMMSS.
 const r = dec.decode(samples, 193500, { depth: 2 });
 for (const d of r.decodes) console.log(d.snr, d.dt, d.freq, d.message);
+
+const msk = new ft.Decoder("msk144");       // jt9 -k: each period afresh
+const m = msk.decode(samples15s, 120500, { rxFreq: 1500, tolerance: 200 });
 ```
 
 Keep one `Decoder` per dial and give it every period in turn: it carries
 what `jt9` carries from period to period (the hashed calls, the a7
 decodes). The parameters default to WSJT-X's as its GUI runs `jt9` (blank
 calls, 100-3200 Hz, depth 2); the package's README lists them all. It also
-holds `jt9`'s command line for Node (`npx jt9-wasm -8 -d 2 file.wav`; not
-`-s`).
+holds `jt9`'s command line for Node (`npx jt9-wasm -8 -d 2 file.wav`, and
+`-k` for MSK144; not `-s`).
 
 It is the plain code, without AVX2 or NEON, and WebAssembly is slower than
 native code: on x86-64 under Node, 43 busy recorded 40 m FT8 periods at
@@ -625,8 +629,9 @@ Building them needs Emscripten ([emsdk](https://emscripten.org/docs/getting_star
 `./build.sh --wasm`, or `wasm/build.sh` alone (FFTW is fetched and built
 for WebAssembly once, into `wasm/build`). `wasm/check.sh build/jt9
 build/wsprd` checks them against the native programs, byte for byte: `jt9`'s
-command line and the JavaScript API on every FT8, FT4 and FT2 recording here
-at depths 1 to 3, and `wsprd`'s command line and API on every WSPR
+command line and the JavaScript API on every FT8, FT4, FT2 and MSK144
+recording here at depths 1 to 3 (MSK144's with `--msk-swl` and `--msk-shmsg`
+too), and `wsprd`'s command line and API on every WSPR
 recording here under eight option sets.
 
 ## Its CPU
