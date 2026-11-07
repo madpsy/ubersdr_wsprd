@@ -1,0 +1,76 @@
+{
+ "band": "6m",
+ "channel_reported": {
+  "agc_enable": false,
+  "encoding": "F32LE",
+  "frequency_hz": 50260000,
+  "gain_db": 0.0,
+  "preset": "usb",
+  "received_at": 1793876227.8221457,
+  "ssrc": 1903631679
+ },
+ "channel_requested": {
+  "agc_enable": 0,
+  "encoding": "f32",
+  "gain_db": 0.0,
+  "preset": "usb"
+ },
+ "clipped_samples": 0,
+ "decodes": [
+  {
+   "audio_freq_hz": 1492,
+   "dt": 15.4,
+   "jt9_line": "000000  20 15.4 1492 &  KD9VV KA2PBO FN21                                       ",
+   "message": "KD9VV KA2PBO FN21",
+   "snr": 20,
+   "sync": "&"
+  }
+ ],
+ "dial_freq_hz": 50260000,
+ "frontend": {
+  "ad_over_delta": 0,
+  "ad_over_reset": false,
+  "basis": "host receive time of radiod status packets",
+  "end": {
+   "ad_over": 361910,
+   "if_power": -19.638391494750977,
+   "rf_agc": true,
+   "rf_atten": 0.0,
+   "rf_gain": 32.985530853271484,
+   "t": 1793876245.8991992
+  },
+  "frontend_status": "partial",
+  "missing_sample_windows": [
+   [
+    10348,
+    93866
+   ],
+   [
+    93866,
+    172572
+   ],
+   [
+    172572,
+    310790
+   ]
+  ],
+  "overloaded": false,
+  "start": {
+   "ad_over": 361910,
+   "if_power": -21.475711822509766,
+   "rf_agc": true,
+   "rf_atten": 0.0,
+   "rf_gain": 32.985530853271484,
+   "t": 1793876215.898617
+  },
+  "steps": []
+ },
+ "noise_floor_dbfs": -132.49919976354397,
+ "noise_floor_reference": "dB re radiod f32 full scale, before wav_gain_db",
+ "reporter_id": "UACNJ",
+ "sample_rate": 12000,
+ "scale": "uncalibrated",
+ "slot_start_utc": "2026-11-05T10:57:00+00:00",
+ "software_version": "0.4.0+9babd4c",
+ "wav_gain_db": 105.8869948267901
+}

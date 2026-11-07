@@ -1,0 +1,13 @@
+WSJT-X 567ad29ce
+GNU Fortran (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+FFTW 3.3.10-1ubuntu3 (x86_64)
+Release Fortran:  -Werror=trampolines -Wa,--noexecstack -O3 -DNDEBUG -O3 -funroll-loops -fno-f2c -ffpe-summary=invalid,zero,overflow,underflow -Wall -Wno-conversion -Wno-c-binding-type -fno-second-underscore -Jfortran_modules_omp -fvisibility=hidden -fopenmp
+O2 Fortran:       -Werror=trampolines -Wa,--noexecstack -O2 -ffp-contract=off -funroll-loops -fno-f2c -ffpe-summary=invalid,zero,overflow,underflow -Wall -Wno-conversion -Wno-c-binding-type -fno-second-underscore -Jfortran_modules_omp -fvisibility=hidden -fopenmp
+patch (patched build, decode_msk144.f90):
+  26a27
+  >   character(len=1) :: msk144_env
+  37a39,42
+  >   call get_environment_variable("MSK144_SHMSG", msk144_env)
+  >   bshmsg = msk144_env == "1"
+  >   call get_environment_variable("MSK144_SWL", msk144_env)
+  >   bswl = msk144_env == "1"

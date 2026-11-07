@@ -1,0 +1,2 @@
+120039   7  5.2 1502 &  CQ K1ABC FN42                                           
+<DecodeFinished>   0   0        0

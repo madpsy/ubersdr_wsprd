@@ -1,0 +1,1 @@
+jt9 -a . -k -p 15 -f 1500 -F 200 -d 3 --msk-swl recordings/msk144-sim/swl-pair-261106_120105.wav

@@ -1,0 +1,2 @@
+120044   7  5.2 1502 &  TNX 73 GL                                               
+<DecodeFinished>   0   0        0

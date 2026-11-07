@@ -1,0 +1,1 @@
+jt9 -a . -k -p 15 -f 1500 -F 200 -d 3 --msk-swl recordings/msk144-samples/181211_120800.wav

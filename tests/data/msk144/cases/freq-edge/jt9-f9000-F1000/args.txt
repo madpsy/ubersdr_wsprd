@@ -1,0 +1,1 @@
+jt9 -a . -k -p 15 -f 9000 -F 1000 -d 3 recordings/msk144-sim/freq-edge-f0800-261106_120059.wav

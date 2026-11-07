@@ -1,8 +1,9 @@
 # wsprd and jt9
 
-WSJT-X's WSPR decoder, `wsprd`, and its `jt9` for FST4W, FT8 and FT4 (and
-FT2, as WSJT-X improved decodes it), rewritten in C++ to take a fraction of
-the CPU.
+WSJT-X's WSPR decoder, `wsprd`, and its `jt9` for FST4W, FT8, FT4 and
+MSK144 (and FT2, as WSJT-X improved decodes it), rewritten in C++ to take a
+fraction of the CPU, for every mode but MSK144: that costs as much as WSJT-X's
+own, and about a tenth less than 3.0.2's (see [Its CPU](#its-cpu)).
 
 **A drop-in replacement for WSJT-X's `wsprd`.** It takes exactly the same
 arguments, plus one more (`-n`), and gives the same output and files, byte
@@ -26,23 +27,29 @@ this one, with nothing to change.
 It decodes what WSJT-X's `wsprd` decodes, WSPR-2 and WSPR-15. FST4W is
 `jt9`'s (below).
 
-**And `jt9` for FST4W, FT8, FT4 and FT2.** WSJT-X decodes FST4W (FST4W-120
-to -1800), FT8 and FT4 with its `jt9`; this `jt9` does the same from WAV
-files, as `jt9 -p 120 --fst4w ... file.wav`, `jt9 -8 ... file.wav` and
-`jt9 -5 ... file.wav` do: the same command line, the same output and files
+**And `jt9` for FST4W, FT8, FT4, FT2 and MSK144.** WSJT-X decodes FST4W
+(FST4W-120 to -1800), FT8, FT4 and MSK144 with its `jt9`; this `jt9` does
+the same from WAV files, as `jt9 -p 120 --fst4w ... file.wav`,
+`jt9 -8 ... file.wav`, `jt9 -5 ... file.wav` and `jt9 -k ... file.wav` do: the
+same command line, the same output and files
 (`fst4_decodes.dat`, `decoded.txt`, `fst4w_calls.txt`), byte for byte, in
 about a seventh of the CPU for FST4W, under half for FT8 and about a third
-for FT4. FT2, which only WSJT-X improved has, is `jt9 --ft2 ... file.wav`
+for FT4. MSK144 matches the same way, but takes as much CPU as WSJT-X's own
+(about a tenth less than 3.0.2's): [Its CPU](#its-cpu) gives its time.
+FT2, which only WSJT-X improved has, is `jt9 --ft2 ... file.wav`
 as improved's `jt9` runs it: improved's FT2 code on the FT4 decoder above,
 in a quarter to a sixth of improved's CPU on x86-64 (about a third on a
-Pi 5). FST4W, FT8, FT4 and FT2 so far, more
-of `jt9`'s modes to follow. Linux (x86-64, arm64) and Windows. For FT8,
+Pi 5). FST4W, FT8, FT4, FT2 and MSK144 so far, more
+of `jt9`'s modes to follow. Linux (x86-64, arm64) and Windows, except that
+MSK144 has run on x86-64 Linux only: arm64 and the `.exe` stand unverified
+for it. For FT8,
 FT4 and FT2 it also runs as a back end over shared memory (`jt9 -s KEY`),
 as WSJT-X 2.7 and WSJT-X improved run their `jt9`, so a program driving
 `jt9` that way (jt9-decode, for one) can use it: see
 [jt9 -s](#jt9--s-shared-memory). It does not replace `jt9` inside WSJT-X
 itself, which runs it for every mode: see [jt9: FST4W](#jt9-fst4w),
-[jt9: FT8](#jt9-ft8), [jt9: FT4](#jt9-ft4) and [jt9: FT2](#jt9-ft2).
+[jt9: FT8](#jt9-ft8), [jt9: FT4](#jt9-ft4), [jt9: FT2](#jt9-ft2) and
+[jt9: MSK144](#jt9-msk144).
 
 Originally designed for UberSDR Skimmer.
 
@@ -264,10 +271,12 @@ unscaled SDR's quiet band sits far below that).
 
 ### --feed: one jt9 for a stream of files
 
-`--feed` (ours, FT8, FT4 and FT2) reads the files to decode from stdin, one a
-line, and decodes each as it arrives, with one decoder for all of them, so
-the a-priori decoding of calls heard in earlier periods (a7) and the hash
-tables run across them as they do in WSJT-X's own live jt9:
+`--feed` (ours, FT8, FT4, FT2 and MSK144) reads the files to decode from stdin,
+one a line, and decodes each as it arrives. For FT8, FT4 and FT2 one decoder
+serves all of them, so the a-priori decoding of calls heard in earlier periods
+(a7) and the hash tables run across them as they do in WSJT-X's own live jt9.
+MSK144 differs: each file starts afresh, as with one `jt9` process per file,
+and float WAVs are refused, as `jt9 -k` refuses them.
 
 ```
 inotifywait -m -q -e moved_to --format '%w%f' /var/lib/ka9q-radio/ft8 | jt9 -a DIR -8 -d 2 --feed
@@ -283,8 +292,8 @@ each ends. A file that cannot be read is said on stderr, gets `N = 0`, and
 the feed goes on. It ends when stdin does.
 
 This is what jt9-decode's `-F` does over WSJT-X's shared memory (`jt9 -s`,
-below), without the shared memory, and so it takes float files as well,
-which that memory's 16-bit `d2` cannot carry.
+below), without the shared memory, and so it takes float files as well
+(FT8, FT4 and FT2; not MSK144), which that memory's 16-bit `d2` cannot carry.
 
 ### --fast-subtract and -w: the same decodes for less CPU
 
@@ -406,10 +415,103 @@ checks its options, and odd WAV files it reads that this one refuses as
 WSJT-X's does. No FT2 was heard on the air while this was made, so its
 tests are generated FT2 periods and recorded 40 m periods without any.
 
-The other modes of WSJT-X's `jt9` (JT65, Q65, MSK144...) and its stdin
+## jt9: MSK144
+
+Run it the way WSJT-X's `jt9` runs on WAV files, for MSK144:
+
+```
+jt9 -a DIR -k -p 15 -f 1500 -F 200 -d 3 YYMMDD_HHMMSS.wav [more.wav ...]
+```
+
+`-k` (or `--msk144`) selects MSK144, the meteor-scatter mode. It reads `-p`
+(the period, 15 or 30 s for MSK144), `-f` the frequency, `-F` the tolerance
+(limited to 1000 Hz, as `jt9.f90` limits it), `-d` the depth (1 decodes
+single pings only, 3 adds the averages over several frames), `-c` and `-x`
+my call and his call, and `-a`, `-t` and `-q` as FT8 does. `-g`, `-G`, `-L`,
+`-H`, `-Q` and `-X` it takes and, as in WSJT-X's, leaves unused. When two mode
+switches meet, the last one wins: `-Y --msk144` decodes MSK144, and
+`--msk144 -8` decodes FT8.
+
+Each file counts as one period of `-p` seconds, read in blocks of 3456
+samples. A longer file gives up its first period and no more; a shorter one
+prints `EOF on input file`. A WAV that ends before its header says, or that
+carries the streaming size 0xFFFFFFFF, is refused: `jt9` prints
+`cannot read WAV file ...` and exits 2, as WSJT-X 3.2.0-rc1 does, where 3.0.2
+decoded the samples present and exited 0. So write each WAV whole before running
+`jt9` on it (to a temporary name, renamed when complete), and read exit 2 as
+"slot unreadable", not as a decoder fault. MSK144 writes nothing to
+`decoded.txt`, which
+stays empty. The decodes go to stdout, followed by
+`<DecodeFinished>   0   0        0`: MSK144 counts nothing in that line.
+Several files make a sequence of periods. As with one `jt9` process per file,
+which is how WSJT-X runs it, each file starts afresh: a message that repeats
+in the next file prints again. `--feed` does the same for a stream of paths.
+
+This program adds two options. WSJT-X's `jt9` fixes MSK40, the short
+message form, and the SWL mode off, and offers no way to switch them on.
+`--msk-shmsg` switches on MSK40 messages to my call and his call
+(WSJT-X's `bshmsg`: `<MYCALL HISCALL> RPT`). `--msk-swl` switches on the SWL
+mode (`bswl`): MSK40 messages between any pair of calls heard, and
+`<HHHH> RPT` for a hash that no call explains. Both stay off by default, as
+in `jt9`. Without them it decodes as WSJT-X's does.
+
+`jt9 --msk144` takes a mono 32-bit float `.wav` too, as the other modes do (ours:
+WSJT-X's refuses it). Each sample `x` enters the decoder as `x*32768.0f`, the 16-bit
+count it would have been, so a float file made from 16-bit samples decodes byte for
+byte as the 16-bit file does (`scripts/float-input-check.sh`, under every MSK144
+command line of the corpus, `--msk-shmsg` and `--msk-swl` too). Two things differ,
+and only for float files. `mskrtd` skips a block as silent when its rms is below
+one 16-bit count; a float file has no such quantisation floor (radiod's F32 can
+sit at -135 dBFS), so only a block of whole counts takes that test, and a very
+quiet float file decodes like a loud one (`float-level`). The same difference can
+change the printed SNR on very quiet float audio: a block that 16-bit input would
+skip as silent still updates the noise level, so a later decode prints the SNR it
+earned, where the 16-bit file prints a lower one (a test file at an rms of 0.7
+count: SNR 8 as float, 0 as rounded 16-bit). The float figure is the better one.
+A block with a NaN or an
+inf is skipped as silent as well, where it would otherwise poison the noise level
+for the rest of the file (`float-nan`); the run still exits 0 and prints
+`<DecodeFinished>`. The `decoded.txt` test uses the scaled values too, so a file
+quieter than rms 0.5 count leaves no `decoded.txt`, and a NaN among the first
+180000 samples makes that rms NaN, which writes the (empty) file whatever the
+level, as `decoder.f90`'s test does. These two cases have no
+reference output: their stored files come from this port. The 16-bit path
+keeps its parity with WSJT-X 3.2.0-rc1: the 395 reference runs still match.
+
+It matches WSJT-X's byte for byte, as for FT8: stdout, the exit status
+and the files left behind. The decoder follows WSJT-X's `decode_msk144.f90` and
+`mskrtd.f90`, with what they call (`msk144spd`, `msk144sync`,
+`msk144_freq_search`, `msk144decodeframe`, `bpdecode128_90`,
+`msk144signalquality`, `analytic`, `tweak1` and `packjt77`), and for the
+short messages `msk40spd`, `msk40sync`, `msk40_freq_search`,
+`msk40decodeframe`, `bpdecode40` and the call hash, as WSJT-X 3.2.0-rc1,
+commit `567ad29ce`, builds them. The Fortran reads side by side with the C++.
+On x86-64 Linux, all 395 stored runs match the reference: simulated pings
+from 0.05 s to a whole period, T/R of 15 and 30 s, `-d 1` and `-d 3`, the
+options, several files in a run, MSK40 and SWL, WSJT-X's own samples, real
+slots (one of 6 m from AC0G/B4, twenty from UACNJ), and odd WAV files
+(silence, noise, clipping, short, stereo, 8-bit, 11025 Hz, truncated,
+streaming header). The two flags have no reference to run beside, so their stored runs
+compare against outputs stored from a copy of the reference patched to read
+them from the environment (`tests/data/msk144/README.md`). No arm64 machine
+came to hand while this was made, so nothing here claims that arm64 prints the
+same lines. The `.exe` check under wine has not run yet on a wine host.
+
+Not here: `jt9 -s` for MSK144, the training mode (`btrain`) and `pcoeffs`,
+which file mode leaves off and at zero.
+
+The stations run WSJT-X 3.0.2 today. On the 321 runs it can take, 3.0.2
+prints what 3.2.0-rc1 prints in 287. In the other 34 it reports a frequency
+1 or 2 Hz apart (7 runs), aborts when `-f` and `-F` push a search window past
+the spectrum, with the sigmond build's bounds checking on (7), or reads WAV
+files that 3.2.0-rc1 refuses (20, among them a file cut mid-data and one with
+the streaming size). Each difference and the WSJT-X change
+behind it stand in `tests/data/msk144/AB-3.0.2.md`.
+
+The other modes of WSJT-X's `jt9` (JT65, Q65...) and its stdin
 stream are not here yet: they are unknown options to this one, so do not put
 it in place of WSJT-X's `jt9` inside WSJT-X. Run it where `jt9 --fst4w`,
-`jt9 -8`, `jt9 -5` or `jt9 --ft2` is run on files, or where `jt9 -s` is run
+`jt9 -8`, `jt9 -5`, `jt9 --ft2` or `jt9 -k` is run on files, or where `jt9 -s` is run
 for FT8, FT4 or FT2 (below). `jt9_wisdom.dat` is kept as WSJT-X's `jt9`
 keeps it (FFTW's plans, read from `-a`'s directory at the start and written
 back at a normal end, so a second run starts at once); `timer.out` is not
@@ -657,6 +759,43 @@ either), 239 recorded 40 m periods in one run take 3.5 s against
 improved's 14.2 s at depth 2 (4.0x) and 4.4 s against 28.6 s at depth 3
 (6.5x); a single file, mostly FFTW's planning, 0.51 s against 0.69 s.
 
+MSK144 takes about as much CPU as WSJT-X's own, and a tenth less than
+WSJT-X 3.0.2's. The measurement says nothing about why. The corpus
+(`tests/data/msk144`) as it stood then (367 runs; the 28 runs added since are
+not in the sweep), every run once, one file a process as WSJT-X runs it, `-d 1`
+and `-d 3` among the options: 276 process runs, single thread
+(`OMP_NUM_THREADS=1`), the sweep repeated five times, `scripts/msk144-cpu.sh`.
+The A/B above counts 321 runs; less the 28 added since this sweep and the 24
+left out below, 269 runs remain, and the one multi-file case (8 files) counts
+one process per file, which makes 276. The sweep leaves out the runs that need
+`--msk-shmsg` or `--msk-swl`, which 3.0.2 cannot take, and 24 on which 3.0.2
+stops early or reads what 3.2.0-rc1 refuses (every `freq-edge` run, 7 of which
+differ, and the 12 odd-WAV runs), so that the three programs do the same work.
+
+| 276 runs, CPU (user plus system), median of 5, spread | seconds |
+|---|---:|
+| this `jt9` | 276.2 (275.8 to 276.3) |
+| WSJT-X 3.2.0-rc1's `jt9`, the reference | 276.6 (276.3 to 277.5) |
+| WSJT-X 3.0.2's `jt9`, as sigmond builds it for the stations | 306.8 (306.7 to 307.7) |
+
+On an AMD Ryzen 7 5825U (6 cores), x86-64. The reference ran inside the
+`wsjtx-oracle` image (Ubuntu 24.04, gfortran 13.3) as WSJT-X's own CMake
+Release build. 3.0.2 ran on the host, from
+`/opt/git/sigmond/wsjtx/build-sigmond/jt9` (`-march=native`, `-fbounds-check`).
+This `jt9` ran from this checkout's `build/jt9`. Splitting the same numbers:
+user time 274.5 s here, 267.5 s the reference, 299.1 s for 3.0.2; system time
+1.7 s, 9.1 s and 7.7 s. So this `jt9` used within 0.2 % of 3.2.0-rc1's CPU and
+about a tenth less than 3.0.2's. The 0.2 % sets the port on the host against
+the reference inside podman, with that image's libm and FFTW and not the host's
+(the system times above differ by 5 times): it shows parity within what the
+two setups allow, no more. The 3.0.2 figure compares two different builds and
+two different decoders; it does not isolate one cause.
+
+The host carried a load average near 1 throughout, which one sweep of its own
+accounts for. A `ps` before the first sweep showed nothing else above 3 %.
+The five repeats of each program differ by under 1 %. No arm64 machine was at
+hand, so this README has no Raspberry Pi row for MSK144.
+
 ## Building it
 
 Most users only need a prebuilt binary from
@@ -695,6 +834,10 @@ cmake --build build
 
 A 32-bit ARM system (`armv7l`) builds the plain code by itself.
 
+The compiler must be GCC 9 or later, or Clang: some decoder code uses
+their vector extensions (`__builtin_convertvector` among them). MSVC
+cannot build it; the Windows build uses mingw-w64's GCC.
+
 **Windows**, cross-compiled on Linux with Docker (mingw-w64, FFTW built in,
 so `wsprd.exe` and `jt9.exe` are one file each that need nothing beside them):
 
@@ -710,7 +853,8 @@ what WSJT-X's `jt9` does on every case of `tests/data/fst4w`,
 FT2) whose inputs are there (`scripts/jt9-wine-check.sh`; `fort.52`, the
 spread's debug spectrum, to within its last printed digit: Windows' maths
 library and FFTW's build round differently). FT8's, FT4's and FT2's are
-byte for byte; FFTW for Windows is built
+byte for byte. The same script now holds MSK144's cases too, but no wine host
+has run them: the MSK144 `jt9.exe` stands unchecked. FFTW for Windows is built
 with Ubuntu's SIMD set (SSE2 and AVX) for that.
 
 Build with the settings in `CMakeLists.txt`: the decoder's files are
@@ -728,11 +872,16 @@ checks the build against WSJT-X's own outputs stored in `tests/data`,
 nothing of WSJT-X built, in a few minutes: `scripts/wsprd-stored-check.sh`
 runs `wsprd` on every case in `tests/data/wsprd/cases` as WSJT-X's was run
 (stdout, the files written and the exit statuses byte for byte), and
-`scripts/jt9-wine-check.sh` runs `jt9` on every stored FST4W, FT8, FT4 and
-FT2 case whose inputs are here (the same script checks `jt9.exe` under
-wine). `scripts/float-input-check.sh` writes each 16-bit recording
-again as 32-bit float, the same samples, and requires `wsprd` (under four
-option sets) and `jt9 --fst4w` to leave the same files from it, byte for byte.
+`scripts/jt9-wine-check.sh` runs `jt9` on every stored FST4W, FT8, FT4, FT2
+and MSK144 case whose inputs are here (367 of the 395 MSK144 runs that have a reference, and the 3 float runs, 370 in all: the other 28
+use odd WAV files that only `--deep-check` makes; the script counts and prints
+them). The same script checks `jt9.exe` under wine. It has not yet run the
+MSK144 cases on a wine host.
+`scripts/float-input-check.sh` writes each 16-bit recording again as 32-bit
+float, the same samples, and requires `wsprd` (under four option sets) and
+`jt9 --fst4w` to leave the same files from it, byte for byte, and `jt9 --msk144` under
+every command line of the MSK144 corpus that reads 16-bit recordings, including the
+runs with several files and `--feed`, which carry state from file to file.
 `scripts/ft-float-feed-check.sh` decodes each FT8, FT4 and FT2 recording set as
 one run (one decoder for its files, in order) under three option sets, from
 the 16-bit files, from their float copies, and through `--feed` from each,
@@ -803,7 +952,22 @@ second program, and are skipped otherwise (230 of them). Over 650
 cases run by `--deep-check`, every one identical on x86-64 Linux (25 FT8 cases
 that need recorded periods not included here are skipped). Against the
 hybrid itself all 468 of FT2's cases, with 239 recorded 40 m periods, were
-identical. On
+identical. For MSK144, `scripts/msk144-oracle.sh` builds WSJT-X's `jt9` and `msk144sim`
+at the same commit in the same container and makes the corpus in
+`tests/data/msk144` (395 runs with a reference, 398 with our float cases, listed in its `README.md`): simulated pings
+across SNR, frequency, width, number and period, WSJT-X's samples, 21 real
+slots, odd WAV files, several files in one run, MSK40 and SWL. `--deep-check`
+runs every one beside the reference, and all 395 match on x86-64 Linux. The
+runs with several files and `--feed` compare against outputs stored from one
+reference process per file; the runs with `--msk-shmsg` and `--msk-swl`,
+against outputs stored from a copy of the reference patched to read the two
+switches from the environment. `scripts/msk144-piece-check.sh` checks the
+parts one by one (`ldpc`, `frontend`, `sync`, `frame` and `msk40`) against
+Fortran oracles built from the reference's own routines, comparing their
+intermediate values as well as their results. `scripts/msk144-ab-302.sh`
+runs WSJT-X 3.0.2's `jt9` over the same corpus
+([tests/data/msk144/AB-3.0.2.md](tests/data/msk144/AB-3.0.2.md)).
+On
 arm64 FFTW's NEON code rounds the spread's debug spectrum (`fort.52`)
 differently in its last printed digit, and a few FT8 decodes near a
 threshold (see [jt9: FT8](#jt9-ft8)); everything else is the same.
@@ -824,11 +988,12 @@ in any case.
 | `src/ft8*.cpp`, `packjt77.cpp` | jt9's FT8 decoder: WSJT-X's `ft8_decode.f90` and what it calls (`sync8`, `ft8b`, `decode174_91`, `osd174_91`, `subtractft8`, `ft8_a7`, `ft8_a8`, `packjt77`), and the maths library's functions it uses (`ft8_maths.cpp`) |
 | `src/ft4*.cpp` | jt9's FT4 decoder: WSJT-X's `ft4_decode.f90` and what it calls (`getcandidates4`, `sync4d`, `get_ft4_bitmetrics`, `subtractft4`, `gen_ft4wave`), on FT8's LDPC decoder, `packjt77` and maths |
 | `src/ft2*.cpp` | WSJT-X improved's FT2: its decoder's FT2 branch (the audio stretched 2x, FT2's sizes and threshold) and `ft2_decoded`'s output, on the FT4 decoder |
-| `src/jt9_cli.cpp`, `fst4w_jt9.cpp`, `ft8_jt9.cpp`, `ft4_jt9.cpp`, `ft2_jt9.cpp`, `jt9_main.cpp` | jt9's command line, files and output: `jt9.f90`, `decoder.f90`, `options.f90` |
+| `src/msk144*.cpp`, `msk40.cpp`, `msk_frontend.cpp` | jt9's MSK144 decoder: WSJT-X's `decode_msk144.f90`, `mskrtd.f90` and what they call (`msk144spd`, `msk144sync`, `msk144decodeframe`, `bpdecode128_90`, `msk144signalquality`, `analytic`), with MSK40's `msk40spd`, `msk40sync`, `msk40decodeframe` and `bpdecode40`; on `packjt77` and FT8's LDPC and maths |
+| `src/jt9_cli.cpp`, `fst4w_jt9.cpp`, `ft8_jt9.cpp`, `ft4_jt9.cpp`, `ft2_jt9.cpp`, `msk144_jt9.cpp`, `jt9_main.cpp` | jt9's command line, files and output: `jt9.f90`, `decoder.f90`, `options.f90` |
 | `wasm/` | the WebAssembly builds: `build.sh`, the JavaScript APIs (`src/ft_wasm.cpp`, `src/wspr_wasm.cpp`), the packages' files and the check against the native programs |
 | `scripts/` | the comparisons with WSJT-X's `wsprd` and `jt9`, and the synthetic periods' generators |
-| `tests/data/wsprd`, `tests/data/fst4w`, `tests/data/ft8`, `tests/data/ft4`, `tests/data/ft2` | WSJT-X's `wsprd`'s and `jt9`'s outputs (the hybrid's for FT2), case by case, and wsprd's synthetic inputs |
-| `recordings/` | the six real WSPR periods, and FT8's, FT4's and FT2's inputs |
+| `tests/data/wsprd`, `tests/data/fst4w`, `tests/data/ft8`, `tests/data/ft4`, `tests/data/ft2`, `tests/data/msk144` | WSJT-X's `wsprd`'s and `jt9`'s outputs (the hybrid's for FT2), case by case, and wsprd's synthetic inputs; for MSK144 also `AB-3.0.2.md`, the differences of WSJT-X 3.0.2 |
+| `recordings/` | the six real WSPR periods, and FT8's, FT4's, FT2's and MSK144's inputs |
 
 ## Credits and licence
 
@@ -842,7 +1007,11 @@ Steven Franke, K9AN, and Joe Taylor, K1JT; FT8's `ft8_decode.f90`,
 `subtractft8.f90`, and FT4's `ft4_decode.f90` and its routines, Joe
 Taylor, K1JT, and Steven Franke, K9AN;
 `packjt77.f90`, Joe Taylor, Steven Franke and the WSJT-X developers; FT2's
-code, WSJT-X improved 3.2.0, Uwe Risse, DG2YCB, and the WSJT-X developers. The
+code, WSJT-X improved 3.2.0, Uwe Risse, DG2YCB, and the WSJT-X developers;
+MSK144's `decode_msk144.f90`, `mskrtd.f90`, `msk144spd.f90`,
+`msk144sync.f90`, `msk144decodeframe.f90`, `bpdecode128_90.f90` and the MSK40
+routines, Joe Taylor, K1JT, and Steven Franke, K9AN, and the call hash,
+`lookup3.c`, Bob Jenkins, 2006, public domain. The
 maths functions in `src/ft8_maths.cpp` are the GNU C Library's (LGPL 2.1
 or later).
 

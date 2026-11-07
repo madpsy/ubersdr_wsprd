@@ -1,0 +1,18 @@
+120100   0  0.3 1500 &  K1ABC W9XYZ EN37                                        
+<DecodeFinished>   0   0        0
+120100   0  0.3 1500 &  K1ABC W9XYZ EN37                                        
+<DecodeFinished>   0   0        0
+120500   8  8.7 1488 &  K1JT WA4CQG EM72                                        
+<DecodeFinished>   0   0        0
+120500   8  8.7 1488 &  K1JT WA4CQG EM72                                        
+<DecodeFinished>   0   0        0
+120058   8  3.2 1500 &  K1ABC W9XYZ EN37                                        
+120058   8  9.2 1500 &  <W9XYZ> PJ4/K1ABC RRR                                   
+<DecodeFinished>   0   0        0
+120057  11  9.2 1500 &  <...> PJ4/K1ABC RRR                                     
+<DecodeFinished>   0   0        0
+120058   8  3.2 1500 &  K1ABC W9XYZ EN37                                        
+120058   8  9.2 1500 &  <W9XYZ> PJ4/K1ABC RRR                                   
+<DecodeFinished>   0   0        0
+120057  11  9.2 1500 &  <...> PJ4/K1ABC RRR                                     
+<DecodeFinished>   0   0        0

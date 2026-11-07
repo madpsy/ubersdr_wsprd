@@ -2680,6 +2680,12 @@ void Packjt77::set_calls(const std::string& mycall12, const std::string& hiscall
     mycall13_ = to13(my);
 }
 
+void Packjt77::blank_recent_calls() {
+    Call13 b;
+    b.fill(' ');
+    recent_calls_.fill(b);
+}
+
 Packjt77::Unpacked Packjt77::unpack77(const char* c77in, int nrx) {
     // The entry's bookkeeping: mycall13's hashes saved (and the call
     // itself saved) when it changed; dxcall13's hashes computed.

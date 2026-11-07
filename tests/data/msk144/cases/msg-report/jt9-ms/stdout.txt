@@ -1,0 +1,2 @@
+120040   8  5.3 1500 &  K1ABC W9XYZ R-03                                        
+<DecodeFinished>   0   0        0

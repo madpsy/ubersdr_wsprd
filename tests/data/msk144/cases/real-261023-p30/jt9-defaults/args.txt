@@ -1,0 +1,1 @@
+jt9 -a . -k -p 30 recordings/msk144-real/msk144_261023_105030.wav

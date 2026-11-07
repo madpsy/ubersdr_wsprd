@@ -2,7 +2,7 @@
 // lib/options.f90's getopt and print_opt, lib/jt9_input_validation.f90's
 // number checks, at 567ad29ce, with WSJT-X improved 3.2.0's --ft2; then
 // each mode's file mode (FST4W's: fst4w_jt9.h; FT8's: ft8_jt9.h; FT4's:
-// ft4_jt9.h; FT2's: ft2_jt9.h).
+// ft4_jt9.h; FT2's: ft2_jt9.h; MSK144's: msk144_jt9.h).
 #include "jt9_cli.h"
 
 #include <algorithm>
@@ -20,6 +20,7 @@
 #include "ft8_jt9.h"
 #include "fft.h"  // decoder_wisdom_*
 #include "jt9_shm.h"
+#include "msk144_jt9.h"
 
 namespace jt9_cli {
 
@@ -56,6 +57,7 @@ const Opt OPTS[] = {
     {"fst4w", false, 'Y', "FST4W mode, print hash22 values", ""},
     {"ft8", false, '8', "FT8 mode", ""},
     {"quiet", false, 'q', "Quiet mode, no <DecodeFinished>", ""},
+    {"msk144", false, 'k', "MSK144 mode", ""},
     {"QSOprog", true, 'Q', "QSO progress (0-5), default PROGRESS=1", "QSOprogress"},
     {"depth", true, 'd', "Decoding depth (1-3), default DEPTH=1", "DEPTH"},
     {"my-call", true, 'c', "my callsign", "CALL"},
@@ -68,9 +70,16 @@ const Opt OPTS[] = {
      "same decodes as WSJT-X's, not to the bit, for less CPU",
      ""},
     {"feed", false, 0,
-     "Ours (FT8, FT4, FT2): read WAV paths from stdin, one a line (PATH or PATH HHMMSS), and decode each as it arrives "
-     "with one decoder for all, as one jt9 -s does period after period; after each file's lines and "
-     "<DecodeFinished>, <FileDone> PATH N",
+     "Ours (FT8, FT4, FT2, MSK144): read WAV paths from stdin, one a line (PATH or PATH HHMMSS), and decode each as it arrives "
+     "with one decoder for all, as one jt9 -s does period after period (MSK144: each file starts afresh, and float WAVs "
+     "are refused); after each file's lines and <DecodeFinished>, <FileDone> PATH N",
+     ""},
+    {"msk-shmsg", false, 0,
+     "Ours (MSK144): also decode MSK40 short messages (WSJT-X's bshmsg), \"<MYCALL HISCALL> RPT\"; off by default, as in WSJT-X's jt9",
+     ""},
+    {"msk-swl", false, 0,
+     "Ours (MSK144): SWL mode (WSJT-X's bswl): also decode MSK40 messages for any pair of calls heard, and \"<HHHH> RPT\" "
+     "for a hash that no call explains; off by default, as in WSJT-X's jt9",
      ""},
     {"spread", true, 0,
      "FST4W's spread (w50): fast (default: within 0.0001 Hz of jt9's, several times cheaper), exact (jt9's, "
@@ -82,7 +91,7 @@ const Opt OPTS[] = {
 // an unrecognised option there (the usage, status 0), as here.
 // -s, -e, -r, -m and -w as 567ad29ce's getopt string has them (-r, its
 // share path, is not in its list of options).
-const char* const SHORT = "hvs:e:a:r:m:p:d:f:F:w:t:L:H:5WY8qQ:c:G:x:g:X:";
+const char* const SHORT = "hvs:e:a:r:m:p:d:f:F:w:t:L:H:5WY8kqQ:c:G:x:g:X:";
 
 std::string rtrim(std::string s) {
     while (!s.empty() && s.back() == ' ') s.pop_back();
@@ -298,8 +307,9 @@ int decode(bool read_files, const std::string& shm_key, int mode, fst4w::FileMod
     }
     if (mode == 5) return ft4::run_files(f8, files, cwd, out, err);
     if (mode == 52) return ft2::run_files(f8, files, cwd, out, err);
-    err << "jt9: no mode given: this jt9 decodes FST4W (--fst4w, -W, or -Y), FT8 (-8), FT4 (-5) and FT2 (--ft2) so "
-           "far\nSTOP 2\n";
+    if (mode == 144) return msk144::run_files(f8, files, cwd, out, err);
+    err << "jt9: no mode given: this jt9 decodes FST4W (--fst4w, -W, or -Y), FT8 (-8), FT4 (-5), FT2 (--ft2) and "
+           "MSK144 (--msk144, -k) so far\nSTOP 2\n";
     return 2;
 }
 
@@ -309,7 +319,7 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
         const std::string& version, std::ostream* live_err) {
     fst4w::FileMode fm;
     ft8::FileMode f8;  // what FT8, FT4 and FT2 read, beside FST4W's
-    int mode = 0;  // jt9's: 241 --fst4w (-W), 242 -Y, 8 -8, 5 -5, 52 --ft2 (improved's)
+    int mode = 0;  // jt9's: 241 --fst4w (-W), 242 -Y, 8 -8, 5 -5, 144 -k, 52 --ft2 (improved's)
     bool display_help = false, display_version = false;
     bool read_files = true;  // false: -s
     bool feed = false;       // --feed: the files' names from stdin
@@ -342,6 +352,14 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
         }
         if (g.opt && !g.opt->chr && std::strcmp(g.opt->name, "feed") == 0) {
             feed = true;
+            continue;
+        }
+        if (g.opt && !g.opt->chr && std::strcmp(g.opt->name, "msk-shmsg") == 0) {
+            f8.msk_shmsg = true;
+            continue;
+        }
+        if (g.opt && !g.opt->chr && std::strcmp(g.opt->name, "msk-swl") == 0) {
+            f8.msk_swl = true;
             continue;
         }
         if (g.opt && !g.opt->chr) {  // --spread
@@ -400,6 +418,7 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
             break;
         case 'F':
             if (!integer('F', v, fm.ntol)) return invalid('F', v, "must be an integer");
+            f8.ntol = fm.ntol;
             break;
         case 'X':
             if (!integer('X', v, fm.nexp_decode)) return invalid('X', v, "must be an integer");
@@ -410,6 +429,7 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
         case 'Y': mode = 242; break;
         case '8': mode = 8; break;
         case '5': mode = 5; break;
+        case 'k': mode = 144; break;
         case '2': mode = 52; break;  // --ft2 only (getopt refuses -2)
         case 'q': fm.quiet = f8.quiet = true; break;
         case 'c':
@@ -438,11 +458,11 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
     }
     if (display_version) {
         out << "jt9 " << version
-            << " (FST4W, FT8 and FT4: WSJT-X 567ad29ce's decoders; FT2: WSJT-X improved 3.2.0's FT2 on that FT4)\n";
+            << " (FST4W, FT8, FT4 and MSK144: WSJT-X 567ad29ce's decoders; FT2: WSJT-X improved 3.2.0's FT2 on that FT4)\n";
         return 0;
     }
-    if (feed && (!read_files || g.remain > 0 || (mode != 8 && mode != 5 && mode != 52))) {
-        err << "jt9: --feed takes FT8 (-8), FT4 (-5) or FT2 (--ft2), no -s and no files\nSTOP 2\n";
+    if (feed && (!read_files || g.remain > 0 || (mode != 8 && mode != 5 && mode != 52 && mode != 144))) {
+        err << "jt9: --feed takes FT8 (-8), FT4 (-5), FT2 (--ft2) or MSK144 (--msk144), no -s and no files\nSTOP 2\n";
         return 2;
     }
     if (display_help || g.st < 0 || (!read_files && g.remain > 0) || (read_files && g.remain < 1 && !feed)) {
@@ -467,7 +487,8 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
         std::ostream& e = live_err ? *live_err : err;
         status = mode == 8   ? ft8::run_feed(f8, std::cin, cwd, out, e)
                  : mode == 5 ? ft4::run_feed(f8, std::cin, cwd, out, e)
-                             : ft2::run_feed(f8, std::cin, cwd, out, e);
+                 : mode == 144 ? msk144::run_feed(f8, std::cin, cwd, out, e)
+                               : ft2::run_feed(f8, std::cin, cwd, out, e);
     } else {
         status = decode(read_files, shm_key, mode, fm, f8, args, g, cwd, out, err, live_err);
     }

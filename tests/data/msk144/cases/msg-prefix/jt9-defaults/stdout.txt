@@ -1,0 +1,2 @@
+120042   7  5.2 1500 &  PJ4/K1ABC W9X                                           
+<DecodeFinished>   0   0        0

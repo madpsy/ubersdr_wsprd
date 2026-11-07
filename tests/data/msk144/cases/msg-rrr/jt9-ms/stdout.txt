@@ -1,0 +1,2 @@
+120041   7  5.2 1500 &  K1ABC W9XYZ RRR                                         
+<DecodeFinished>   0   0        0

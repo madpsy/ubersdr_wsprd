@@ -1,0 +1,1 @@
+jt9 -a . -k -p 30 -f 1500 -F 200 -d 3 --msk-shmsg recordings/msk144-sim/stock-tr30-s15-261106_120050.wav

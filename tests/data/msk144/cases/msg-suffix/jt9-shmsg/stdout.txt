@@ -1,0 +1,2 @@
+120043   7  5.2 1500 &  K1ABC/P W9XYZ EN37                                      
+<DecodeFinished>   0   0        0

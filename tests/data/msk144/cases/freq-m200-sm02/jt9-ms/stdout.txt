@@ -1,0 +1,2 @@
+120012  -1  5.4 1299 &  K1ABC W9XYZ EN37                                        
+<DecodeFinished>   0   0        0

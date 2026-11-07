@@ -1,0 +1,2 @@
+105030  -8 11.5 1343 &  C67MIP/P BI7CEG/P NN73                                  
+<DecodeFinished>   0   0        0

@@ -1,0 +1,1 @@
+jt9 -a . -k -p 15 -f 1500 -F 200 -d 3 --msk-shmsg recordings/msk144-sim/snr-p06-261106_120008.wav

@@ -1,0 +1,2 @@
+120047   1  5.3 1503 &  <K1ABC W9XYZ> RRR                                       
+<DecodeFinished>   0   0        0

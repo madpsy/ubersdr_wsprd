@@ -8,7 +8,11 @@
 # each of its option sets below, and jt9 --fst4w's stdout, decoded.txt,
 # fst4_decodes.dat and fst4w_calls.txt: every file but wspr_timer.out, whose
 # CPU times differ from run to run. Each run starts from a fresh data dir that
-# is also the cwd.
+# is also the cwd. It also runs jt9 --msk144 so, under every command line of
+# tests/data/msk144/cases (--msk-shmsg and --msk-swl among them) whose input is
+# one 16-bit mono recording of recordings/msk144-*, and the cases with several
+# files or --feed (state carried from file to file): jt9's stdout, decoded.txt
+# and every other file but timer.out.
 #
 #   scripts/float-input-check.sh WSPRD JT9 [WORK]
 #
@@ -57,6 +61,39 @@ same() {
     return 0
 }
 
+# Several files in one run, or --feed with its stdin (STDIN a file of paths from
+# the repository's root, or "-"): the float run must leave what the 16-bit run
+# leaves, so state carried from one file to the next (MSK144's dupe checker,
+# call hashes, SNR) matches too. Both runs name the files by basename, in the
+# data dir, so the printed paths agree.
+same_multi() {
+    local name=$1 stdin=$2 prog=$3; shift 3
+    local -a wavs=() opts=()
+    while (( $# )) && [[ $1 != -- ]]; do opts+=("$1"); shift; done
+    shift; wavs=("$@")
+    local d w f bad= base
+    for d in int float; do
+        rm -rf "$work/run/$d"; mkdir -p "$work/run/$d"
+        for w in "${wavs[@]}"; do
+            base=${w##*/}
+            if [[ $d == int ]]; then cp "$w" "$work/run/$d/$base"; else cp "$work/float/$base" "$work/run/$d/$base"; fi
+        done
+        if [[ $stdin == - ]]; then
+            (cd "$work/run/$d" && "$prog" -a . "${opts[@]}" "${wavs[@]##*/}" > stdout 2> stderr; echo $? > status)
+        else
+            for w in "${wavs[@]}"; do echo "${w##*/}"; done > "$work/run/$d.stdin"
+            (cd "$work/run/$d" && "$prog" -a . "${opts[@]}" < "$work/run/$d.stdin" > stdout 2> stderr; echo $? > status)
+        fi
+        for w in "${wavs[@]}"; do rm -f "$work/run/$d/${w##*/}"; done
+    done
+    for f in $(cd "$work/run/int" && ls) $(cd "$work/run/float" && ls); do
+        [[ $f == wspr_timer.out || $f == timer.out ]] && continue
+        cmp -s "$work/run/int/$f" "$work/run/float/$f" || bad="$bad $f"
+    done
+    if [[ -n $bad ]]; then echo "differs: $name:$(tr ' ' '\n' <<< "$bad" | sort -u | tr '\n' ' ')"; return 1; fi
+    return 0
+}
+
 pass=0 fail=0
 for wav in "$repo"/recordings/40m-wspr-20261010-1914/*.wav "$repo"/recordings/wsprd-sim/*.wav; do
     [[ -f $wav ]] || continue
@@ -67,5 +104,48 @@ for wav in "$repo"/recordings/40m-wspr-20261010-1914/*.wav "$repo"/recordings/ws
     done
     if same "jt9 --fst4w ${wav#"$repo"/}" "$wav" "$jt9" -p 120 --fst4w -f 1500 -F 100 -d 3; then pass=$((pass + 1)); else fail=$((fail + 1)); fi
 done
+# MSK144: each distinct (recordings, options) of the corpus's jt9 cases: one
+# file, several files in a run, and --feed with its stdin.txt. An args.txt
+# holds `jt9 OPTIONS... FILE...`; the run adds -a . itself.
+declare -A seen_msk=()
+mskn=0
+while IFS= read -r a; do
+    read -r -a toks < "$a"
+    wav= opts=() nwav=0 skip=0 wavs=() feed=0
+    for ((i = 1; i < ${#toks[@]}; i++)); do
+        t=${toks[i]}
+        case $t in
+            -a) i=$((i + 1)) ;;                            # -a DIR: the run's own
+            --feed) feed=1 ;;
+            recordings/msk144-float/*) skip=1 ;;           # already float: the float-* cases
+            recordings/msk144-*.wav) wav=$repo/$t; wavs+=("$repo/$t"); nwav=$((nwav + 1)) ;;
+            *.wav|@I/*) skip=1 ;;
+            *) opts+=("$t") ;;
+        esac
+    done
+    stdin=$(dirname "$a")/stdin.txt
+    if (( feed )); then
+        [[ -f $stdin ]] || continue
+        while IFS= read -r w; do
+            [[ $w == recordings/msk144-*.wav && $w != recordings/msk144-float/* ]] || skip=1
+            wavs+=("$repo/$w")
+        done < "$stdin"
+        nwav=${#wavs[@]}
+    fi
+    (( skip == 0 && nwav >= 1 )) || continue
+    key="${wavs[*]} $feed ${opts[*]}"
+    [[ -n ${seen_msk[$key]:-} ]] && continue
+    seen_msk[$key]=1
+    for w in "${wavs[@]}"; do
+        [[ -f $work/float/${w##*/} ]] || to_float "$w" "$work/float/${w##*/}" || continue 2
+    done
+    mskn=$((mskn + 1))
+    if (( feed )); then
+        if same_multi "jt9 --feed ${opts[*]} (${nwav} files, ${a#"$repo"/})" "$stdin" "$jt9" --feed "${opts[@]}" -- "${wavs[@]}"; then pass=$((pass + 1)); else fail=$((fail + 1)); fi
+    elif (( nwav > 1 )); then
+        if same_multi "jt9 ${opts[*]} (${nwav} files, ${a#"$repo"/})" - "$jt9" "${opts[@]}" -- "${wavs[@]}"; then pass=$((pass + 1)); else fail=$((fail + 1)); fi
+    elif same "jt9 ${opts[*]} ${wav#"$repo"/}" "$wav" "$jt9" "${opts[@]}"; then pass=$((pass + 1)); else fail=$((fail + 1)); fi
+done < <(find "$repo/tests/data/msk144/cases" -path '*/jt9-*' -name args.txt | sort)
+echo "float input (MSK144): $mskn of those runs"
 echo "float input: $((pass + fail)) runs as on 16-bit input, $fail differing"
 (( fail == 0 ))

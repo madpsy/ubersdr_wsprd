@@ -1,0 +1,1 @@
+jt9 -a . -k -p 15 recordings/msk144-sim/msg-freetext-261106_120044.wav

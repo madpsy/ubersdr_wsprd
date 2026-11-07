@@ -1,0 +1,1 @@
+jt9 -a . -k -p 30 recordings/msk144-sim/tr30-wide-s04-261106_120038.wav

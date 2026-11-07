@@ -1,0 +1,2 @@
+ EOF on input file recordings/msk144-samples/160915_113100.wav
+<DecodeFinished>   0   0        0
