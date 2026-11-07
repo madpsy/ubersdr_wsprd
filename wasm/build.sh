@@ -90,6 +90,17 @@ cflags=(-std=c++17 -O3 -ffp-contract=off -fwasm-exceptions -I"$root/src" -I"$fft
 
 objs=$build/obj
 mkdir -p "$objs"
+# The objects are kept between builds, but only while nothing they are made
+# from has changed: a fingerprint of every source and header here and in
+# src/, the flags and emcc's version. Times alone cannot say (an export copies
+# files with their own, older than objects built since; a header's change
+# reaches every file including it), so a new fingerprint starts afresh.
+fingerprint=$( { emcc --version | head -1; printf '%s\n' "${cflags[@]}";
+                 cat "$root"/src/*.cpp "$root"/src/*.h "$root"/src/*.inc "$here"/src/*.cpp 2>/dev/null; } | sha256sum | cut -c1-64)
+if [ "$(cat "$objs/.fingerprint" 2>/dev/null)" != "$fingerprint" ]; then
+    rm -f "$objs"/*.o
+    echo "$fingerprint" > "$objs/.fingerprint"
+fi
 compile() {  # source, object
     if [ ! -f "$2" ] || [ "$1" -nt "$2" ] || [ "$0" -nt "$2" ]; then
         em++ "${cflags[@]}" -c "$1" -o "$2"
