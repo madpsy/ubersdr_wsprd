@@ -69,6 +69,14 @@ const Opt OPTS[] = {
      "Ours (FT8, FT4, FT2): the decoded signals' subtraction smoothed at a low rate, not with two big FFTs: the "
      "same decodes as WSJT-X's, not to the bit, for less CPU",
      ""},
+    {"nn", true, 0,
+     "Ours (FT8): also try a neural soft demodulator (MODEL, an .onnx file) as a bit metric when "
+     "WSJT-X's own fail, and drop implausible OSD and a-priori decodes; decodes then differ from WSJT-X's",
+     "MODEL"},
+    {"nn-level", true, 0,
+     "Ours (FT8, with --nn): 1 (default) or 2: how hard the network tries on each candidate (2: more "
+     "decodes for more CPU)",
+     "N"},
     {"feed", false, 0,
      "Ours (FT8, FT4, FT2, MSK144): read WAV paths from stdin, one a line (PATH or PATH HHMMSS), and decode each as it arrives "
      "with one decoder for all, as one jt9 -s does period after period (MSK144: each file starts afresh); after each file's lines and <DecodeFinished>, <FileDone> PATH N",
@@ -347,6 +355,25 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
         const std::string& v = g.optarg;
         if (g.opt && !g.opt->chr && std::strcmp(g.opt->name, "fast-subtract") == 0) {
             f8.fast_subtract = true;
+            continue;
+        }
+        if (g.opt && !g.opt->chr && std::strcmp(g.opt->name, "nn") == 0) {
+            std::string why;
+            std::shared_ptr<ft8::NnMetric> nn = ft8::NnMetric::open(v, why);
+            if (!nn) {
+                err << "jt9: --nn " << v << ": " << why << "\nSTOP 2\n";
+                return 2;
+            }
+            f8.nn = std::move(nn);
+            continue;
+        }
+        if (g.opt && !g.opt->chr && std::strcmp(g.opt->name, "nn-level") == 0) {
+            int n = 0;
+            if (!integer(0, v, n) || n < 1 || n > 2) {
+                err << "jt9: invalid value for --nn-level: " << rtrim(v) << " (1 or 2)\nSTOP 2\n";
+                return 2;
+            }
+            f8.nn_level = n;
             continue;
         }
         if (g.opt && !g.opt->chr && std::strcmp(g.opt->name, "feed") == 0) {

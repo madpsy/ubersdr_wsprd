@@ -68,7 +68,7 @@ fi
 decoders=(
     fft.cpp fst4w.cpp fst4w_frontend.cpp fst4w_jt9.cpp fst4w_ldpc.cpp fst4w_unpack.cpp
     ft2.cpp ft2_jt9.cpp ft4.cpp ft4_frontend.cpp ft4_jt9.cpp
-    ft8.cpp ft8_frontend.cpp ft8_jt9.cpp ft8_ldpc.cpp ft8_maths.cpp
+    ft8.cpp ft8_frontend.cpp ft8_jt9.cpp ft8_ldpc.cpp ft8_nn.cpp ft8_maths.cpp
     ft_fast_subtract.cpp packjt77.cpp wsprd_osd.cpp
 )
 # jt9_cli.cpp reaches MSK144's too (jt9.cjs: jt9 -k).

@@ -48,6 +48,8 @@
 #include <vector>
 
 #include "fst4w_frontend.h"  // FftwVec
+#include "ft8_nn.h"
+#include "ft8_plausible.h"
 #include "ft_fast_subtract.h"  // --fast-subtract's smoothing
 
 namespace ft8 {
@@ -143,6 +145,11 @@ public:
     // Ours (jt9 --fast-subtract): sqf's 4001-tap smoothing of dd*conj(cref) computed at 300 S/s and interpolated back
     // (sqf_fast), in place of its two 180,000-point FFTs. Not WSJT-X's to the bit; the same decodes.
     void set_fast_subtract(bool v) { fast_subtract_ = v; }
+    // Ours (jt9 --nn, --nn-level): the network as extra bit metric passes in ft8b (null: none).
+    void set_nn(NnMetric* nn, int level) {
+        nn_ = nn;
+        nn_level_ = level;
+    }
 
     // gen_ft8wave(itone, nsym, nsps, bt, fsample, f0, cwave, wave, icmplx,
     // nwave): cwave or wave (icmplx) nwave long; its tables kept here.
@@ -238,6 +245,8 @@ private:
     bool st_first_ = true;
     float endcorrection_[2001] = {};
     bool fast_subtract_ = false;
+    NnMetric* nn_ = nullptr;
+    int nn_level_ = 1;
     std::unique_ptr<FastSubtract> fs_;  // fast subtraction's (sqf_fast), made on its first call
     std::vector<float> fs_gain_;         // and the end correction a sample
     float sqf_fast(int idt, float* dd0, float f0, float dt, bool ldt);

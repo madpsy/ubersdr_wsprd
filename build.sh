@@ -115,14 +115,75 @@ fi
 say() { printf '\n== %s\n' "$*"; }
 
 # A dist directory's files for one platform (linux-x86_64, linux-aarch64,
-# windows-x86_64).
+# windows-x86_64). The model, ft8nn-jt9.onnx, is in every platform's
+# SHA256SUMS but uploaded once.
 dist_assets() {
     local dir=$1 platform=$2
     case "$platform" in
-        windows-*) echo "$dir/wsprd-$platform.exe" "$dir/jt9-$platform.exe" "$dir/SHA256SUMS-$platform" ;;
+        windows-*) echo "$dir/wsprd-$platform.exe" "$dir/jt9-$platform.exe" "$dir/onnxruntime-$platform.zip" "$dir/SHA256SUMS-$platform" ;;
         wasm) echo "$dir/jt9-wasm.tgz" "$dir/wsprd-wasm.tgz" "$dir/SHA256SUMS-wasm" ;;
-        *) echo "$dir/wsprd-$platform" "$dir/jt9-$platform" "$dir/SHA256SUMS-$platform" ;;
+        *) echo "$dir/wsprd-$platform" "$dir/jt9-$platform" "$dir/onnxruntime-$platform.tgz" "$dir/SHA256SUMS-$platform" ;;
     esac
+}
+
+# jt9 --nn's ONNX Runtime: loaded only for --nn, from beside jt9 or the
+# library path. It is not built into jt9, which some run afresh every cycle:
+# a release carries Microsoft's official library for each platform (checked
+# by its SHA-256) as onnxruntime-<platform>.tgz or .zip, to unpack beside
+# jt9, and the model, ft8nn-jt9.onnx.
+ORT_VERSION=1.31.1
+ort_pack() {  # ort_pack PLATFORM DIST: DIST/onnxruntime-PLATFORM.tgz or .zip
+    local platform=$1 dist=$2 plat ext sha lib out
+    case "$platform" in
+        linux-x86_64) plat=linux-x64 ext=tgz lib=libonnxruntime.so.$ORT_VERSION out=libonnxruntime.so.1
+            sha=c849e36a1ef3e22d4ff217b9d1ce4a3cf5b9467b975610913ae959ad5b16bdc9 ;;
+        linux-aarch64) plat=linux-aarch64 ext=tgz lib=libonnxruntime.so.$ORT_VERSION out=libonnxruntime.so.1
+            sha=5317505e2da99be65f8e2775ba3c2afd6d2961fd78aba1bd8f56159f48820c78 ;;
+        windows-x86_64) plat=win-x64 ext=zip lib=onnxruntime.dll out=onnxruntime.dll
+            sha=5869e26bb25314375f2d5ef1877e3ea06b1543d6c710e6e4a1ec2f7177ab4b2c ;;
+        *) echo "no ONNX Runtime release for $platform" >&2; exit 1 ;;
+    esac
+    local name=onnxruntime-$plat-$ORT_VERSION cache=${XDG_CACHE_HOME:-$HOME/.cache}/ubersdr-wsprd t
+    mkdir -p "$cache"
+    if ! echo "$sha  $cache/$name.$ext" | sha256sum --quiet -c >/dev/null 2>&1; then
+        echo "fetching ONNX Runtime $ORT_VERSION ($plat)"
+        curl -fsSL -o "$cache/$name.$ext.part" \
+            "https://github.com/microsoft/onnxruntime/releases/download/v$ORT_VERSION/$name.$ext"
+        echo "$sha  $cache/$name.$ext.part" | sha256sum --quiet -c ||
+            { echo "$name.$ext is not ONNX Runtime's release (SHA-256 differs)" >&2; exit 1; }
+        mv "$cache/$name.$ext.part" "$cache/$name.$ext"
+    fi
+    t=$(mktemp -d)
+    case "$ext" in
+        tgz) tar xzf "$cache/$name.$ext" -C "$t" "$name/lib/$lib" "$name/LICENSE" "$name/ThirdPartyNotices.txt" ;;
+        zip) unzip -q "$cache/$name.$ext" "$name/lib/$lib" "$name/LICENSE" "$name/ThirdPartyNotices.txt" -d "$t" ;;
+    esac
+    mkdir "$t/p"
+    cp "$t/$name/lib/$lib" "$t/p/$out"
+    cp "$t/$name/LICENSE" "$t/p/onnxruntime-LICENSE.txt"
+    cp "$t/$name/ThirdPartyNotices.txt" "$t/p/onnxruntime-ThirdPartyNotices.txt"
+    rm -f "$dist/onnxruntime-$platform.$ext"
+    case "$ext" in
+        tgz) tar czf "$dist/onnxruntime-$platform.tgz" --owner=0 --group=0 -C "$t/p" "$out" onnxruntime-LICENSE.txt onnxruntime-ThirdPartyNotices.txt ;;
+        zip) (cd "$t/p" && zip -qX "$dist/onnxruntime-$platform.zip" "$out" onnxruntime-LICENSE.txt onnxruntime-ThirdPartyNotices.txt) ;;
+    esac
+    rm -rf "$t"
+}
+
+# jt9 -8 --nn with the packed library beside it, on a real FT8 period: it
+# must load and decode at least what jt9 without it does.
+# nn_check JT9 LIBDIR WORK [wine]
+nn_check() {
+    local jt9=$1 libdir=$2 work=$3 run=() wav=$root/recordings/ft8-real/261012_125100.wav plain nn
+    [ "${4:-}" = wine ] && run=(env WINEPREFIX="$build/wineprefix" WINEDEBUG=-all wine)
+    rm -rf "$work"; mkdir -p "$work/plain" "$work/nn"
+    cp "$jt9" "$libdir"/* "$root/models/ft8nn-jt9.onnx" "$work/nn/"
+    cp "$jt9" "$work/plain/"
+    plain=$(cd "$work/plain" && "${run[@]}" "./$(basename "$jt9")" -8 -d 3 "$wav" | tr -d '\r' | grep -vc '<DecodeFinished>')
+    nn=$(cd "$work/nn" && "${run[@]}" "./$(basename "$jt9")" -8 -d 3 --nn ft8nn-jt9.onnx "$wav" | tr -d '\r' | grep -vc '<DecodeFinished>')
+    [ "$nn" -ge "$plain" ] && [ "$nn" -gt 0 ] ||
+        { echo "$(basename "$jt9") --nn: $nn lines, without it $plain" >&2; exit 1; }
+    echo "$(basename "$jt9") --nn with the packed ONNX Runtime: $nn lines, $plain without"
 }
 
 # The notes' section for one platform: where it was built, what it needs,
@@ -130,9 +191,9 @@ dist_assets() {
 section_for() {
     local dir=$1 platform=$2 needs built_on fence='```'
     case "$platform" in
-        linux-x86_64) needs="an x86-64 CPU with AVX2 (Intel since Haswell, AMD since Zen); nothing else to install" ;;
-        linux-aarch64) needs="64-bit ARM (a Raspberry Pi 4 or 5 on a 64-bit OS, for one); nothing else to install" ;;
-        windows-x86_64) needs="64-bit Windows 10 or 11 on an x86-64 CPU with AVX2; nothing else to install" ;;
+        linux-x86_64) needs="an x86-64 CPU with AVX2 (Intel since Haswell, AMD since Zen); nothing else to install (for jt9 --nn, ft8nn-jt9.onnx and onnxruntime-linux-x86_64.tgz's library beside jt9)" ;;
+        linux-aarch64) needs="64-bit ARM (a Raspberry Pi 4 or 5 on a 64-bit OS, for one); nothing else to install (for jt9 --nn, ft8nn-jt9.onnx and onnxruntime-linux-aarch64.tgz's library beside jt9)" ;;
+        windows-x86_64) needs="64-bit Windows 10 or 11 on an x86-64 CPU with AVX2; nothing else to install (for jt9 --nn, ft8nn-jt9.onnx and onnxruntime-windows-x86_64.zip's DLL beside jt9.exe)" ;;
         wasm) needs="a browser or Node 18 or later" ;;
         *) needs="an ${platform#*-} CPU" ;;
     esac
@@ -259,10 +320,18 @@ for p in wsprd jt9; do
     cp "$build/$p" "$dist/$p-linux-$arch"
     strip "$dist/$p-linux-$arch"
 done
-(cd "$dist" && sha256sum -- "wsprd-linux-$arch" "jt9-linux-$arch" > "SHA256SUMS-linux-$arch")
+ort_pack "linux-$arch" "$dist"
+cp "$root/models/ft8nn-jt9.onnx" "$dist/"
+(cd "$dist" && sha256sum -- "wsprd-linux-$arch" "jt9-linux-$arch" "onnxruntime-linux-$arch.tgz" ft8nn-jt9.onnx > "SHA256SUMS-linux-$arch")
 (. /etc/os-release && echo "$PRETTY_NAME") > "$dist/built-on"
 echo "$version" > "$dist/version"
-echo "built: $dist/wsprd-linux-$arch, $dist/jt9-linux-$arch ($version)"
+echo "built: $dist/wsprd-linux-$arch, $dist/jt9-linux-$arch, $dist/onnxruntime-linux-$arch.tgz ($version)"
+if $check; then
+    say "checking jt9 --nn with the packed ONNX Runtime"
+    rm -rf "$build/ort-linux"; mkdir -p "$build/ort-linux"
+    tar xzf "$dist/onnxruntime-linux-$arch.tgz" -C "$build/ort-linux" libonnxruntime.so.1
+    nn_check "$dist/jt9-linux-$arch" "$build/ort-linux" "$build/nn-check"
+fi
 
 # --- the check: WSJT-X's own's stored outputs ---------------------------------
 if $check && [ "${WSPRD_SKIP_COMPARE:-0}" != 1 ]; then
@@ -359,11 +428,17 @@ if command -v wine >/dev/null; then
     # as WSJT-X's.
     say "checking jt9.exe under wine"
     "$root/scripts/jt9-wine-check.sh" "$wbuild/jt9-windows-x86_64.exe" "$build/wine-jt9"
+    say "checking jt9.exe --nn with the packed ONNX Runtime under wine"
+    ort_pack windows-x86_64 "$dist"
+    rm -rf "$build/ort-windows"; mkdir -p "$build/ort-windows"
+    unzip -q "$dist/onnxruntime-windows-x86_64.zip" onnxruntime.dll -d "$build/ort-windows"
+    nn_check "$wbuild/jt9-windows-x86_64.exe" "$build/ort-windows" "$build/nn-check-wine" wine
 else
     echo "wine is not installed: wsprd.exe and jt9.exe are built but not checked"
 fi
 cp "$wbuild/wsprd-windows-x86_64.exe" "$wbuild/jt9-windows-x86_64.exe" "$dist/"
-(cd "$dist" && sha256sum -- wsprd-windows-x86_64.exe jt9-windows-x86_64.exe > SHA256SUMS-windows-x86_64)
+[ -f "$dist/onnxruntime-windows-x86_64.zip" ] || ort_pack windows-x86_64 "$dist"
+(cd "$dist" && sha256sum -- wsprd-windows-x86_64.exe jt9-windows-x86_64.exe onnxruntime-windows-x86_64.zip ft8nn-jt9.onnx > SHA256SUMS-windows-x86_64)
 compiler=$(docker run --rm "$image" x86_64-w64-mingw32-g++ -dumpfullversion)
 echo "$(. /etc/os-release && echo "$PRETTY_NAME"), cross-compiled with mingw-w64 GCC $compiler" > "$dist/built-on-windows-x86_64"
 echo
@@ -382,7 +457,8 @@ And WSJT-X's \`jt9\` for FST4W (FST4W-120 to -1800, and 15, 30 and 60 s), FT8 (\
 - \`wsprd-linux-x86_64\`, \`wsprd-linux-aarch64\`, \`jt9-linux-x86_64\`, \`jt9-linux-aarch64\`: Linux.
 - \`wsprd-windows-x86_64.exe\`, \`jt9-windows-x86_64.exe\`: Windows.
 - \`jt9-wasm.tgz\`: the FT8, FT4, FT2 and MSK144 decoders in WebAssembly, for JavaScript in a browser, a Web Worker or Node (\`npm install\` it), decoding as this \`jt9\` does (the same decodes but a few weak ones); with \`jt9\`'s command line for Node.
-- \`wsprd-wasm.tgz\`: \`wsprd\` in WebAssembly likewise (WSPR-2 and WSPR-15), its decodes as this \`wsprd\`'s; with \`wsprd\`'s command line for Node."
+- \`wsprd-wasm.tgz\`: \`wsprd\` in WebAssembly likewise (WSPR-2 and WSPR-15), its decodes as this \`wsprd\`'s; with \`wsprd\`'s command line for Node.
+- \`ft8nn-jt9.onnx\`, \`onnxruntime-linux-x86_64.tgz\`, \`onnxruntime-linux-aarch64.tgz\`, \`onnxruntime-windows-x86_64.zip\`: for \`jt9 -8 --nn ft8nn-jt9.onnx\` (optional): a neural network tries the FT8 signals WSJT-X's own decoding misses, about 9% more decodes for about 1.5 times the CPU (\`--nn-level 2\`: about 10% for about twice). Put the model and the library from your platform's archive (Microsoft's official ONNX Runtime $ORT_VERSION, with its licence) beside \`jt9\`; without \`--nn\` neither is needed."
 assets=()
 for platform in "linux-$arch" windows-x86_64 wasm; do
     notes="$notes
@@ -391,6 +467,7 @@ $(section_for "$dist" "$platform")"
     # shellcheck disable=SC2207
     assets+=($(dist_assets "$dist" "$platform"))
 done
+assets+=("$dist/ft8nn-jt9.onnx")
 gh release create "$tag" "${assets[@]}" --target "$commit" --title "$tag" --notes "$notes" --latest=false
 echo "  $(gh release view "$tag" --json url -q .url)"
 make_latest "$tag" "$commit" "$notes" "${assets[@]}"

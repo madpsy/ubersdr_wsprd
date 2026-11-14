@@ -66,6 +66,8 @@ your operating system and CPU from the
 | `jt9-windows-x86_64.exe` | `jt9` (FST4W, FT8, FT4, FT2 and MSK144) for 64-bit Windows 10 or 11 on an x86-64 CPU with AVX2 |
 | `jt9-wasm.tgz` | the FT8, FT4, FT2 and MSK144 decoders in WebAssembly, for JavaScript (a browser, a Web Worker or Node): see [WebAssembly](#webassembly-wspr-ft8-ft4-and-ft2-in-javascript) |
 | `wsprd-wasm.tgz` | `wsprd` in WebAssembly, for JavaScript likewise |
+| `ft8nn-jt9.onnx` | the model for `jt9 -8 --nn` (optional): see [--nn](#--nn-a-neural-network-for-the-ft8-signals-missed) |
+| `onnxruntime-linux-x86_64.tgz`, `onnxruntime-linux-aarch64.tgz`, `onnxruntime-windows-x86_64.zip` | ONNX Runtime's library, for `jt9 --nn` only: unpack it beside `jt9` |
 
 **The CPU: the prebuilt binaries need AVX2 on x86-64 (Linux and Windows)
 and NEON on ARM.** The decoder's searches run eight lanes at a time with
@@ -350,6 +352,23 @@ an earlier `--fast-subtract`, the same decodes, slower than this one):
 | `-d 3` | 7,412 (+5.1%) | 651 s (+122%) |
 | `-d 3 --fast-subtract` | 7,411 (+5.1%) | 432 s (+47%) |
 | `-d 3 -w 2 --fast-subtract` | 7,411 (+5.1%) | 396 s (+35%) |
+
+### --nn: a neural network for the FT8 signals missed
+
+Ours, optional: `jt9 -8 --nn ft8nn-jt9.onnx` also tries
+a neural soft demodulator on each
+FT8 candidate WSJT-X's own metrics fail, and drops implausible OSD and
+a-priori decodes: about 9% more decodes for about 1.5 times the CPU
+(`--nn-level 2`: about 10% for about twice). Without `--nn` every decode is
+WSJT-X's as before.
+
+It needs two files beside `jt9`, both in each release: the model,
+`ft8nn-jt9.onnx`, and ONNX Runtime's library from your platform's
+`onnxruntime-<platform>` archive (`libonnxruntime.so.1`, or `onnxruntime.dll`
+on Windows: Microsoft's official release, unchanged, with its licence).
+`jt9` loads the library only for `--nn`, from beside itself or the library
+path, so a `jt9` started every cycle pays nothing for it otherwise. More in
+`models/README.md`.
 
 ## jt9: FT4
 
@@ -993,6 +1012,10 @@ routines, Joe Taylor, K1JT, and Steven Franke, K9AN, and the call hash,
 `lookup3.c`, Bob Jenkins, 2006, public domain. The
 maths functions in `src/ft8_maths.cpp` are the GNU C Library's (LGPL 2.1
 or later).
+
+ONNX Runtime is Microsoft's (MIT licence; only its C API headers are here, in
+`vendor/onnxruntime`, and its library ships unchanged in the
+`onnxruntime-<platform>` archives).
 
 This code is released under the same licence as WSJT-X, the GNU General
 Public License, version 3 (`LICENSE`).

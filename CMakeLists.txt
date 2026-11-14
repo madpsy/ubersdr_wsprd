@@ -100,7 +100,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_L
    AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64" AND WSPRD_X86_ARCH)
   set(FT8_FP_OPTIONS "-ffp-contract=off;-mno-fma")
 endif()
-set(FT8_SOURCES src/packjt77.cpp src/ft8_ldpc.cpp src/ft8_frontend.cpp src/ft8.cpp)
+set(FT8_SOURCES src/packjt77.cpp src/ft8_ldpc.cpp src/ft8_frontend.cpp src/ft8.cpp src/ft8_nn.cpp)
 # --fast-subtract's smoothing (not WSJT-X's to the bit, so none of its floating-point options)
 set(FT_FAST_SOURCES src/ft_fast_subtract.cpp)
 set_source_files_properties(src/ft8_maths.cpp PROPERTIES COMPILE_OPTIONS "-ffp-contract=off")
@@ -122,3 +122,8 @@ target_include_directories(jt9 PRIVATE src)
 target_link_libraries(jt9 PRIVATE ${WSPRD_FFTW} m Threads::Threads)
 target_compile_definitions(jt9 PRIVATE JT9_VERSION="${WSPRD_VERSION_BUILT}")
 target_compile_options(jt9 PRIVATE -Wall -Wextra)
+
+# jt9 -8 --nn MODEL, a neural soft demodulator for FT8 (src/ft8_nn.h): ONNX Runtime's headers only
+# (vendor/onnxruntime); its library is loaded at run time when --nn is given.
+set_property(SOURCE src/ft8_nn.cpp APPEND PROPERTY INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/vendor/onnxruntime")
+target_link_libraries(jt9 PRIVATE ${CMAKE_DL_LIBS})

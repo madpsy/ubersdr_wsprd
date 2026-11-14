@@ -367,6 +367,7 @@ void Decoder::decode(const S* iwave16, const Params& p, int nutc, int nzhsym, in
     };
 
     fe_.set_fast_subtract(p.fast_subtract);
+    fe_.set_nn(p.nn.get(), p.nn_level);
     bool la8 = true;
     if (nzhsym == 41) set_jseq((nutc / 5) % 2);
     if (nutc0_ == -1) {

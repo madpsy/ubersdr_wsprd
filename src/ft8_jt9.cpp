@@ -61,6 +61,8 @@ Params params_of(const FileMode& fm) {
     p.hiscall = hiscall;
     p.hisgrid = hisgrid;
     p.fast_subtract = fm.fast_subtract;
+    p.nn = fm.nn;
+    p.nn_level = fm.nn_level;
     return p;
 }
 

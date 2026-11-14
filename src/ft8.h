@@ -22,6 +22,7 @@
 // is this.
 #pragma once
 
+#include "ft8_nn.h"
 #include <atomic>
 #include <cstdint>
 #include <functional>
@@ -49,6 +50,10 @@ struct Params {
     // FT2: 857 S/s, ft4::Frontend::set_fast_subtract): the same decodes as WSJT-X's (scripts/ft-fast-subtract-check.sh),
     // not to the bit, for less CPU.
     bool fast_subtract = false;
+    // Ours: a neural soft demodulator as an extra bit metric (ft8_nn.h, jt9 -8 --nn MODEL);
+    // null (the default): none, every decode WSJT-X's. nn_level: 1 (default) or 2 (more decodes, more CPU).
+    std::shared_ptr<NnMetric> nn;
+    int nn_level = 1;
     // character*12, *12 and *6 (cut or blank padded; blank: none).
     std::string mycall, hiscall, hisgrid;
 };

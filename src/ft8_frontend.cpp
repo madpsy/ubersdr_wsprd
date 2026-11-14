@@ -751,6 +751,25 @@ void Frontend::ft8b(float* dd0, bool& newdat, int nQSOProgress, int nfqso, int n
     float* const ll[5] = {llra, llrb, llrc, llrd, llre};
     if (trace_) trace_metrics(5, ll, true);
 
+    // Ours (--nn, ft8_nn.h): the network's LLRs from the same cd0, as extra passes after WSJT-X's five metric passes
+    // failed and before its a-priori passes. Hypothesis k (pass -k) is the signal df Hz above f1 with symbol 0 at
+    // ibest + dib: k = 0 is f1, ibest; the others cover the frequency and timing errors fine_sync leaves on weak
+    // signals, tried only while the passes before them fail and only when hypothesis 0's expected bit errors (sum of
+    // 1/(1+exp|llr|)) are below the level's gate. Level 1: 5 hypotheses, gate 35; level 2: 13, gate 45 (more decodes,
+    // more CPU). With the network, the a-priori passes start from hypothesis 0's LLRs instead of metric a or c.
+    struct NnHyp {
+        float df;
+        int dib;
+    };
+    static constexpr NnHyp kNnHyp[13] = {{0.0f, 0},   {0.0f, -1},   {0.0f, 1},   {-0.25f, 0}, {0.25f, 0},
+                                         {-0.5f, 0},  {0.5f, 0},    {0.0f, -2},  {0.0f, 2},   {-0.25f, -1},
+                                         {0.25f, 1},  {-0.25f, 1},  {0.25f, -1}};
+    const int nhyp = !nn_ ? 0 : nn_level_ >= 2 ? 13 : 5;
+    const float nn_gate = nn_level_ >= 2 ? 45.0f : 35.0f;
+    float llrnn0[174];
+    bool have_nn0 = false;
+    float nn_ee0 = 0.0f;
+
     int npasses;
     if (lapon || ncontest == 7) {  // Hounds always use AP
         if (!lapcqonly)
@@ -766,8 +785,26 @@ void Frontend::ft8b(float* dd0, bool& newdat, int nQSOProgress, int nfqso, int n
     int8_t apmask[174] = {};
     int8_t message77[77] = {}, message91[91] = {}, cw[174];
     float apmag = 0.0f;
-    for (ipass = 1; ipass <= npasses; ++ipass) {
+    // Pass order: WSJT-X's 1..5, the network's hypotheses (pass 0, -1, ...; none without --nn), WSJT-X's 6..npasses.
+    int order[5 + 13 + 32], norder = 0;
+    for (int q = 1; q <= std::min(npasses, 5); ++q) order[norder++] = q;
+    for (int k = 0; k < nhyp; ++k) order[norder++] = -k;
+    for (int q = 6; q <= npasses; ++q) order[norder++] = q;
+    for (int io = 0; io < norder; ++io) {
+        ipass = order[io];
         std::memcpy(llrz, llra, sizeof llrz);
+        if (ipass <= 0) {
+            const int k = -ipass;
+            if (k > 0 && nn_ee0 > nn_gate) continue;
+            const NnHyp& h = kNnHyp[k];
+            if (!nn_->llr(cd0_.data(), static_cast<int>(cd0_.size()), sy.ibest + h.dib, llrz, h.df)) continue;
+            if (k == 0) {
+                nn_ee0 = 0.0f;
+                for (int i = 0; i < 174; ++i) nn_ee0 += 1.0f / (1.0f + std::exp(std::fabs(llrz[i])));
+                std::memcpy(llrnn0, llrz, sizeof llrnn0);
+                have_nn0 = true;
+            }
+        }
         if (ipass == 2) std::memcpy(llrz, llrb, sizeof llrz);
         if (ipass == 3) std::memcpy(llrz, llrc, sizeof llrz);
         if (ipass == 4) std::memcpy(llrz, llrd, sizeof llrz);
@@ -780,6 +817,7 @@ void Frontend::ft8b(float* dd0, bool& newdat, int nQSOProgress, int nfqso, int n
             std::memcpy(llrz, llra, sizeof llrz);
             if ((ipass - 5) % 2 == 1) std::memcpy(llrz, llra, sizeof llrz);
             if ((ipass - 5) % 2 == 0) std::memcpy(llrz, llrc, sizeof llrz);
+            if (have_nn0) std::memcpy(llrz, llrnn0, sizeof llrz);
             float a[174];
             for (int i = 0; i < 174; ++i) a[i] = std::fabs(llrz[i]);
             apmag = maxval(a, 174) * 1.1f;
@@ -796,6 +834,9 @@ void Frontend::ft8b(float* dd0, bool& newdat, int nQSOProgress, int nfqso, int n
             if (ncontest == 6) continue;                   // No AP for Foxes
             if (ncontest == 7 && f1 > 950.0f) continue;     // Hounds use AP only for signals below 950 Hz
             if (iaptype >= 2 && apsym[0] > 1) continue;     // No, or nonstandard, mycall
+            // Ours (--nn only): MyCall still jt9's placeholder K1ABC (no -c, as on a skimmer): nobody is calling it, so
+            // the a-priori passes built on it can only return false decodes.
+            if (nn_ && iaptype >= 2 && mycall12.compare(0, 6, "K1ABC ") == 0) continue;
             if (ncontest == 7 && iaptype >= 2 && aph10[0] > 1) continue;
             if (iaptype >= 3 && apsym[29] > 1) continue;    // No, or nonstandard, dxcall
 
@@ -953,6 +994,13 @@ void Frontend::ft8b(float* dd0, bool& newdat, int nQSOProgress, int nfqso, int n
             if (i3 >= 1 && i3 <= 3 && ncontest == 0) continue;
         }
         if (!unpk77_success) continue;
+        // Ours (--nn only): the plausibility rules (ft8_plausible.h); the deep ones and the contest formats
+        // (outside contest mode) only for OSD and a-priori decodes, which can turn noise into a CRC-valid word.
+        if (nn_) {
+            const bool deep = ntype != 1 || ipass > 5;
+            if (!plaus::plausible(message77, deep) || (deep && ncontest == 0 && plaus::contest_format(message77)))
+                continue;
+        }
         // If we get this far: valid codeword, valid (i3,n3), nonquirky message.
         nbadcrc = 0;
         get_ft8_tones_from_77bits(message77, itone);
