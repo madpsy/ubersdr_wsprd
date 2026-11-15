@@ -18,6 +18,7 @@
 
 #include "fst4w_jt9.h"  // fortran_f, fortran_i
 #include "ft8_fortran.h"  // fix, trim, findex, nint, cmul, db, twkfreq1, isgrid4 (shared with FT4)
+#include "ft8_ldpc.h"   // encode174_91 (the repeat test)
 #include "ft8_maths.h"  // log10f_glibc, sincosf_glibc, logf_glibc
 
 namespace ft8 {
@@ -327,6 +328,16 @@ void Decoder::callback(float sync, int snr, float dt, float freq, const std::str
     std::string decoded0 = fix(decoded, 37);
     const float fdiff = freq - static_cast<float>(nfqso);
     if (std::fabs(fdiff) < 3.0f) ltry_a8_ = false;
+    if (nn_on_ && !ctx_hist_.empty()) {  // Ours (--nn only): into this period's history (ft8.h, ctx_hist_)
+        const Codec::Packed pk = codec_->genft8(fix(decoded, 37));
+        if (pk.ok) {
+            Frontend::CtxMsg m;
+            m.f0 = freq;
+            m.dt = dt;
+            m.m = pk.msgbits;
+            ctx_hist_.back().d.push_back(m);
+        }
+    }
     std::string annot = "  ";
     if (nap != 0) {
         annot = nap >= 0 && nap <= 9 ? std::string("a") + static_cast<char>('0' + nap) : std::string("a*");
@@ -368,6 +379,25 @@ void Decoder::decode(const S* iwave16, const Params& p, int nutc, int nzhsym, in
 
     fe_.set_fast_subtract(p.fast_subtract);
     fe_.set_nn(p.nn.get(), p.nn_level);
+    // Ours (--nn only): this period's slot in the history of the decoder's own decodes, and at nzhsym 50 the
+    // context of 30 and 60 s earlier for ft8b's context passes and the repeat test (none without --nn).
+    nn_on_ = p.nn != nullptr;
+    ctx_now_.clear();
+    if (nn_on_) {
+        const int t = (nutc / 10000) * 3600 + (nutc / 100 % 100) * 60 + nutc % 100;
+        if (ctx_hist_.empty() || ctx_hist_.back().t != t) {
+            ctx_hist_.push_back({t, {}});
+            while (ctx_hist_.size() > 4) ctx_hist_.pop_front();
+        }
+        if (nzhsym == 50)
+            for (int back = 30; back <= 60; back += 30)
+                for (const CtxSlot& s : ctx_hist_)
+                    if (s.t == (t - back + 86400) % 86400) ctx_now_.insert(ctx_now_.end(), s.d.begin(), s.d.end());
+        fe_.set_context(&ctx_now_, &ctx_hist_.back().d);
+    } else {
+        ctx_hist_.clear();
+        fe_.set_context(nullptr, nullptr);
+    }
     bool la8 = true;
     if (nzhsym == 41) set_jseq((nutc / 5) % 2);
     if (nutc0_ == -1) {
@@ -586,6 +616,8 @@ l900:
             }
         }
     }
+    if (nn_on_ && lft8apon && ncontest != 6 && ncontest != 7 && nzhsym == 50 && !ctx_now_.empty() && !stopped())
+        nn_repeat(nutc, nfqso, jseq_, c);
 
     if (lft8apon && ncontest != 6 && ncontest != 7 && nzhsym == 50 && la8 && trim(hiscall12).size() >= 3 &&
         trim(hisgrid).size() >= 4 && ltry_a8_ && !stopped()) {
@@ -642,6 +674,153 @@ void Decoder::ft8_a7_save(int jseq, float dt, float f, std::string& msg) {
         if (f0(q) <= -98.0f) continue;
         const int i2 = findex(msg0(q), key);
         if (std::fabs(f - f0(q)) <= 3.0f && i2 >= 3) set_f0(q, -98.0f);  // Flag as "do not use"
+    }
+}
+
+// ---------------------------------------------------------------- ours (--nn only): the repeat test
+
+void Decoder::nn_repeat(int nutc, int nfqso, int jseq, Call& c) {
+    constexpr float kRho = 0.40f, kMargin = 0.15f, kClip = 2.0f, kSolo = 0.35f;
+    constexpr int kMaxPri = 16, kMaxAlt = 2048, kHyp = 3;
+    constexpr int kMaxGrid4 = 32400;
+    constexpr uint32_t kNtokensCq = 2063592u;  // call fields 2 .. kNtokensCq-1 are CQ, CQ nnn, CQ ABCD
+    using M77 = std::array<int8_t, 77>;
+    auto std_msg = [](const M77& b) { return !b[74] && (b[75] != b[76]); };
+    auto same_sender = [](const M77& a, const M77& b) { return std::equal(a.begin() + 29, a.begin() + 58, b.begin() + 29); };
+    auto get_bits = [](const int8_t* b, int n) {
+        uint32_t v = 0;
+        for (int i = 0; i < n; ++i) v = v << 1 | static_cast<uint32_t>(b[i] & 1);
+        return v;
+    };
+    auto set_bits = [](int8_t* b, uint32_t v, int n) {
+        for (int i = 0; i < n; ++i) b[i] = static_cast<int8_t>((v >> (n - 1 - i)) & 1);
+    };
+    // A message a station could send: what the plausibility rules allow, and no CQ carrying RRR, RR73, 73 or a
+    // report in place of its locator.
+    auto sendable = [&](const M77& b) {
+        if (!plaus::plausible(b.data(), false)) return false;
+        const uint32_t n28a = get_bits(b.data(), 28);
+        return !(n28a >= 2 && n28a < kNtokensCq && get_bits(b.data() + 59, 15) > kMaxGrid4 + 1);
+    };
+
+    const std::vector<Frontend::CtxMsg> now = ctx_hist_.back().d;  // this period's decodes before the test
+    const std::vector<Frontend::CtxMsg>& cx = ctx_now_;
+    const size_t ncx = cx.size();
+    std::vector<char> done(ncx, 0);
+    std::vector<M77> alt;
+    std::vector<std::array<float, 174>> sgn;
+    bool newdat = true;
+    for (size_t g = 0; g < ncx && !stopped(); ++g) {
+        const M77& b0 = cx[g].m;
+        if (done[g] || !std_msg(b0)) continue;
+        bool skip = false;
+        for (const auto& d : now)
+            if (d.m == b0 || (std_msg(d.m) && same_sender(d.m, b0))) skip = true;
+        if (skip) continue;
+        // The sender's group: g and every later context message from the same sender, in context order.
+        std::vector<size_t> mem;
+        for (size_t i = g; i < ncx; ++i) {
+            if (done[i] || !std_msg(cx[i].m) || !same_sender(cx[i].m, b0)) continue;
+            done[i] = 1;
+            mem.push_back(i);
+        }
+        // The alternatives: the earlier messages first (deduplicated), then the competitors.
+        alt.clear();
+        auto add = [&](const M77& a, size_t cap) {
+            if (alt.size() < cap && std::find(alt.begin(), alt.end(), a) == alt.end()) alt.push_back(a);
+        };
+        for (size_t i : mem) add(cx[i].m, kMaxPri);
+        const size_t npri = alt.size();
+        std::vector<uint32_t> grids;
+        for (size_t i = 0; i < npri; ++i) {
+            const uint32_t gv = get_bits(alt[i].data() + 59, 15);
+            if (gv < kMaxGrid4 && std::find(grids.begin(), grids.end(), gv) == grids.end()) grids.push_back(gv);
+        }
+        std::sort(grids.begin(), grids.end());
+        for (size_t i = 0; i < npri; ++i) {
+            const M77 base = alt[i];
+            for (uint32_t gv : grids) {  // the sender's own CQ
+                M77 a = base;
+                set_bits(a.data(), 2, 28);
+                a[28] = a[58] = 0;
+                set_bits(a.data() + 59, gv, 15);
+                add(a, kMaxAlt);
+            }
+            const uint32_t gv0 = get_bits(base.data() + 59, 15);
+            for (int k = gv0 < kMaxGrid4 ? -1 : 0; k < 64; ++k) {
+                const uint32_t gv = k < 0   ? gv0
+                                    : k < 3 ? kMaxGrid4 + 2 + static_cast<uint32_t>(k)
+                                            : static_cast<uint32_t>(kMaxGrid4 + 35 + (k - 3 - 30));
+                for (int r = 0; r < 2; ++r) {
+                    M77 a = base;
+                    a[58] = static_cast<int8_t>(r);
+                    set_bits(a.data() + 59, gv, 15);
+                    if (sendable(a)) add(a, kMaxAlt);
+                }
+            }
+        }
+        sgn.resize(alt.size());
+        for (size_t i = 0; i < alt.size(); ++i) {
+            int8_t cw[174];
+            encode174_91(alt[i].data(), cw);
+            for (int j = 0; j < 174; ++j) sgn[i][j] = cw[j] ? 1.0f : -1.0f;
+        }
+        // Each distinct place the sender was heard, in context order: the best hypothesis anywhere wins.
+        float r1 = 0, r2 = 0, f_best = 0, dt_best = 0, snr_best = -25.0f;
+        int k1 = -1;
+        for (size_t i = 0; i < mem.size(); ++i) {
+            bool dup = false;
+            for (size_t j = 0; j < i && !dup; ++j)
+                dup = cx[mem[j]].f0 == cx[mem[i]].f0 && cx[mem[j]].dt == cx[mem[i]].dt;
+            if (dup) continue;
+            float f1 = cx[mem[i]].f0, xdt = cx[mem[i]].dt;
+            float llr[kHyp * 174];
+            if (!fe_.nn_llr_at(dd_.data(), newdat, f1, xdt, kHyp, llr)) continue;
+            const float xbase = xbase_of(sbase_.data(), f1, true);
+            for (int h = 0; h < kHyp; ++h) {
+                float l[174], sa = 0;
+                for (int j = 0; j < 174; ++j) {
+                    l[j] = std::max(-kClip, std::min(kClip, llr[h * 174 + j]));
+                    sa += std::fabs(l[j]);
+                }
+                int b1 = 0, b2 = -1;
+                float rb1 = -1e30f, rb2 = -1e30f;
+                for (size_t a = 0; a < alt.size(); ++a) {
+                    float s = 0;
+                    for (int j = 0; j < 174; ++j) s += sgn[a][j] * l[j];
+                    const float rho = s / (sa + 1e-9f);
+                    if (rho > rb1) {
+                        b2 = b1;
+                        rb2 = rb1;
+                        b1 = static_cast<int>(a);
+                        rb1 = rho;
+                    } else if (b2 < 0 || rho > rb2) {
+                        b2 = static_cast<int>(a);
+                        rb2 = rho;
+                    }
+                }
+                if (alt.size() < 2) b2 = -1;
+                if (k1 < 0 || rb1 > r1) {
+                    r1 = rb1;
+                    r2 = b2 >= 0 ? rb2 : kSolo;
+                    k1 = b1;
+                    f_best = f1;
+                    dt_best = xdt;
+                    int itone[NN];
+                    get_ft8_tones_from_77bits(alt[static_cast<size_t>(b1)].data(), itone);
+                    snr_best = fe_.snr_a7(itone, xbase);
+                }
+            }
+        }
+        if (k1 < 0 || static_cast<size_t>(k1) >= npri || r1 < kRho || r1 - r2 < kMargin) continue;
+        char c77[78];
+        for (int i = 0; i < 77; ++i) c77[i] = static_cast<char>('0' + alt[static_cast<size_t>(k1)][i]);
+        c77[77] = 0;
+        std::string msg37;
+        if (!codec_->unpack77(c77, 1, msg37)) continue;
+        callback(sync_, static_cast<int>(snr_best), dt_best, f_best, msg37, 7, 1.0f, nutc, nfqso, c);
+        std::string saved = msg37;
+        ft8_a7_save(jseq, dt_best, f_best, saved);  // Enter decode in the a7 table, as a7's own
     }
 }
 

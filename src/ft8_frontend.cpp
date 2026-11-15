@@ -682,6 +682,42 @@ void Frontend::bit_metrics(int imetric, float* bmeta, float* bmetb, float* bmetc
     }
 }
 
+namespace {
+// Ours (--nn): the network's hypotheses (ft8b's comment below): df Hz above f1, symbol 0 at ibest + dib.
+struct NnHyp {
+    float df;
+    int dib;
+};
+constexpr NnHyp kNnHyp[13] = {{0.0f, 0},  {0.0f, -1}, {0.0f, 1},   {-0.25f, 0}, {0.25f, 0},  {-0.5f, 0},  {0.5f, 0},
+                              {0.0f, -2}, {0.0f, 2},  {-0.25f, -1}, {0.25f, 1}, {-0.25f, 1}, {0.25f, -1}};
+// A standard message (i3 1 or 2): call fields at bits 0..28 and 29..57.
+bool std_msg77(const int8_t* m) { return !m[74] && (m[75] != m[76]); }
+}  // namespace
+
+bool Frontend::nn_llr_at(const float* dd0, bool& newdat, float& f1, float& xdt, int nh, float* llr) {
+    if (!nn_) return false;
+    Sync sy;
+    fine_sync(dd0, newdat, f1, xdt, sy, true);
+    for (int k = 0; k < nh && k < 13; ++k)
+        if (!nn_->llr(cd0_.data(), static_cast<int>(cd0_.size()), sy.ibest + kNnHyp[k].dib, llr + 174 * k,
+                      kNnHyp[k].df))
+            return false;
+    return true;
+}
+
+float Frontend::snr_a7(const int itone[NN], float xbase) const {
+    float pow = 0.0f;
+    for (int q = 0; q < NN; ++q) pow += s8_[q][itone[q]] * s8_[q][itone[q]];
+    float xsnr = -25.0f;
+    const float arg = pow / xbase / 3.0e6f - 1.0f;
+    if (arg > 0.0f) {
+        float db = -99.0f;
+        if (arg > 1.259e-10f) db = 10.0f * log10f_glibc(arg);
+        xsnr = std::max(db - 27.0f, -25.0f);
+    }
+    return xsnr;
+}
+
 void Frontend::ft8b(float* dd0, bool& newdat, int nQSOProgress, int nfqso, int nftx, int ndepth, int nzhsym,
                     bool lapon, bool lapcqonly, int napwid, bool lsubtract, bool nagain, int ncontest, int imetric,
                     int& iaptype, const std::string& mycall12, const std::string& hiscall12, float& f1, float& xdt,
@@ -757,18 +793,41 @@ void Frontend::ft8b(float* dd0, bool& newdat, int nQSOProgress, int nfqso, int n
     // signals, tried only while the passes before them fail and only when hypothesis 0's expected bit errors (sum of
     // 1/(1+exp|llr|)) are below the level's gate. Level 1: 5 hypotheses, gate 35; level 2: 13, gate 45 (more decodes,
     // more CPU). With the network, the a-priori passes start from hypothesis 0's LLRs instead of metric a or c.
-    struct NnHyp {
-        float df;
-        int dib;
-    };
-    static constexpr NnHyp kNnHyp[13] = {{0.0f, 0},   {0.0f, -1},   {0.0f, 1},   {-0.25f, 0}, {0.25f, 0},
-                                         {-0.5f, 0},  {0.5f, 0},    {0.0f, -2},  {0.0f, 2},   {-0.25f, -1},
-                                         {0.25f, 1},  {-0.25f, 1},  {0.25f, -1}};
     const int nhyp = !nn_ ? 0 : nn_level_ >= 2 ? 13 : 5;
     const float nn_gate = nn_level_ >= 2 ? 45.0f : 35.0f;
     float llrnn0[174];
     bool have_nn0 = false;
     float nn_ee0 = 0.0f;
+
+    // Ours (--nn only, set_context): the context patterns for this candidate, pass 100 + q: q's message pinned from
+    // bit lo to 57 and its i3, deduplicated in the context's order (30 s earlier first).
+    struct CtxPat {
+        const int8_t* m;
+        int lo;
+    };
+    constexpr int kMaxCtxPat = 16;
+    CtxPat cpat[kMaxCtxPat];
+    int ncpat = 0;
+    if (nn_ && ctx_ && nzhsym == 50) {
+        const float dtp = xdt - 0.5f;
+        for (const CtxMsg& c : *ctx_) {
+            if (ncpat >= kMaxCtxPat) break;
+            const int8_t* m = c.m.data();
+            if (std::fabs(c.f0 - f1) > 10.0f || std::fabs(c.dt - dtp) > 0.5f || !std_msg77(m)) continue;
+            bool heard = false;
+            if (now_)
+                for (const CtxMsg& d : *now_)
+                    if (std_msg77(d.m.data()) && std::equal(m + 29, m + 58, d.m.data() + 29)) heard = true;
+            if (heard) continue;
+            for (int lo : {0, 29}) {
+                bool dup = false;
+                for (int q = 0; q < ncpat && !dup; ++q)
+                    dup = cpat[q].lo == lo && std::equal(m + lo, m + 58, cpat[q].m + lo) &&
+                          std::equal(m + 74, m + 77, cpat[q].m + 74);
+                if (!dup && ncpat < kMaxCtxPat) cpat[ncpat++] = {m, lo};
+            }
+        }
+    }
 
     int npasses;
     if (lapon || ncontest == 7) {  // Hounds always use AP
@@ -785,10 +844,12 @@ void Frontend::ft8b(float* dd0, bool& newdat, int nQSOProgress, int nfqso, int n
     int8_t apmask[174] = {};
     int8_t message77[77] = {}, message91[91] = {}, cw[174];
     float apmag = 0.0f;
-    // Pass order: WSJT-X's 1..5, the network's hypotheses (pass 0, -1, ...; none without --nn), WSJT-X's 6..npasses.
-    int order[5 + 13 + 32], norder = 0;
+    // Pass order: WSJT-X's 1..5, the network's hypotheses (pass 0, -1, ...; none without --nn), the context patterns
+    // (pass 100, 101, ...; none without --nn), WSJT-X's 6..npasses.
+    int order[5 + 13 + kMaxCtxPat + 32], norder = 0;
     for (int q = 1; q <= std::min(npasses, 5); ++q) order[norder++] = q;
     for (int k = 0; k < nhyp; ++k) order[norder++] = -k;
+    for (int q = 0; q < ncpat; ++q) order[norder++] = 100 + q;
     for (int q = 6; q <= npasses; ++q) order[norder++] = q;
     for (int io = 0; io < norder; ++io) {
         ipass = order[io];
@@ -813,7 +874,25 @@ void Frontend::ft8b(float* dd0, bool& newdat, int nQSOProgress, int nfqso, int n
             std::memset(apmask, 0, sizeof apmask);
             iaptype = 0;
         }
-        if (ipass > 5) {
+        if (ipass >= 100) {  // a context pattern (iaptype 9: a number WSJT-X's FT8 does not use)
+            if (!have_nn0 || nn_ee0 >= 48.0f) continue;
+            const CtxPat& cp = cpat[ipass - 100];
+            std::memcpy(llrz, llrnn0, sizeof llrz);
+            float mag = 0.0f;
+            for (int i = 0; i < 174; ++i) mag = std::max(mag, std::fabs(llrz[i]));
+            mag *= 1.01f;
+            std::memset(apmask, 0, sizeof apmask);
+            for (int i = cp.lo; i < 58; ++i) {
+                llrz[i] = cp.m[i] ? mag : -mag;
+                apmask[i] = 1;
+            }
+            for (int i = 74; i < 77; ++i) {
+                llrz[i] = cp.m[i] ? mag : -mag;
+                apmask[i] = 1;
+            }
+            iaptype = 9;
+        }
+        if (ipass > 5 && ipass < 100) {
             std::memcpy(llrz, llra, sizeof llrz);
             if ((ipass - 5) % 2 == 1) std::memcpy(llrz, llra, sizeof llrz);
             if ((ipass - 5) % 2 == 0) std::memcpy(llrz, llrc, sizeof llrz);
@@ -979,6 +1058,11 @@ void Frontend::ft8b(float* dd0, bool& newdat, int nQSOProgress, int nfqso, int n
         msg37.assign(37, ' ');
         nbadcrc = 1;
         if (nharderrors < 0 || nharderrors > 36) continue;
+        if (ipass >= 100) {  // a context decode keeps the pinned bits
+            const CtxPat& cp = cpat[ipass - 100];
+            if (!std::equal(cp.m + cp.lo, cp.m + 58, message77 + cp.lo) || !std::equal(cp.m + 74, cp.m + 77, message77 + 74))
+                continue;
+        }
         if (std::count(cw, cw + 174, 0) == 174) continue;  // Reject the all-zero codeword
         char c77[78];
         for (int i = 0; i < 77; ++i) c77[i] = static_cast<char>('0' + message77[i]);

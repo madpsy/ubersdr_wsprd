@@ -25,6 +25,7 @@
 #include "ft8_nn.h"
 #include <atomic>
 #include <cstdint>
+#include <deque>
 #include <functional>
 #include <memory>
 #include <ostream>
@@ -168,6 +169,24 @@ private:
     // decoder_callbacks.f90's ft8_decoded.
     void callback(float sync, int snr, float dt, float freq, const std::string& decoded, int nap, float qual,
                   int nutc, int nfqso, Call& c);
+    // Ours (--nn only): the repeat test after a7, for each sender of a standard message decoded 30 or 60 s
+    // earlier (ctx_now_) with no decode in this period: its earlier messages, as whole codewords, against the
+    // network's LLRs at their place in the residual (rho = sum(l*s)/sum|l|, l clipped to +-2), with the messages
+    // that station could send instead as competitors (its CQ with any locator it sent, each earlier message with
+    // either R flag and its locator, RRR, RR73, 73 or a report -30..+30). The best is decoded (a7) when it is an
+    // earlier message, its rho is at least 0.40 and it beats the best competitor by 0.15 (a sender with none:
+    // rho 0.50).
+    void nn_repeat(int nutc, int nfqso, int jseq, Call& c);
+
+    // Ours (--nn only): the decoder's own decodes of the last 4 periods (t: time of day, s), newest last, for the
+    // context passes (Frontend::set_context) and the repeat test; ctx_now_ those of 30 then 60 s before this one.
+    struct CtxSlot {
+        int t = -1;
+        std::vector<Frontend::CtxMsg> d;
+    };
+    std::deque<CtxSlot> ctx_hist_;
+    std::vector<Frontend::CtxMsg> ctx_now_;
+    bool nn_on_ = false;
     bool stopped() const { return stop_.load(std::memory_order_relaxed); }
 
     Frontend fe_;

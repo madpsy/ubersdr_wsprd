@@ -150,6 +150,26 @@ public:
         nn_ = nn;
         nn_level_ = level;
     }
+    // Ours (--nn only): a decode of the decoder's own, its 77 message bits and where it was (f0 Hz, DT as printed).
+    struct CtxMsg {
+        float f0 = 0, dt = 0;
+        std::array<int8_t, 77> m{};
+    };
+    // Ours (--nn only): ft8b's context a-priori passes, after the network's hypotheses and before WSJT-X's a-priori
+    // passes, at nzhsym 50. For a candidate within 10 Hz and 0.5 s of a standard message in ctx (the decoder's own
+    // decodes 30 and 60 s earlier) whose sender has no decode in now (this period's so far): the network's LLRs with
+    // that message's two calls pinned, then its sender alone; a decode must keep the pinned bits. Only when the
+    // network's own expected bit errors are below 48. Null (the default): none.
+    void set_context(const std::vector<CtxMsg>* ctx, const std::vector<CtxMsg>* now) {
+        ctx_ = ctx;
+        now_ = now;
+    }
+    // Ours (--nn only): the network's LLRs where a known message should be (the repeat test after a7): ft8_a7d's
+    // fine sync at f1 and xdt (DT as printed; both refined), then the first nh of ft8b's network hypotheses into
+    // llr (nh x 174). False if the network could not run.
+    bool nn_llr_at(const float* dd0, bool& newdat, float& f1, float& xdt, int nh, float* llr);
+    // ft8_a7d's SNR of a message's tones at the last fine sync (xbase as xbase_of's for a7).
+    float snr_a7(const int itone[NN], float xbase) const;
 
     // gen_ft8wave(itone, nsym, nsps, bt, fsample, f0, cwave, wave, icmplx,
     // nwave): cwave or wave (icmplx) nwave long; its tables kept here.
@@ -247,6 +267,8 @@ private:
     bool fast_subtract_ = false;
     NnMetric* nn_ = nullptr;
     int nn_level_ = 1;
+    const std::vector<CtxMsg>* ctx_ = nullptr;
+    const std::vector<CtxMsg>* now_ = nullptr;
     std::unique_ptr<FastSubtract> fs_;  // fast subtraction's (sqf_fast), made on its first call
     std::vector<float> fs_gain_;         // and the end correction a sample
     float sqf_fast(int idt, float* dd0, float f0, float dt, bool ldt);
