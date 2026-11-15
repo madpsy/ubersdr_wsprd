@@ -10,6 +10,10 @@
 // _ZGVbN4v_cosf and _ZGVbN4v_sinf (its disassembly); on aarch64 gfortran's
 // math-vector-fortran.h declares cosf, sinf and log10f as SIMD but not powf,
 // so there powf stays scalar; without glibc (mingw) everything is scalar.
+// glibc has had x86-64 libmvec since 2.22 but aarch64's only since 2.38:
+// before that (Debian 12 bookworm's 2.36, Raspberry Pi OS and Ubuntu 22.04
+// included) there is no _ZGVnN4v_* to link against, jt9 fails to link, and
+// aarch64 is scalar as without glibc.
 #pragma once
 
 #include <cmath>
@@ -23,7 +27,7 @@
 #include <arm_neon.h>
 #endif
 
-#if defined(__GLIBC__) && (defined(__x86_64__) || defined(__aarch64__))
+#if defined(__GLIBC__) && (defined(__x86_64__) || (defined(__aarch64__) && __GLIBC_PREREQ(2, 38)))
 #define FST4W_LIBMVEC 1
 #if defined(__x86_64__)
 #include <immintrin.h>
