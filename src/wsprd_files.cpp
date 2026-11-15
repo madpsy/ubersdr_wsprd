@@ -80,6 +80,7 @@ std::string usage(bool with_n)
     s += "       -w wideband mode - decode signals within +/- 150 Hz of center\n";
     s += "       -z x (x is fano metric table bias, default is 0.45)\n";
     if (with_n) s += "       -n no drift, does not attempt to follow a drifting frequency\n";
+    s += "       -F fine frequency: each decode's frequency measured to 0.001 Hz, ALL_WSPR.TXT's printed %13.9f\n";
     s += "       -0 streaming mode: read PCM audio from stdin per the\n";
     s += "          streaming framing protocol; emit decodes as NDJSON\n";
     s += "          on stdout. Replaces the positional\n";
@@ -89,7 +90,7 @@ std::string usage(bool with_n)
 
 bool parse_args(const std::vector<std::string>& args, Options* opt, std::string* error, const std::string& prog,
                 bool with_n) {
-    const char* optstring = with_n ? "a:BcC:de:f:HJmno:qstwvz:0" : "a:BcC:de:f:HJmo:qstwvz:0";
+    const char* optstring = with_n ? "a:BcC:de:Ff:HJmno:qstwvz:0" : "a:BcC:de:Ff:HJmo:qstwvz:0";
     *opt = Options();
     if (error) error->clear();
     auto apply = [opt](char c, const char* optarg) {
@@ -121,6 +122,9 @@ bool parse_args(const std::vector<std::string>& args, Options* opt, std::string*
                 break;
             case 'J': //Stack (Jelinek) decoder, Fano decoder is the default
                 opt->stackdecoder = 1;
+                break;
+            case 'F':  // not wsprd's: frequency to 0.001 Hz (Options::fine_freq)
+                opt->fine_freq = true;
                 break;
             case 'n':  // not wsprd's: no coarse drift search (with_n only)
                 opt->nodrift = 1;
@@ -212,8 +216,9 @@ std::string stdout_line(const Decode& d) {
                   (int)d.drift, d.message.c_str());
 }
 
-std::string all_wspr_line(const Decode& d, bool with_spread) {
-    std::string s = format("%6s %4s %3.0f %5.2f %11.7f  %-22s %2d %5.2f %2d %2d %4d %2d %3d %5u %5d",
+std::string all_wspr_line(const Decode& d, bool with_spread, bool fine_freq) {
+    std::string s = format(fine_freq ? "%6s %4s %3.0f %5.2f %13.9f  %-22s %2d %5.2f %2d %2d %4d %2d %3d %5u %5d"
+                                     : "%6s %4s %3.0f %5.2f %11.7f  %-22s %2d %5.2f %2d %2d %4d %2d %3d %5u %5d",
                   d.date.c_str(), d.time.c_str(), d.snr,
                   d.dt, d.freq, d.message.c_str(),
                   (int)d.drift, d.sync,
@@ -1089,7 +1094,7 @@ int run(const std::vector<std::string>& argv, const Io& io)
             out(stdout_line(d));
         }
         if (crash == AT_PRINT) return crashed();
-        put(fall_wspr, held_all, all_wspr_line(d, opt.nodrift));
+        put(fall_wspr, held_all, all_wspr_line(d, opt.nodrift, opt.fine_freq));
         put(fwsprd, held_spots, spots_line(d));
     }
     if (opt.stream_mode) {

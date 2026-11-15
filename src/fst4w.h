@@ -49,6 +49,11 @@ struct Options {
     enum class Spread { Fast, Exact, Off, Both };
     Spread spread = Spread::Fast;
     bool decdata = true;        // a 'decdata' file: fst4_decodes.dat lines
+    // Ours (--fine-freq): fst4_decodes.dat's fsig as fsig + fmid_fine, to
+    // 0.001 Hz (f9.3 for jt9's f7.1); the same fields, so readers of the
+    // file still split it as before. Needs dopspread (plotspec, spread not
+    // Off): without it fsig is written as jt9 writes it.
+    bool fine_freq = false;
 };
 
 // One decode, as fst4_decode hands it to its callback and writes it to
@@ -64,6 +69,14 @@ struct Result {
     int ntrperiod = 0;
     float fmid = -999.0f, w50 = 0.0f;
     float fmid_fast = -999.0f, w50_fast = 0.0f;  // Spread::Both: the fast spread's
+    // Ours: the frequency (Hz, from fsig's tone 0) that splits the signal's
+    // power in half, dopspread's spectrum with the bins' edges put where they
+    // are (fmid, jt9's, reads its interpolation a bin's half to one and a
+    // half off: up to 6 mHz at FST4W-120). fsig + fmid_fine is the signal's
+    // frequency: about 0.3 mHz RMS at every period from 15 dB above the
+    // threshold down to 3 dB above it, its printed 0.001 Hz the larger part
+    // (scripts/fine-freq-check.sh). -999 without dopspread.
+    float fmid_fine = -999.0f;
     // fst4_decodes.dat's fields (written when Options::decdata).
     int icand = 0, itry = 0, nsyncoh = 0, iaptype = 0, ijitter = 0, npct = 0, ntype = 0, keff = 0, nsync_qual = 0,
         nharderrors = 0, nhp = 0;

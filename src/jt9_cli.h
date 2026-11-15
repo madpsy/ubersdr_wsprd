@@ -38,6 +38,8 @@
 // and its SWL mode, bswl: long options alone, off by default, as jt9 has them
 // off; each is what the patched reference of scripts/msk144-oracle.sh does
 // with MSK144_SHMSG and MSK144_SWL);
+// --fine-freq (FST4W: fst4_decodes.dat's fsig as fsig plus dopspread's
+// measured power midpoint, to 0.001 Hz; fst4w.h's Options::fine_freq);
 // --spread fast|exact|off (FST4W's dopspread: fast by default,
 // exact for WSJT-X's byte for byte; a long option alone, taking its one
 // value); -v's line. Still apart: FST4W's -c and -x only standard calls

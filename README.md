@@ -18,7 +18,7 @@ this one, with nothing to change.
 - **A tenth of the CPU on x86-64, a sixth on a Raspberry Pi 5.** The same
   arithmetic, done in a cheaper order and many lanes at once (AVX2 on x86-64,
   NEON on arm64).
-- **One option more, `-n`**: no drift search, and each signal's spread.
+- **Two options more, `-n` and `-F`**: no drift search, and each signal's spread; each signal's frequency to 0.001 Hz.
 - Linux (x86-64, arm64) and Windows.
 - The original works are the WSJT-X project's, and this is released under
   the same licence, the GNU GPL v3 (see [Credits and licence](#credits-and-licence)).
@@ -140,6 +140,7 @@ wsprd [options...] infile        (infile: a .wav or .c2)
   -w         wideband mode - decode signals within +/- 150 Hz of center
   -z x       fano metric table bias, default is 0.45
   -n         no drift, does not attempt to follow a drifting frequency
+  -F         fine frequency: each decode's frequency measured to 0.001 Hz
   -0         streaming mode: PCM audio on stdin, decodes as NDJSON on stdout
 ```
 
@@ -181,6 +182,33 @@ WSPR-15's 1/1800 Hz). A steady signal reads about 0.008 Hz; a Gaussian
 Doppler spread of 0.02 to 0.5 Hz reads within its noise of the 1.35 sigma
 expected, at SNRs down to -25 dB. It costs about 0.7 ms a decode.
 
+### `-F`: the frequency to 0.001 Hz
+
+With `-F` each decode's frequency is measured, not just searched for, and
+`ALL_WSPR.TXT` prints it in MHz with 9 decimals (`%13.9f`, WSJT-X's
+`%11.7f`). WSJT-X's frequency is the best of a search in 0.05 Hz steps,
+printed to 0.1 Hz; `-F` adds the offset of the frequency that splits the
+spread's spectrum (the samples times the decoded signal's conjugate) in half,
+so it is the signal's centre at the middle of its transmission. For a
+GPS-locked transmitter and receiver that is a Doppler shift to about a
+millihertz.
+
+Two things are not as the spread has them. WSJT-X's half-power point (its
+`xi2`) puts each bin's power at the bin's edge, up to one and a half bins
+(6 mHz) off; `-F` reads it from the bins' edges. And wsprd builds the
+decoded signal's reference with a float phase it never wraps, which by the
+end of a transmission is tens of thousands of radians, where a float's steps
+leave the product's carrier wandering by up to 15 mHz; `-F` measures from a
+reference whose phase is made in double (`spread_gain_precise`).
+
+On synthetic WSPR-2 signals at known frequencies 1410 to 1590 Hz
+(`scripts/fine-freq-check.sh`), `-n -F` is within 0.33 mHz RMS of the truth
+at -10 dB and 0.35 at -20 dB, against 32 mHz for the 0.1 Hz frequency. At
+-26 dB, near the threshold, 4 of 50 decodes were off by 2 to 35 mHz, each
+with a spread of 0.24 Hz or more against a clean signal's 0.004: a wide
+spread marks a frequency not to trust. Without `-F` nothing differs, and the
+spread is measured as before.
+
 `wsprd --version` (alone) prints the release it came from, where WSJT-X's
 would refuse `--version`.
 
@@ -209,6 +237,18 @@ it from the same product decimated by 120 before a 120 times smaller FFT,
 within 0.0001 Hz of WSJT-X's (the printed w50 the same on 463 of 465 test
 decodes) and several times cheaper; `exact` is WSJT-X's own, to the bit; `off`
 measures none.
+
+And `--fine-freq`: `fst4_decodes.dat`'s `fsig` as the signal's measured
+frequency, to 0.001 Hz (`f9.3`, WSJT-X's `f7.1`), the same fields otherwise.
+WSJT-X's `fsig` is the best of a search in steps of 0.02 of the baud rate
+(0.029 Hz at FST4W-120, 0.0018 Hz at FST4W-1800), printed to 0.1 Hz;
+`--fine-freq` adds the offset of the frequency that splits the spread's
+spectrum in half, read from the bins' edges (WSJT-X's own half-power point,
+its `xi2`, is up to one and a half bins, 6 mHz at FST4W-120, off). It needs the
+spread (`plotspec`, not `--spread off`). On synthetic FST4W signals at known
+frequencies (`scripts/fine-freq-check.sh`) it is within 0.3 to 0.46 mHz RMS
+of the truth at every period, from 15 dB above the threshold to 3 dB above
+it, against about 30 mHz for the 0.1 Hz `fsig`.
 
 `-c` and `-x` take standard calls only for FST4W.
 

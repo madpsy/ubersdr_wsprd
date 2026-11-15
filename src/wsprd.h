@@ -68,6 +68,13 @@ struct Options {
     // printed 0); and ALL_WSPR.TXT's lines end in the decode's spread
     // (" %6.3f").
     bool nodrift = false;
+    // Not wsprd's: -F, each decode's frequency measured to 0.001 Hz: wsprd's
+    // (its last search step 0.05 Hz) plus the offset of the half-power point
+    // of its channel gain's spectrum (the spread's, from the bins' edges), so
+    // the signal's centre at the middle of its transmission; ALL_WSPR.TXT's
+    // frequency then printed %13.9f (wsprd's %11.7f). Needs the spread
+    // (Options::spread); a decode without one keeps wsprd's frequency.
+    bool fine_freq = false;
 };
 
 // usage() as wsprd prints it (to stdout); with_n with an -n line after
@@ -111,6 +118,9 @@ struct Decode {
     // signal's conjugate, before it was subtracted), Hz, at least one bin
     // (1/240 Hz, WSPR-15's 1/1800). -1 none (Options::spread off).
     float spread = -1;
+    // Not wsprd's: the half-power point's offset from wsprd's frequency, Hz
+    // (Options::fine_freq adds it to freq); -999 none.
+    float fmid_fine = -999;
     // The message's fields: callsign ("<...>" for an unknown hash), grid
     // (empty for type 2, 6 characters for type 3), power in dBm.
     std::string callsign;
@@ -120,9 +130,10 @@ struct Decode {
 
 // The lines wsprd prints for a decode (each with its newline): stdout's,
 // ALL_WSPR.TXT's and wspr_spots.txt's, and -0's NDJSON. with_spread: the
-// ALL_WSPR.TXT line ends in " %6.3f" of d.spread (-n's).
+// ALL_WSPR.TXT line ends in " %6.3f" of d.spread (-n's). fine_freq (-F):
+// its frequency %13.9f, to 0.001 Hz.
 std::string stdout_line(const Decode& d);
-std::string all_wspr_line(const Decode& d, bool with_spread = false);
+std::string all_wspr_line(const Decode& d, bool with_spread = false, bool fine_freq = false);
 std::string spots_line(const Decode& d);
 std::string stream_line(const Decode& d);
 

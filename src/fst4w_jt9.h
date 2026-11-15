@@ -41,6 +41,7 @@ struct FileMode {
     bool quiet = false;                          // -q
     std::string mycall = "K1ABC", hiscall = "W9XYZ";  // -c, -x as read ("b": none)
     Options::Spread spread = Options::Spread::Fast;   // --spread
+    bool fine_freq = false;                           // --fine-freq
 };
 int run_files(const FileMode& fm, const std::vector<std::string>& files, const std::string& cwd, std::ostream& out,
               std::ostream& err);
@@ -53,8 +54,10 @@ int run_files(const FileMode& fm, const std::vector<std::string>& files, const s
 // more), else jt9 does not decode it.
 bool jt9_samples(const int16_t* samples, size_t n, int trperiod, std::vector<int16_t>& id2);
 
-// A decode's fst4_decodes.dat line (with decdata), no newline.
-std::string decodes_dat_line(const Result& r);
+// A decode's fst4_decodes.dat line (with decdata), no newline. fine_freq
+// (--fine-freq): fsig + fmid_fine as f9.3 in fsig's place, when dopspread
+// ran.
+std::string decodes_dat_line(const Result& r, bool fine_freq = false);
 
 // fst4w_calls.txt as jt9 writes it ('(a20)' each: right-justified).
 std::string calls_file(const std::vector<std::string>& calls);
