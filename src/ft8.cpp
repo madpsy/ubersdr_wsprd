@@ -387,7 +387,7 @@ void Decoder::decode(const S* iwave16, const Params& p, int nutc, int nzhsym, in
         const int t = (nutc / 10000) * 3600 + (nutc / 100 % 100) * 60 + nutc % 100;
         if (ctx_hist_.empty() || ctx_hist_.back().t != t) {
             ctx_hist_.push_back({t, {}});
-            while (ctx_hist_.size() > 4) ctx_hist_.pop_front();
+            while (ctx_hist_.size() > 5) ctx_hist_.pop_front();  // this period and the 4 before it (back to 60 s)
         }
         if (nzhsym == 50)
             for (int back = 30; back <= 60; back += 30)

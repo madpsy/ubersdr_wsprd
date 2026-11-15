@@ -178,8 +178,9 @@ private:
     // rho 0.50).
     void nn_repeat(int nutc, int nfqso, int jseq, Call& c);
 
-    // Ours (--nn only): the decoder's own decodes of the last 4 periods (t: time of day, s), newest last, for the
-    // context passes (Frontend::set_context) and the repeat test; ctx_now_ those of 30 then 60 s before this one.
+    // Ours (--nn only): the decoder's own decodes of this period and the 4 before it (t: time of day, s), newest
+    // last, for the context passes (Frontend::set_context) and the repeat test; ctx_now_ those of 30 then 60 s
+    // before this one.
     struct CtxSlot {
         int t = -1;
         std::vector<Frontend::CtxMsg> d;
