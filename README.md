@@ -186,7 +186,8 @@ expected, at SNRs down to -25 dB. It costs about 0.7 ms a decode.
 
 With `-F` each decode's frequency is measured, not just searched for, and
 `ALL_WSPR.TXT` prints it in MHz with 9 decimals (`%13.9f`, WSJT-X's
-`%11.7f`). WSJT-X's frequency is the best of a search in 0.05 Hz steps,
+`%11.7f`); stdout, `wspr_spots.txt` and `-0`'s lines carry the same
+frequency, to their own decimals. WSJT-X's frequency is the best of a search in 0.05 Hz steps,
 printed to 0.1 Hz; `-F` adds the offset of the frequency that splits the
 spread's spectrum (the samples times the decoded signal's conjugate) in half,
 so it is the signal's centre at the middle of its transmission. For a
@@ -231,14 +232,14 @@ WSJT-X's: the decodes, every field of `fst4_decodes.dat` (with a `decdata`
 file in the data directory), `decoded.txt`, `fst4w_calls.txt`, and its
 messages, down to its command line's quirks (`jt9 -h` lists the options).
 
-One option more, `--spread fast|exact|off`: the spread (w50, with a
+Two options more. `--spread fast|exact|off`: the spread (w50, with a
 `plotspec` file in the directory it runs in). `fast`, the default, measures
 it from the same product decimated by 120 before a 120 times smaller FFT,
 within 0.0001 Hz of WSJT-X's (the printed w50 the same on 463 of 465 test
 decodes) and several times cheaper; `exact` is WSJT-X's own, to the bit; `off`
 measures none.
 
-And `--fine-freq`: `fst4_decodes.dat`'s `fsig` as the signal's measured
+`--fine-freq`: `fst4_decodes.dat`'s `fsig` as the signal's measured
 frequency, to 0.001 Hz (`f9.3`, WSJT-X's `f7.1`), the same fields otherwise.
 WSJT-X's `fsig` is the best of a search in steps of 0.02 of the baud rate
 (0.029 Hz at FST4W-120, 0.0018 Hz at FST4W-1800), printed to 0.1 Hz;

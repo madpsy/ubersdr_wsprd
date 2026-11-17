@@ -8,7 +8,9 @@
 #   ./build.sh --windows  the same, and wsprd.exe and jt9.exe for 64-bit Windows,
 #                         cross-compiled here on Linux in Docker (mingw-w64):
 #                         build/dist/wsprd-windows-x86_64.exe, checked under
-#                         wine when it is installed
+#                         wine when it is installed; it runs in the background
+#                         once the Linux build is done, beside the checks and
+#                         the WebAssembly build (its output: build/windows.log)
 #   ./build.sh --check    the same as ./build.sh, then this wsprd and jt9
 #                         against WSJT-X's own's stored outputs, byte for byte
 #                         (scripts/wsprd-stored-check.sh, scripts/jt9-wine-check.sh
@@ -326,6 +328,84 @@ cp "$root/models/ft8nn-jt9.onnx" "$dist/"
 (. /etc/os-release && echo "$PRETTY_NAME") > "$dist/built-on"
 echo "$version" > "$dist/version"
 echo "built: $dist/wsprd-linux-$arch, $dist/jt9-linux-$arch, $dist/onnxruntime-linux-$arch.tgz ($version)"
+
+# --- Windows (Docker, mingw-w64) -----------------------------------------------
+# Needs only the Linux wsprd and jt9 above (wsprd.exe is compared with Linux's
+# wsprd), so it runs in the background beside the checks and the WebAssembly
+# build, in its own directories (build/windows, build/wine-*, build/wineprefix,
+# build/nn-check-wine), its output in build/windows.log, printed when it ends.
+windows_build() {
+    command -v docker >/dev/null && docker info >/dev/null 2>&1 ||
+        { echo "--windows builds wsprd.exe in Docker: Docker is not usable here" >&2; exit 1; }
+    say "building wsprd.exe and jt9.exe (mingw-w64)"
+    image=ubersdr-wsprd-win
+    wbuild=$build/windows
+    docker build -q -t "$image" -f docker/windows.Dockerfile docker >/dev/null
+    mkdir -p "$wbuild"
+    docker run --rm --name "$win_name" -u "$(id -u):$(id -g)" -v "$root:$root:ro" -v "$wbuild:/b" "$image" sh -c "
+        cmake -S '$root' -B /b -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=/win/toolchain.cmake \
+              -DWSPRD_VERSION='$version' &&
+        cmake --build /b"
+    for p in wsprd jt9; do
+        file "$wbuild/$p.exe" | grep -q 'PE32+ executable.*x86-64' || { echo "$p.exe was not built" >&2; exit 1; }
+        # One file: any DLL but Windows' own would have to be shipped beside it.
+        other=$(docker run --rm --name "$win_name" -v "$wbuild:/b" "$image" x86_64-w64-mingw32-objdump -p "/b/$p.exe" |
+            awk '/DLL Name:/ {print $3}' |
+            grep -viE '^(kernel32|advapi32|bcrypt|crypt32|ws2_32|msvcrt|user32|shell32|ole32)\.dll$' || true)
+        [ -z "$other" ] || { echo "$p.exe needs DLLs Windows does not have: $other" >&2; exit 1; }
+        docker run --rm --name "$win_name" -u "$(id -u):$(id -g)" -v "$wbuild:/b" "$image" \
+            x86_64-w64-mingw32-strip -o "/b/$p-windows-x86_64.exe" "/b/$p.exe"
+    done
+    # Under wine, when it is there: the same decodes as Linux's of a .c2 (whose
+    # FFT is the same on both; a .wav's first FFTs' last bits are FFTW's build's).
+    if command -v wine >/dev/null; then
+        say "checking wsprd.exe under wine"
+        c2=$root/tests/data/wsprd/inputs/sim-types-261010_1200.c2
+        for side in linux windows; do
+            rm -rf "$build/wine-$side"; mkdir -p "$build/wine-$side"; cp "$c2" "$build/wine-$side/"
+        done
+        (cd "$build/wine-linux" && "$build/wsprd" -C 500 -o 4 -d "$(basename "$c2")" > stdout)
+        (cd "$build/wine-windows" && WINEPREFIX="$build/wineprefix" WINEDEBUG=-all \
+            wine "$wbuild/wsprd-windows-x86_64.exe" -C 500 -o 4 -d "$(basename "$c2")" | tr -d '\r' > stdout)
+        for f in stdout ALL_WSPR.TXT wspr_spots.txt; do
+            cmp -s <(tr -d '\r' < "$build/wine-linux/$f") <(tr -d '\r' < "$build/wine-windows/$f") ||
+                { echo "wsprd.exe's $f differs from Linux's" >&2; exit 1; }
+        done
+        echo "wsprd.exe decodes as Linux's does"
+        # jt9.exe: every case of WSJT-X's jt9 whose inputs are here (FST4W's
+        # made by --deep-check, or kept from an earlier one) printed and written
+        # as WSJT-X's.
+        say "checking jt9.exe under wine"
+        "$root/scripts/jt9-wine-check.sh" "$wbuild/jt9-windows-x86_64.exe" "$build/wine-jt9"
+        say "checking jt9.exe --nn with the packed ONNX Runtime under wine"
+        ort_pack windows-x86_64 "$dist"
+        rm -rf "$build/ort-windows"; mkdir -p "$build/ort-windows"
+        unzip -q "$dist/onnxruntime-windows-x86_64.zip" onnxruntime.dll -d "$build/ort-windows"
+        nn_check "$wbuild/jt9-windows-x86_64.exe" "$build/ort-windows" "$build/nn-check-wine" wine
+    else
+        echo "wine is not installed: wsprd.exe and jt9.exe are built but not checked"
+    fi
+    cp "$wbuild/wsprd-windows-x86_64.exe" "$wbuild/jt9-windows-x86_64.exe" "$dist/"
+    [ -f "$dist/onnxruntime-windows-x86_64.zip" ] || ort_pack windows-x86_64 "$dist"
+    (cd "$dist" && sha256sum -- wsprd-windows-x86_64.exe jt9-windows-x86_64.exe onnxruntime-windows-x86_64.zip ft8nn-jt9.onnx > SHA256SUMS-windows-x86_64)
+    compiler=$(docker run --rm --name "$win_name" "$image" x86_64-w64-mingw32-g++ -dumpfullversion)
+    echo "$(. /etc/os-release && echo "$PRETTY_NAME"), cross-compiled with mingw-w64 GCC $compiler" > "$dist/built-on-windows-x86_64"
+    echo
+    echo "built: $dist/wsprd-windows-x86_64.exe, $dist/jt9-windows-x86_64.exe"
+}
+
+if $windows; then
+    say "building wsprd.exe and jt9.exe in the background (build/windows.log)"
+    # Its containers by one name, so a failing check here can stop them:
+    # docker run hands a SIGTERM on to the container, whose shell ignores it.
+    win_name=ubersdr-wsprd-win-$$
+    ( windows_build ) > "$build/windows.log" 2>&1 &
+    win_pid=$!
+    # A failing check ends the script: take the Windows build with it, every
+    # process under it (wine's too) and its container.
+    kill_tree() { local c; for c in $(pgrep -P "$1"); do kill_tree "$c"; done; kill "$1" 2>/dev/null || true; }
+    trap 'kill_tree "$win_pid"; docker kill "$win_name" >/dev/null 2>&1 || true' EXIT
+fi
 if $check; then
     say "checking jt9 --nn with the packed ONNX Runtime"
     rm -rf "$build/ort-linux"; mkdir -p "$build/ort-linux"
@@ -384,65 +464,12 @@ if $wasm; then
 fi
 
 $windows || exit 0
-
-# --- Windows (Docker, mingw-w64) -----------------------------------------------
-command -v docker >/dev/null && docker info >/dev/null 2>&1 ||
-    { echo "--windows builds wsprd.exe in Docker: Docker is not usable here" >&2; exit 1; }
-say "building wsprd.exe and jt9.exe (mingw-w64)"
-image=ubersdr-wsprd-win
-wbuild=$build/windows
-docker build -q -t "$image" -f docker/windows.Dockerfile docker >/dev/null
-mkdir -p "$wbuild"
-docker run --rm -u "$(id -u):$(id -g)" -v "$root:$root:ro" -v "$wbuild:/b" "$image" sh -c "
-    cmake -S '$root' -B /b -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=/win/toolchain.cmake \
-          -DWSPRD_VERSION='$version' &&
-    cmake --build /b"
-for p in wsprd jt9; do
-    file "$wbuild/$p.exe" | grep -q 'PE32+ executable.*x86-64' || { echo "$p.exe was not built" >&2; exit 1; }
-    # One file: any DLL but Windows' own would have to be shipped beside it.
-    other=$(docker run --rm -v "$wbuild:/b" "$image" x86_64-w64-mingw32-objdump -p "/b/$p.exe" |
-        awk '/DLL Name:/ {print $3}' |
-        grep -viE '^(kernel32|advapi32|bcrypt|crypt32|ws2_32|msvcrt|user32|shell32|ole32)\.dll$' || true)
-    [ -z "$other" ] || { echo "$p.exe needs DLLs Windows does not have: $other" >&2; exit 1; }
-    docker run --rm -u "$(id -u):$(id -g)" -v "$wbuild:/b" "$image" \
-        x86_64-w64-mingw32-strip -o "/b/$p-windows-x86_64.exe" "/b/$p.exe"
-done
-# Under wine, when it is there: the same decodes as Linux's of a .c2 (whose
-# FFT is the same on both; a .wav's first FFTs' last bits are FFTW's build's).
-if command -v wine >/dev/null; then
-    say "checking wsprd.exe under wine"
-    c2=$root/tests/data/wsprd/inputs/sim-types-261010_1200.c2
-    for side in linux windows; do
-        rm -rf "$build/wine-$side"; mkdir -p "$build/wine-$side"; cp "$c2" "$build/wine-$side/"
-    done
-    (cd "$build/wine-linux" && "$build/wsprd" -C 500 -o 4 -d "$(basename "$c2")" > stdout)
-    (cd "$build/wine-windows" && WINEPREFIX="$build/wineprefix" WINEDEBUG=-all \
-        wine "$wbuild/wsprd-windows-x86_64.exe" -C 500 -o 4 -d "$(basename "$c2")" | tr -d '\r' > stdout)
-    for f in stdout ALL_WSPR.TXT wspr_spots.txt; do
-        cmp -s <(tr -d '\r' < "$build/wine-linux/$f") <(tr -d '\r' < "$build/wine-windows/$f") ||
-            { echo "wsprd.exe's $f differs from Linux's" >&2; exit 1; }
-    done
-    echo "wsprd.exe decodes as Linux's does"
-    # jt9.exe: every case of WSJT-X's jt9 whose inputs are here (FST4W's
-    # made by --deep-check, or kept from an earlier one) printed and written
-    # as WSJT-X's.
-    say "checking jt9.exe under wine"
-    "$root/scripts/jt9-wine-check.sh" "$wbuild/jt9-windows-x86_64.exe" "$build/wine-jt9"
-    say "checking jt9.exe --nn with the packed ONNX Runtime under wine"
-    ort_pack windows-x86_64 "$dist"
-    rm -rf "$build/ort-windows"; mkdir -p "$build/ort-windows"
-    unzip -q "$dist/onnxruntime-windows-x86_64.zip" onnxruntime.dll -d "$build/ort-windows"
-    nn_check "$wbuild/jt9-windows-x86_64.exe" "$build/ort-windows" "$build/nn-check-wine" wine
-else
-    echo "wine is not installed: wsprd.exe and jt9.exe are built but not checked"
-fi
-cp "$wbuild/wsprd-windows-x86_64.exe" "$wbuild/jt9-windows-x86_64.exe" "$dist/"
-[ -f "$dist/onnxruntime-windows-x86_64.zip" ] || ort_pack windows-x86_64 "$dist"
-(cd "$dist" && sha256sum -- wsprd-windows-x86_64.exe jt9-windows-x86_64.exe onnxruntime-windows-x86_64.zip ft8nn-jt9.onnx > SHA256SUMS-windows-x86_64)
-compiler=$(docker run --rm "$image" x86_64-w64-mingw32-g++ -dumpfullversion)
-echo "$(. /etc/os-release && echo "$PRETTY_NAME"), cross-compiled with mingw-w64 GCC $compiler" > "$dist/built-on-windows-x86_64"
-echo
-echo "built: $dist/wsprd-windows-x86_64.exe, $dist/jt9-windows-x86_64.exe"
+say "waiting for the Windows build"
+win_status=0
+wait "$win_pid" || win_status=$?
+trap - EXIT
+cat "$build/windows.log"
+[ "$win_status" -eq 0 ] || { echo "the Windows build or its check failed (exit $win_status): build/windows.log" >&2; exit 1; }
 $release || exit 0
 
 # --- publish -------------------------------------------------------------------
@@ -450,9 +477,9 @@ say "releasing $tag"
 commit=$(git rev-parse HEAD)
 notes="Built from $commit.
 
-WSJT-X's \`wsprd\` (567ad29ce's decoder), a drop-in for it: the same options, output and files, byte for byte, in a tenth of its CPU on x86-64 and a sixth on a Raspberry Pi 5. One option more, \`-n\`: no search for a drifting signal, and each ALL_WSPR.TXT line ending in the signal's spread in Hz. \`wsprd --version\` gives this release.
+WSJT-X's \`wsprd\` (567ad29ce's decoder), a drop-in for it: the same options, output and files, byte for byte, in a tenth of its CPU on x86-64 and a sixth on a Raspberry Pi 5. Two options more: \`-n\`, no search for a drifting signal, and each ALL_WSPR.TXT line ending in the signal's spread in Hz; and \`-F\`, each decode's frequency measured to 0.001 Hz. \`wsprd --version\` gives this release.
 
-And WSJT-X's \`jt9\` for FST4W (FST4W-120 to -1800, and 15, 30 and 60 s), FT8 (\`jt9 -8\`) and FT4 (\`jt9 -5\`), run on WAV files: the same command line, output and files, byte for byte, in about a seventh of its CPU for FST4W, 2.1 to 2.9 times less for FT8 and 2.9 to 4.3 times less for FT4 (x86-64, depths 1 to 3). And FT2 (\`jt9 --ft2\`) as WSJT-X improved 3.2.0's \`jt9\` runs it: improved's FT2 code on the FT4 decoder above, in 4.2 to 6.0 times less CPU than improved's \`jt9\` (x86-64, depths 1 to 3). And MSK144 (\`jt9 -k\`, meteor scatter) as WSJT-X 3.2.0-rc1's \`jt9\` decodes it, in about a quarter of its CPU. One option more, \`--spread fast|exact|off\` (FST4W). FST4W, FT8, FT4, FT2 and MSK144 only so far: keep WSJT-X's own \`jt9\` for WSJT-X and its other modes. \`jt9 -v\` gives this release.
+And WSJT-X's \`jt9\` for FST4W (FST4W-120 to -1800, and 15, 30 and 60 s), FT8 (\`jt9 -8\`) and FT4 (\`jt9 -5\`), run on WAV files: the same command line, output and files, byte for byte, in about a seventh of its CPU for FST4W, 2.1 to 2.9 times less for FT8 and 2.9 to 4.3 times less for FT4 (x86-64, depths 1 to 3). And FT2 (\`jt9 --ft2\`) as WSJT-X improved 3.2.0's \`jt9\` runs it: improved's FT2 code on the FT4 decoder above, in 4.2 to 6.0 times less CPU than improved's \`jt9\` (x86-64, depths 1 to 3). And MSK144 (\`jt9 -k\`, meteor scatter) as WSJT-X 3.2.0-rc1's \`jt9\` decodes it, in about a quarter of its CPU. Two options more for FST4W: \`--spread fast|exact|off\`, and \`--fine-freq\`, each decode's frequency measured to 0.001 Hz. FST4W, FT8, FT4, FT2 and MSK144 only so far: keep WSJT-X's own \`jt9\` for WSJT-X and its other modes. \`jt9 -v\` gives this release.
 
 - \`wsprd-linux-x86_64\`, \`wsprd-linux-aarch64\`, \`jt9-linux-x86_64\`, \`jt9-linux-aarch64\`: Linux.
 - \`wsprd-windows-x86_64.exe\`, \`jt9-windows-x86_64.exe\`: Windows.
