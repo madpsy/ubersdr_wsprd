@@ -105,14 +105,15 @@ bool jt9_samples(const int16_t* samples, size_t n, int trperiod, std::vector<int
     return !(std::sqrt(sum / 180000.0f) < 0.5f);
 }
 
-std::string decodes_dat_line(const Result& r) {
+std::string decodes_dat_line(const Result& r, bool fine_freq) {
     std::string m = r.msg;
     while (!m.empty() && m.back() == ' ') m.pop_back();
     return fortran_i(r.nutc, 6, 6) + fortran_i(r.icand, 4) + fortran_i(r.itry, 3) + fortran_i(r.nsyncoh, 3) +
            fortran_i(r.iaptype, 3) + fortran_i(r.ijitter, 3) + fortran_i(r.npct, 3) + fortran_i(r.ntype, 3) +
            fortran_i(r.keff, 4) + fortran_i(r.nsync_qual, 4) + fortran_i(r.nharderrors, 4) + fortran_f(r.dmin, 6, 1) +
            fortran_i(r.nhp, 4) + fortran_f(r.hd, 6, 1) + fortran_f(r.csync, 9, 2) + fortran_f(r.xsnr, 6, 1) +
-           fortran_f(r.xdt, 6, 2) + fortran_f(r.fsig, 7, 1) + fortran_f(r.w50, 7, 3) + " " + m;
+           fortran_f(r.xdt, 6, 2) +
+           (fine_freq && r.fmid_fine != -999.0f ? fortran_f(r.fsig + r.fmid_fine, 9, 3) : fortran_f(r.fsig, 7, 1)) + fortran_f(r.w50, 7, 3) + " " + m;
 }
 
 std::string calls_file(const std::vector<std::string>& calls) {
@@ -249,7 +250,7 @@ int run_files(const FileMode& fm, const std::vector<std::string>& files, const s
                 }
                 if (o.decdata) {
                     std::ofstream dat(join(data_dir, "fst4_decodes.dat"), std::ios::app);
-                    dat << decodes_dat_line(r) << "\n";
+                    dat << decodes_dat_line(r, fm.fine_freq) << "\n";
                 }
                 // fst4_decoded (ntrperiod >= 60).
                 std::string decoded0 = r.msg;

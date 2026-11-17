@@ -172,7 +172,7 @@ struct Decoder::Impl {
     template <class Sample>
     void dopspread(const int* itone, const Sample* iwave, int nsps, int nmax, int ndown, int hmod, int i0, float fc,
                    float& fmid, float& w50, std::vector<std::pair<float, float>>* spectrum, bool fast = false,
-                   bool count = true);
+                   bool count = true, float* fmid_fine = nullptr);
     template <class Sample>
     void decode(Sample* iwave, int nutc, const Options& o, const std::function<void(const Result&)>& on_result,
                 bool* calls_changed);
@@ -256,7 +256,7 @@ void Decoder::Impl::gen_fst4wave(const int* itone, int nsym, int nsps, int nwave
 template <class Sample>
 void Decoder::Impl::dopspread(const int* itone, const Sample* iwave, int nsps, int nmax, int ndown, int hmod, int i0,
                               float fc, float& fmid, float& w50, std::vector<std::pair<float, float>>* spectrum,
-                              bool fast, bool count) {
+                              bool fast, bool count, float* fmid_fine) {
     if (count) ++ncall;
     const int nfft = 2 * nmax;
     const int nwave = std::max(nmax, (NN + 2) * nsps);
@@ -378,6 +378,30 @@ void Decoder::Impl::dopspread(const int* itone, const Sample* iwave, int nsps, i
     const float xdiff = std::sqrt(1.0f + (xi3 - xi1) * (xi3 - xi1));  // Keep small values from fluctuating too widely
     w50 = xdiff * df;  // Doppler spread
     fmid = xi2 * df;   // Frequency midpoint of signal power
+
+    if (fmid_fine) {
+        // Ours: the same half-power point, read where it lies. Bin i holds the
+        // power from (i - 1/2)*df to (i + 1/2)*df, so the running sum after
+        // bin i is the power below (i + 1/2)*df; the half is crossed inside
+        // the bin that takes the sum past it, at the share of that bin's
+        // power still needed. Over the same bins as xi2, in double.
+        const int ib = static_cast<int>(std::lround(1.0f / df)) + 1;
+        double total = 0.0;
+        for (int i = -ib; i <= ib; ++i) total += static_cast<double>(ss[i]) - avg;
+        double below = 0.0;
+        *fmid_fine = -999.0f;
+        if (total > 0.0) {
+            for (int i = -ib; i <= ib; ++i) {
+                const double p = static_cast<double>(ss[i]) - avg;
+                if (p > 0.0 && below + p >= 0.5 * total) {
+                    const double x = static_cast<double>(i) - 0.5 + (0.5 * total - below) / p;
+                    *fmid_fine = static_cast<float>(x * static_cast<double>(df));
+                    break;
+                }
+                below += p;
+            }
+        }
+    }
 
     if (spectrum) {  // the spectrum for plotting (fort.52)
         spectrum->clear();
@@ -634,7 +658,7 @@ void Decoder::Impl::decode(Sample* iwave, int nutc, const Options& o,
                         if (o.plotspec && o.spread != Options::Spread::Off) {
                             const bool fast = o.spread == Options::Spread::Fast;
                             dopspread(itone, iwave, nsps, nmax, ndown, hmod, isbest, fc_synced, fmid, w50,
-                                      &res.spectrum, fast);
+                                      &res.spectrum, fast, true, &res.fmid_fine);
                             if (o.spread == Options::Spread::Both)
                                 dopspread(itone, iwave, nsps, nmax, ndown, hmod, isbest, fc_synced, res.fmid_fast,
                                           res.w50_fast, nullptr, true, false);

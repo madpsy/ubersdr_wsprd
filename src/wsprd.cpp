@@ -1597,9 +1597,59 @@ void spread_gain(const float *id, const float *qd, long np, float f0, int shift0
     }
 }
 
+// Not wsprd's: spread_gain's product made with the reference's phase in
+// double, for -F's frequency. subtract_signal2's reference (and
+// spread_gain's, its copy) adds each sample's step to a float phase that is
+// never wrapped: tens of thousands of radians by the end, where a float's
+// steps are coarse, so the carrier left in the product wanders by up to ~15
+// mHz on signals 60-90 Hz from the centre. With sub (the signal already
+// subtracted from id/qd), its saved products s*conj(r) are turned by the
+// float phase's error, phi_float - phi_double, sample by sample (phi_float
+// made as subtract_signal2 makes it); else the product is made here.
+void spread_gain_precise(const float *id, const float *qd, long np, float f0, int shift0, float drift0,
+                         const unsigned char* channel_symbols, const SubScratch* sub, std::complex<float>* g)
+{
+    const int nsym=162, nspersym=256;
+    // subtract_signal2's phase, operation for operation
+    float dt=1.0/375.0, df=375.0/256.0;
+    float pi=4.*atan(1.0), twopidt=2.0*pi*dt, phi=0, dphi, cs;
+    // the exact one
+    const double ddt=1.0/375.0, ddf=375.0/256.0, dtwopi=2.0*M_PI;
+    double dphase=0;
+    for (int i=0; i<nsym; i++) {
+        cs=(float)channel_symbols[i];
+        dphi=twopidt*
+        (
+         f0 + (drift0/2.0)*((float)i-(float)nsym/2.0)/((float)nsym/2.0)
+         + (cs-1.5)*df
+         );
+        const double ddphi=dtwopi*ddt*((double)f0 + ((double)drift0/2.0)*((double)i-(double)nsym/2.0)/((double)nsym/2.0)
+                                       + ((double)channel_symbols[i]-1.5)*ddf);
+        for (int j=0; j<nspersym; j++) {
+            const int k=shift0+nspersym*i+j;
+            if( (k>0) && (k<np) ) {
+                if (sub) {
+                    const int ii=nspersym*i+j;
+                    const std::complex<double> c(sub->ci[SubScratch::nfilt+ii], sub->cq[SubScratch::nfilt+ii]);
+                    g[k]=std::complex<float>(c*std::polar(1.0, (double)phi - dphase));
+                } else {
+                    const double refi=std::cos(dphase), refq=std::sin(dphase);
+                    g[k]={(float)(id[k]*refi + qd[k]*refq), (float)(qd[k]*refi - id[k]*refq)};
+                }
+            }
+            phi=phi+dphi;
+            dphase+=ddphi;
+        }
+    }
+}
+
 // dopspread from its FFT on, every float as the Fortran's: g in the
 // buffer (nfft points, fs the samples' rate), transformed in place.
-float dopspread(skimmer::Fft& fft, float fs)
+// fmid_fine (not dopspread's): the offset, Hz, of the frequency that splits
+// the power in half, read with each bin holding the power from its centre
+// - df/2 to + df/2 (dopspread's xi2 reads it half a bin to one and a half
+// off); -999 when there is no power over the noise.
+float dopspread(skimmer::Fft& fft, float fs, float* fmid_fine)
 {
     const int nfft=(int)fft.size();
     fft.forward();
@@ -1654,6 +1704,21 @@ float dopspread(skimmer::Fft& fft, float fs)
         sum2z=sum2;
     }
     const float xdiff=std::sqrt(1.0f+(xi3-xi1)*(xi3-xi1));  // Keep small values from fluctuating too widely
+    if (fmid_fine) {
+        *fmid_fine=-999.0f;
+        double total=0.0, below=0.0;
+        for (int i=-ia; i<=ia; i++) total+=(double)ss[i]-avg;
+        if (total > 0.0) {
+            for (int i=-ia; i<=ia; i++) {
+                const double p=(double)ss[i]-avg;
+                if (p > 0.0 && below+p >= 0.5*total) {
+                    *fmid_fine=(float)(((double)i-0.5+(0.5*total-below)/p)*(double)df);
+                    break;
+                }
+                below+=p;
+            }
+        }
+    }
     return xdiff*df;                               // Compute Doppler spread
 }
 
@@ -1661,9 +1726,9 @@ float dopspread(skimmer::Fft& fft, float fs)
 // 375 Hz, 46.875 for WSPR-15), zero-padded to twice its period as
 // dopspread pads nmax: so the bins are FST4W-120's (WSPR-2, 1/240 Hz) and
 // FST4W-900's (WSPR-15, 1/1800 Hz). sub: subtract_signal2's arrays, if it
-// has just run for this signal.
+// has just run for this signal. fmid_fine: dopspread's.
 float decode_spread(SpreadScratch& sc, int wspr_type, const float *id, const float *qd, long np, float f0, int shift0,
-                    float drift0, const unsigned char* channel_symbols, const SubScratch* sub)
+                    float drift0, const unsigned char* channel_symbols, const SubScratch* sub, float* fmid_fine)
 {
     const float fs = wspr_type == 15 ? 375.0f/8 : 375.0f;
     const size_t nfft = wspr_type == 15 ? 2*900*375/8 : 2*120*375;
@@ -1674,7 +1739,13 @@ float decode_spread(SpreadScratch& sc, int wspr_type, const float *id, const flo
     std::complex<float>* g = sc.fft->data();
     std::fill(g, g + nfft, std::complex<float>());
     spread_gain(id, qd, std::min<long>(np, (long)nfft), f0, shift0, drift0, channel_symbols, sub, g);
-    return dopspread(*sc.fft, fs);
+    const float w50=dopspread(*sc.fft, fs, nullptr);
+    if (fmid_fine) {  // -F: the same spectrum from a reference made in double (spread_gain_precise)
+        std::fill(g, g + nfft, std::complex<float>());
+        spread_gain_precise(id, qd, std::min<long>(np, (long)nfft), f0, shift0, drift0, channel_symbols, sub, g);
+        dopspread(*sc.fft, fs, fmid_fine);
+    }
+    return w50;
 }
 
 unsigned int count_hard_errors( unsigned char *symbols, unsigned char *channel_symbols)
@@ -1700,7 +1771,8 @@ struct result { char date[7]; char time[5]; float sync; float snr;
     float dt; double freq; char message[23]; float drift;
     unsigned int cycles; int jitter; int blocksize; unsigned int metric;
     int nhardmin; int ipass; int decodetype;
-    float spread;};  // not wsprd's: Decode::spread
+    float spread;  // not wsprd's: Decode::spread
+    float fmid_fine;};  // not wsprd's: Decode::fmid_fine
 
 // The message's fields for Decode.
 void split_message(Decode& d) {
@@ -2459,14 +2531,18 @@ void Decoder::Impl::decode(const Options& opt, char* hashtab, char* loctab, unsi
                     // Not wsprd's: its spread, from the samples as they were
                     // before it was subtracted (those before it gone).
                     decodes[uniques-1].spread=-1;
+                    decodes[uniques-1].fmid_fine=-999;
                     if (opt.spread) {
                         unsigned char own[162];  // without subtraction: wsprd's channel_symbols left as they were
+                        float* fine=opt.fine_freq ? &decodes[uniques-1].fmid_fine : nullptr;  // only -F pays for it
                         if (subtracted)
                             decodes[uniques-1].spread=decode_spread(this->spread, wspr_type, idat, qdat, npoints, f1, shift1,
-                                                                    drift1, channel_symbols, &sub);
+                                                                    drift1, channel_symbols, &sub, fine);
                         else if (get_wspr_channel_symbols(call_loc_pow, hashtab, loctab, own))
                             decodes[uniques-1].spread=decode_spread(this->spread, wspr_type, idat, qdat, npoints, f1, shift1,
-                                                                    drift1, own, nullptr);
+                                                                    drift1, own, nullptr, fine);
+                        if (fine && *fine != -999.0f)
+                            decodes[uniques-1].freq=freq_print+(double)*fine/1e6;
                     }
                 }
             }
@@ -2513,6 +2589,7 @@ stopped:
         d.ipass = decodes[i].ipass;
         d.decodetype = decodes[i].decodetype;
         d.spread = decodes[i].spread;
+        d.fmid_fine = decodes[i].fmid_fine;
         split_message(d);
         res.decodes.push_back(std::move(d));
     }
