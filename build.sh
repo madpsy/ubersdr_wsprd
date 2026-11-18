@@ -147,7 +147,10 @@ ort_pack() {  # ort_pack PLATFORM DIST: DIST/onnxruntime-PLATFORM.tgz or .zip
     esac
     local name=onnxruntime-$plat-$ORT_VERSION cache=${XDG_CACHE_HOME:-$HOME/.cache}/ubersdr-wsprd t
     mkdir -p "$cache"
-    if ! echo "$sha  $cache/$name.$ext" | sha256sum --quiet -c >/dev/null 2>&1; then
+    # The repository's copy (third_party/onnxruntime), else the cache, else Microsoft's release.
+    if echo "$sha  $root/third_party/onnxruntime/$name.$ext" | sha256sum --quiet -c >/dev/null 2>&1; then
+        cache=$root/third_party/onnxruntime
+    elif ! echo "$sha  $cache/$name.$ext" | sha256sum --quiet -c >/dev/null 2>&1; then
         echo "fetching ONNX Runtime $ORT_VERSION ($plat)"
         curl -fsSL -o "$cache/$name.$ext.part" \
             "https://github.com/microsoft/onnxruntime/releases/download/v$ORT_VERSION/$name.$ext"
