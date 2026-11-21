@@ -47,9 +47,28 @@ const OrtApi* ort_api(std::string& err) {
     }
     ort_tried = true;
     void* fn = nullptr;
+    std::string sys_err;  // Windows' reason, if it gives one
 #ifdef _WIN32
-    HMODULE h = !ort_given.empty() ? LoadLibraryExA(ort_given.c_str(), nullptr, LOAD_WITH_ALTERED_SEARCH_PATH)
-                                   : LoadLibraryA(kOrtLib);
+    HMODULE h = nullptr;
+    if (!ort_given.empty()) {
+        // Its own directory searched first for what it needs (the Visual C++ runtime unpacked beside it, over any
+        // older one Windows has), then Windows' own: only with backslashes is the directory found.
+        std::string p = ort_given;
+        for (char& c : p)
+            if (c == '/') c = '\\';
+        h = LoadLibraryExA(p.c_str(), nullptr, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
+        if (!h) h = LoadLibraryExA(p.c_str(), nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
+    } else {
+        h = LoadLibraryA(kOrtLib);
+    }
+    if (!h) {
+        const DWORD code = GetLastError();
+        char msg[512] = "";
+        FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, code, 0, msg, sizeof msg, nullptr);
+        std::string m(msg);
+        while (!m.empty() && (m.back() == '\r' || m.back() == '\n' || m.back() == ' ' || m.back() == '.')) m.pop_back();
+        sys_err = "Windows error " + std::to_string(code) + (m.empty() ? "" : ": " + m);
+    }
     if (h) fn = reinterpret_cast<void*>(GetProcAddress(h, "OrtGetApiBase"));
 #else
     void* h = nullptr;
@@ -65,10 +84,14 @@ const OrtApi* ort_api(std::string& err) {
         }
         if (!h) h = dlopen(kOrtLib, RTLD_NOW | RTLD_LOCAL);
     }
+    if (!h) {
+        const char* e = dlerror();
+        if (e) sys_err = e;
+    }
     if (h) fn = dlsym(h, "OrtGetApiBase");
 #endif
     if (!fn && !ort_given.empty()) {
-        why = "cannot load ONNX Runtime from " + ort_given;
+        why = "cannot load ONNX Runtime from " + ort_given + (sys_err.empty() ? "" : " (" + sys_err + ")");
     } else if (!fn) {
         why = std::string("ONNX Runtime not found: put ") + kOrtLib +
               " (its official release, 1.31.1 or newer) beside the program or on the library path";
@@ -81,6 +104,11 @@ const OrtApi* ort_api(std::string& err) {
     return api;
 }
 
+}  // namespace
+
+const OrtApi* ort_api_shared(std::string& err) { return ort_api(err); }
+
+namespace {
 constexpr int kNBB = 3200;  // the baseband the features read (cd0's length)
 constexpr int kNN = 79, kSps = 32, kNbinLo = -4, kNbins = 24, kNFEAT = 2 * kNbins;
 
@@ -240,6 +268,10 @@ bool NnMetric::llr(const std::complex<float>* cd0, int n, int ibest, float out[1
 
 #else
 
+const OrtApi* ort_api_shared(std::string& err) {
+    err = "this build has no ONNX Runtime (WebAssembly)";
+    return nullptr;
+}
 struct NnMetric::Impl {};
 
 std::unique_ptr<NnMetric> NnMetric::open(const std::string&, std::string& err) {

@@ -12,7 +12,13 @@
 #include <memory>
 #include <string>
 
+struct OrtApi;
+
 namespace ft8 {
+
+// ONNX Runtime's API, its library loaded once (NnMetric::use_library's, else beside the program or on the library
+// path), for any model the program runs (cw_nn.h too); null with the reason in err.
+const OrtApi* ort_api_shared(std::string& err);
 
 class NnMetric {
 public:

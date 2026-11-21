@@ -167,10 +167,17 @@ ort_pack() {  # ort_pack PLATFORM DIST: DIST/onnxruntime-PLATFORM.tgz or .zip
     cp "$t/$name/lib/$lib" "$t/p/$out"
     cp "$t/$name/LICENSE" "$t/p/onnxruntime-LICENSE.txt"
     cp "$t/$name/ThirdPartyNotices.txt" "$t/p/onnxruntime-ThirdPartyNotices.txt"
+    # Windows: the Visual C++ runtime onnxruntime.dll needs (Microsoft's DLLs, third_party/vcruntime), beside it:
+    # Windows has none until something installs it.
+    local vcrt=()
+    if [ "$ext" = zip ]; then
+        vcrt=(msvcp140.dll msvcp140_1.dll vcruntime140.dll vcruntime140_1.dll)
+        (cd "$root/third_party/vcruntime" && cp "${vcrt[@]}" "$t/p/")
+    fi
     rm -f "$dist/onnxruntime-$platform.$ext"
     case "$ext" in
         tgz) tar czf "$dist/onnxruntime-$platform.tgz" --owner=0 --group=0 -C "$t/p" "$out" onnxruntime-LICENSE.txt onnxruntime-ThirdPartyNotices.txt ;;
-        zip) (cd "$t/p" && zip -qX "$dist/onnxruntime-$platform.zip" "$out" onnxruntime-LICENSE.txt onnxruntime-ThirdPartyNotices.txt) ;;
+        zip) (cd "$t/p" && zip -qX "$dist/onnxruntime-$platform.zip" "$out" "${vcrt[@]}" onnxruntime-LICENSE.txt onnxruntime-ThirdPartyNotices.txt) ;;
     esac
     rm -rf "$t"
 }
@@ -180,7 +187,9 @@ ort_pack() {  # ort_pack PLATFORM DIST: DIST/onnxruntime-PLATFORM.tgz or .zip
 # nn_check JT9 LIBDIR WORK [wine]
 nn_check() {
     local jt9=$1 libdir=$2 work=$3 run=() wav=$root/recordings/ft8-real/261012_125100.wav plain nn
-    [ "${4:-}" = wine ] && run=(env WINEPREFIX="$build/wineprefix" WINEDEBUG=-all wine)
+    # wine: its own Visual C++ runtime off, so the packed one must be what is loaded (as on a Windows without it)
+    [ "${4:-}" = wine ] && run=(env WINEPREFIX="$build/wineprefix" WINEDEBUG=-all
+        WINEDLLOVERRIDES="msvcp140,msvcp140_1,vcruntime140,vcruntime140_1=n" wine)
     rm -rf "$work"; mkdir -p "$work/plain" "$work/nn"
     cp "$jt9" "$libdir"/* "$root/models/ft8nn-jt9.onnx" "$work/nn/"
     cp "$jt9" "$work/plain/"
@@ -198,7 +207,7 @@ section_for() {
     case "$platform" in
         linux-x86_64) needs="an x86-64 CPU with AVX2 (Intel since Haswell, AMD since Zen); nothing else to install (for jt9 --nn, ft8nn-jt9.onnx and onnxruntime-linux-x86_64.tgz's library beside jt9)" ;;
         linux-aarch64) needs="64-bit ARM (a Raspberry Pi 4 or 5 on a 64-bit OS, for one); nothing else to install (for jt9 --nn, ft8nn-jt9.onnx and onnxruntime-linux-aarch64.tgz's library beside jt9)" ;;
-        windows-x86_64) needs="64-bit Windows 10 or 11 on an x86-64 CPU with AVX2; nothing else to install (for jt9 --nn, ft8nn-jt9.onnx and onnxruntime-windows-x86_64.zip's DLL beside jt9.exe)" ;;
+        windows-x86_64) needs="64-bit Windows 10 or 11 on an x86-64 CPU with AVX2; nothing else to install (for jt9 --nn, ft8nn-jt9.onnx and onnxruntime-windows-x86_64.zip's DLLs beside jt9.exe)" ;;
         wasm) needs="a browser or Node 18 or later" ;;
         *) needs="an ${platform#*-} CPU" ;;
     esac
@@ -383,7 +392,7 @@ windows_build() {
         say "checking jt9.exe --nn with the packed ONNX Runtime under wine"
         ort_pack windows-x86_64 "$dist"
         rm -rf "$build/ort-windows"; mkdir -p "$build/ort-windows"
-        unzip -q "$dist/onnxruntime-windows-x86_64.zip" onnxruntime.dll -d "$build/ort-windows"
+        unzip -q "$dist/onnxruntime-windows-x86_64.zip" '*.dll' -d "$build/ort-windows"
         nn_check "$wbuild/jt9-windows-x86_64.exe" "$build/ort-windows" "$build/nn-check-wine" wine
     else
         echo "wine is not installed: wsprd.exe and jt9.exe are built but not checked"

@@ -67,7 +67,7 @@ your operating system and CPU from the
 | `jt9-wasm.tgz` | the FT8, FT4, FT2 and MSK144 decoders in WebAssembly, for JavaScript (a browser, a Web Worker or Node): see [WebAssembly](#webassembly-wspr-ft8-ft4-and-ft2-in-javascript) |
 | `wsprd-wasm.tgz` | `wsprd` in WebAssembly, for JavaScript likewise |
 | `ft8nn-jt9.onnx` | the model for `jt9 -8 --nn` (optional): see [--nn](#--nn-a-neural-network-for-the-ft8-signals-missed) |
-| `onnxruntime-linux-x86_64.tgz`, `onnxruntime-linux-aarch64.tgz`, `onnxruntime-windows-x86_64.zip` | ONNX Runtime's library, for `jt9 --nn` only: unpack it beside `jt9` |
+| `onnxruntime-linux-x86_64.tgz`, `onnxruntime-linux-aarch64.tgz`, `onnxruntime-windows-x86_64.zip` | ONNX Runtime's library, for `jt9 --nn` only: unpack it beside `jt9` (on Windows with the Visual C++ runtime DLLs it needs) |
 
 **The CPU: the prebuilt binaries need AVX2 on x86-64 (Linux and Windows)
 and NEON on ARM.** The decoder's searches run eight lanes at a time with
