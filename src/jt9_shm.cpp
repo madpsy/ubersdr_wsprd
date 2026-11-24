@@ -138,6 +138,8 @@ int run(const Options& o, const std::string& cwd, std::ostream& out, std::ostrea
         } else {
             ft8::Params p = params_of(q);
             p.fast_subtract = o.fast_subtract;
+            p.nn = o.nn;
+            p.nn_level = o.nn_level;
             if (q.nmode == 8) {
                 if (!ft8dec) ft8dec = std::make_unique<ft8::Decoder>();
                 if (q.ndiskdat && !q.nagain) {
