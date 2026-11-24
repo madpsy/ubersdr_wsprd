@@ -42,6 +42,7 @@ struct FileMode {
     std::string mycall = "K1ABC", hiscall = "W9XYZ";  // -c, -x as read ("b": none)
     Options::Spread spread = Options::Spread::Fast;   // --spread
     bool fine_freq = false;                           // --fine-freq
+    std::string carrier_dir;                          // --carrier-dir: each decode's carrier (carrier_iq.h)
 };
 int run_files(const FileMode& fm, const std::vector<std::string>& files, const std::string& cwd, std::ostream& out,
               std::ostream& err);

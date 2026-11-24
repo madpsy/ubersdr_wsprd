@@ -55,6 +55,8 @@ endif()
 # (vmulq/vaddq, never vfmaq/vmlaq) stays the plain code's. Check an aarch64
 # build's objects with objdump -d: no fmla/fmls/fmadd/fmsub/fnmadd/fnmsub.
 set(WSPRD_SOURCES src/wsprd.cpp src/wsprd_osd.cpp src/wsprd_fano.cpp src/wsprd_unpack.cpp src/wsprd_files.cpp)
+# Not WSJT-X's: a decode's carrier, its modulation taken off (wsprd -I, jt9 --carrier-dir)
+set(CARRIER_SOURCES src/carrier_iq.cpp)
 set_source_files_properties(${WSPRD_SOURCES} PROPERTIES COMPILE_OPTIONS "-ffp-contract=off")
 
 # The release's tag (build.sh), else dev-<commit>: wsprd --version.
@@ -73,7 +75,7 @@ if(NOT WSPRD_VERSION_BUILT)
 endif()
 message(STATUS "wsprd version: ${WSPRD_VERSION_BUILT}")
 
-add_executable(wsprd src/wsprd_main.cpp ${WSPRD_SOURCES} src/fft.cpp src/fft_wisdom.cpp)
+add_executable(wsprd src/wsprd_main.cpp ${WSPRD_SOURCES} ${CARRIER_SOURCES} src/fft.cpp src/fft_wisdom.cpp)
 target_include_directories(wsprd PRIVATE src)
 target_link_libraries(wsprd PRIVATE ${WSPRD_FFTW} Threads::Threads)
 target_compile_definitions(wsprd PRIVATE WSPRD_VERSION="${WSPRD_VERSION_BUILT}")
@@ -115,7 +117,7 @@ set_source_files_properties(${FT2_SOURCES} PROPERTIES COMPILE_OPTIONS "${FT8_FP_
 # MSK144: WSJT-X 3.2.0-rc1's decoder, line for line (README, "jt9: MSK144")
 set(MSK144_SOURCES src/msk144_ldpc.cpp src/msk_frontend.cpp src/msk144_sync.cpp src/msk144_decode.cpp src/msk40.cpp src/msk144.cpp src/msk144_jt9.cpp)
 set_source_files_properties(${MSK144_SOURCES} PROPERTIES COMPILE_OPTIONS "${FT8_FP_OPTIONS}")
-add_executable(jt9 src/jt9_main.cpp src/jt9_cli.cpp src/jt9_shm.cpp ${FST4W_SOURCES} ${FT8_SOURCES} ${FT_FAST_SOURCES} ${FT4_SOURCES} ${FT2_SOURCES} ${MSK144_SOURCES}
+add_executable(jt9 src/jt9_main.cpp src/jt9_cli.cpp src/jt9_shm.cpp ${FST4W_SOURCES} ${CARRIER_SOURCES} ${FT8_SOURCES} ${FT_FAST_SOURCES} ${FT4_SOURCES} ${FT2_SOURCES} ${MSK144_SOURCES}
   src/ft8_maths.cpp src/ft8_jt9.cpp
   src/wsprd_osd.cpp src/fft.cpp src/fft_wisdom.cpp)
 target_include_directories(jt9 PRIVATE src)
