@@ -14,8 +14,11 @@
 // waiting.
 #pragma once
 
+#include <memory>
 #include <ostream>
 #include <string>
+
+#include "ft8_nn.h"
 
 namespace jt9_shm {
 
@@ -23,6 +26,8 @@ struct Options {
     std::string key;       // -s
     std::string temp_dir;  // -t: decoded.txt's
     bool fast_subtract = false;  // ours, --fast-subtract: not in the memory's params, so taken from the command line
+    std::shared_ptr<ft8::NnMetric> nn;  // ours, --nn MODEL (FT8): likewise from the command line; null: none
+    int nn_level = 1;                   // ours, --nn-level N (1 or 2)
     std::string program = "jt9";
 };
 
