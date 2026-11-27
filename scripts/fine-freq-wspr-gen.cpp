@@ -1,5 +1,6 @@
 // fine-freq-wspr-gen: a synthetic WSPR-2 WAV at an exact frequency, double precision.
-// usage: fine-freq-wspr-gen F_CENTRE_AUDIO_HZ SNR_DB SEED OUT.wav "CALL GRID DBM"
+// usage: fine-freq-wspr-gen F_CENTRE_AUDIO_HZ SNR_DB SEED OUT.wav "CALL GRID DBM" [DOPPLER_HZ PERIOD_S]
+// DOPPLER_HZ PERIOD_S: the frequency moved by DOPPLER_HZ*sin(2*pi*t/PERIOD_S), t from the transmission's start.
 // The centre (tone 1.5) is at F; tones 12000/8192 Hz apart, phase continuous,
 // starting 1 s into a 120 s file (DT 0). Noise: unit variance at 12 kHz, the
 // signal's power set for SNR in 2500 Hz; all times 100 into 16 bits.
@@ -14,6 +15,7 @@
 int main(int argc, char** argv) {
     if (argc < 6) { fprintf(stderr, "usage\n"); return 2; }
     double f = atof(argv[1]), snr = atof(argv[2]); unsigned seed = strtoul(argv[3], 0, 10);
+    const double dop = argc > 7 ? atof(argv[6]) : 0.0, dop_period = argc > 7 ? atof(argv[7]) : 1.0;
     std::vector<char> hashtab(32768 * 13, 0), loctab(32768 * 5, 0);
     char msg[64]; snprintf(msg, sizeof msg, "%s", argv[5]);
     unsigned char sym[162];
@@ -28,7 +30,8 @@ int main(int argc, char** argv) {
         for (int m = 0; m < 8192; m++) {
             long k = i0 + (long)i * 8192 + m;
             if (k < nmax) x[k] = A * std::cos(phi);
-            phi += twopi * (f + (sym[i] - 1.5) * baud) / fs;
+            const double t = ((double)i * 8192 + m) / fs;
+            phi += twopi * (f + dop * std::sin(twopi * t / dop_period) + (sym[i] - 1.5) * baud) / fs;
             if (phi > twopi) phi -= twopi;
         }
     std::normal_distribution<double> g(0.0, 1.0);

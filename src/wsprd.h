@@ -32,6 +32,7 @@
 #include <cstdio>
 #include <functional>
 #include <memory>
+#include <complex>
 #include <string>
 #include <vector>
 
@@ -75,6 +76,9 @@ struct Options {
     // frequency then printed %13.9f (wsprd's %11.7f). Needs the spread
     // (Options::spread); a decode without one keeps wsprd's frequency.
     bool fine_freq = false;
+    // Not wsprd's: -I DIR, each WSPR-2 decode's carrier (carrier_iq.h) written
+    // to DIR as CALL_FREQ.wav. Empty: none made.
+    std::string carrier_dir;
 };
 
 // usage() as wsprd prints it (to stdout); with_n with an -n line after
@@ -121,6 +125,12 @@ struct Decode {
     // Not wsprd's: the half-power point's offset from wsprd's frequency, Hz
     // (Options::fine_freq adds it to freq); -999 none.
     float fmid_fine = -999;
+    // Not wsprd's: with Options::carrier_dir, the decode's carrier
+    // (carrier_iq.h) at carrier::RATE_HZ from carrier_t0 s into the input,
+    // against a reference at carrier_ref_hz (audio, the centre) with no
+    // drift. Empty otherwise (and for WSPR-15).
+    std::vector<std::complex<float>> carrier;
+    double carrier_t0 = 0, carrier_ref_hz = 0;
     // The message's fields: callsign ("<...>" for an unknown hash), grid
     // (empty for type 2, 6 characters for type 3), power in dBm.
     std::string callsign;

@@ -14,6 +14,7 @@
 // than the data directory. getopt is parse_args() here; the input's FFTs
 // (readwavfile, pcm_to_iq) are Decoder::decode_wav's.
 #include "wsprd.h"
+#include "carrier_iq.h"
 #include "wsprd_internal.h"
 
 #include <cerrno>
@@ -81,6 +82,7 @@ std::string usage(bool with_n)
     s += "       -z x (x is fano metric table bias, default is 0.45)\n";
     if (with_n) s += "       -n no drift, does not attempt to follow a drifting frequency\n";
     s += "       -F fine frequency: each decode's frequency measured to 0.001 Hz, ALL_WSPR.TXT's printed %13.9f\n";
+    s += "       -I dir: write each decode's carrier, modulation removed, as an IQ .wav in dir\n";
     s += "       -0 streaming mode: read PCM audio from stdin per the\n";
     s += "          streaming framing protocol; emit decodes as NDJSON\n";
     s += "          on stdout. Replaces the positional\n";
@@ -90,7 +92,7 @@ std::string usage(bool with_n)
 
 bool parse_args(const std::vector<std::string>& args, Options* opt, std::string* error, const std::string& prog,
                 bool with_n) {
-    const char* optstring = with_n ? "a:BcC:de:Ff:HJmno:qstwvz:0" : "a:BcC:de:Ff:HJmo:qstwvz:0";
+    const char* optstring = with_n ? "a:BcC:de:Ff:HI:Jmno:qstwvz:0" : "a:BcC:de:Ff:HI:Jmo:qstwvz:0";
     *opt = Options();
     if (error) error->clear();
     auto apply = [opt](char c, const char* optarg) {
@@ -122,6 +124,9 @@ bool parse_args(const std::vector<std::string>& args, Options* opt, std::string*
                 break;
             case 'J': //Stack (Jelinek) decoder, Fano decoder is the default
                 opt->stackdecoder = 1;
+                break;
+            case 'I':  // not wsprd's: each decode's carrier to this directory
+                opt->carrier_dir = optarg;
                 break;
             case 'F':  // not wsprd's: frequency to 0.001 Hz (Options::fine_freq)
                 opt->fine_freq = true;
@@ -214,6 +219,26 @@ std::string stdout_line(const Decode& d) {
     return format("%4s %3.0f %4.1f %10.6f %2d  %-s \n",
                   d.time.c_str(), d.snr, d.dt, d.freq,
                   (int)d.drift, d.message.c_str());
+}
+
+// Not wsprd's: -I's file for a decode (carrier_iq.h), its particulars as JSON.
+void write_carrier(const Io& io, const Options& opt, const Decode& d, const char* infile) {
+    const std::string name = carrier::file_name(d.message, d.carrier_ref_hz);
+    if (name.empty()) return;
+    std::string src = infile ? infile : "";
+    if (src.find('/') != std::string::npos) src = src.substr(src.rfind('/') + 1);
+    const std::string json = format(
+        "{\"decoder\":\"wsprd\",\"mode\":\"WSPR-2\",\"source\":%s,\"date\":%s,\"time\":%s,\"message\":%s,"
+        "\"snr\":%.0f,\"dt\":%.2f,\"drift_hz\":%.1f,\"dial_mhz\":%.6f,\"ref_hz\":%.6f,\"ref_tone\":\"centre\","
+        "\"fine_hz\":%s,\"w50_hz\":%.4f,\"t0_s\":%.6f,\"rate_hz\":%u}",
+        carrier::json_string(src).c_str(), carrier::json_string(d.date).c_str(), carrier::json_string(d.time).c_str(),
+        carrier::json_string(d.message).c_str(), d.snr, d.dt, d.drift, opt.dialfreq, d.carrier_ref_hz,
+        d.fmid_fine != -999 ? format("%.6f", d.carrier_ref_hz + d.fmid_fine).c_str() : "null", d.spread,
+        d.carrier_t0, carrier::RATE_HZ);
+    std::string err;
+    const std::string dir = opt.carrier_dir[0] == '/' || io.cwd.empty() ? opt.carrier_dir : io.cwd + "/" + opt.carrier_dir;
+    if (!carrier::write_wav(dir + "/" + name, d.carrier, carrier::RATE_HZ, json, &err))
+        io.err(format("wsprd: %s\n", err.c_str()));
 }
 
 std::string all_wspr_line(const Decode& d, bool with_spread, bool fine_freq) {
@@ -1096,6 +1121,7 @@ int run(const std::vector<std::string>& argv, const Io& io)
         if (crash == AT_PRINT) return crashed();
         put(fall_wspr, held_all, all_wspr_line(d, opt.nodrift, opt.fine_freq));
         put(fwsprd, held_spots, spots_line(d));
+        if (!opt.carrier_dir.empty() && !d.carrier.empty()) write_carrier(io, opt, d, ptr_to_infile);
     }
     if (opt.stream_mode) {
         wsprd_stream_emit_decode_finished(io, date, uttime);

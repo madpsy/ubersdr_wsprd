@@ -92,6 +92,10 @@ const Opt OPTS[] = {
      "Ours (FST4W): fst4_decodes.dat's fsig as the signal's measured frequency, fsig plus the power midpoint "
      "of dopspread's spectrum, to 0.001 Hz (f9.3, not jt9's f7.1); needs plotspec",
      ""},
+    {"carrier-dir", true, 0,
+     "Ours (FST4W): write each decode's carrier, its modulation taken off, as a 2-channel float IQ .wav "
+     "(15 Hz, +-7.5 Hz) in DIR, with the decode's particulars as JSON in its comment",
+     "DIR"},
     {"spread", true, 0,
      "FST4W's spread (w50): fast (default: within 0.0001 Hz of jt9's, several times cheaper), exact (jt9's, "
      "bit for bit) or off (none)",
@@ -392,6 +396,10 @@ int run(const std::vector<std::string>& args, const std::string& cwd, std::ostre
         }
         if (g.opt && !g.opt->chr && std::strcmp(g.opt->name, "msk-swl") == 0) {
             f8.msk_swl = true;
+            continue;
+        }
+        if (g.opt && !g.opt->chr && std::strcmp(g.opt->name, "carrier-dir") == 0) {
+            fm.carrier_dir = v;
             continue;
         }
         if (g.opt && !g.opt->chr && std::strcmp(g.opt->name, "fine-freq") == 0) {

@@ -3,6 +3,7 @@
 // FST4W call, <DecodeFinished>), decoder_callbacks.f90's fst4_decoded and
 // fst4_decode.f90's file writes, at 567ad29ce.
 #include "fst4w_jt9.h"
+#include "carrier_iq.h"
 
 #include <algorithm>
 #include <cmath>
@@ -103,6 +104,17 @@ bool jt9_samples(const int16_t* samples, size_t n, int trperiod, std::vector<int
         sum = sum + x * x;
     }
     return !(std::sqrt(sum / 180000.0f) < 0.5f);
+}
+
+// A message with its trailing blanks gone.
+std::string rtrim_copy(std::string s) {
+    while (!s.empty() && s.back() == ' ') s.pop_back();
+    return s;
+}
+std::string fine_str(double v) {
+    char b[32];
+    std::snprintf(b, sizeof b, "%.6f", v);
+    return b;
 }
 
 std::string decodes_dat_line(const Result& r, bool fine_freq) {
@@ -214,6 +226,7 @@ int run_files(const FileMode& fm, const std::vector<std::string>& files, const s
             o.plotspec = exists(join(cwd, "plotspec"));
             o.decdata = exists(join(data_dir, "decdata"));
             o.spread = spread;
+            o.carrier = !fm.carrier_dir.empty();
             bool calls_changed = false;
             // fst4_decode has its sizes for these periods alone; on any
             // other its decode divides by a size never set, and jt9 dies:
@@ -265,6 +278,26 @@ int run_files(const FileMode& fm, const std::vector<std::string>& files, const s
                     line.replace(64, 6, w);
                 }
                 out << line << "\n";
+                if (!r.carrier.empty()) {  // --carrier-dir
+                    const std::string name = carrier::file_name(rtrim_copy(r.msg), r.fsig);
+                    if (!name.empty()) {
+                        std::string src = infile.substr(infile.find_last_of('/') == std::string::npos ? 0 : infile.find_last_of('/') + 1);
+                        char b[1024];
+                        std::snprintf(b, sizeof b,
+                                      "{\"decoder\":\"jt9\",\"mode\":\"FST4W-%d\",\"source\":%s,\"utc\":\"%0*d\",\"message\":%s,"
+                                      "\"snr\":%d,\"xsnr\":%.1f,\"dt\":%.2f,\"ref_hz\":%.6f,\"ref_tone\":\"lowest\",\"fine_hz\":%s,"
+                                      "\"w50_hz\":%.4f,\"t0_s\":%.6f,\"rate_hz\":%u}",
+                                      r.ntrperiod, carrier::json_string(src).c_str(), tw, r.nutc,
+                                      carrier::json_string(rtrim_copy(r.msg)).c_str(), r.nsnr, static_cast<double>(r.xsnr),
+                                      static_cast<double>(r.xdt), static_cast<double>(r.fsig),
+                                      r.fmid_fine != -999.0f ? fine_str(r.fsig + r.fmid_fine).c_str() : "null",
+                                      static_cast<double>(r.w50), r.carrier_t0, carrier::RATE_HZ);
+                        const std::string dir = fm.carrier_dir[0] == '/' ? fm.carrier_dir : join(cwd, fm.carrier_dir);
+                        std::string why;
+                        if (!carrier::write_wav(join(dir, name), r.carrier, carrier::RATE_HZ, b, &why))
+                            err << fm.program << ": " << why << "\n";
+                    }
+                }
                 if (decoded)
                     decoded << fortran_i(r.nutc, tw, tw) << fortran_i(std::lround(r.sync), 4) << fortran_i(r.nsnr, 5)
                             << fortran_f(r.xdt, 6, 1) << fortran_f(r.fsig, 8, 0) << fortran_i(0, 4) << "   "

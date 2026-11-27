@@ -46,6 +46,7 @@
 //   - WSPRD_TRACE=1 prints each stage to stderr, as the oracle's
 //     instrumented reference does (tests/data/wsprd/README.md), to diff.
 #include "wsprd.h"
+#include "carrier_iq.h"
 
 #include <algorithm>
 #include <cmath>
@@ -1606,8 +1607,11 @@ void spread_gain(const float *id, const float *qd, long np, float f0, int shift0
 // subtracted from id/qd), its saved products s*conj(r) are turned by the
 // float phase's error, phi_float - phi_double, sample by sample (phi_float
 // made as subtract_signal2 makes it); else the product is made here.
+// drift_ref: the exact reference's drift (-F: drift0; the carrier, 0, so
+// a drift stays in what is left, as the path's).
 void spread_gain_precise(const float *id, const float *qd, long np, float f0, int shift0, float drift0,
-                         const unsigned char* channel_symbols, const SubScratch* sub, std::complex<float>* g)
+                         const unsigned char* channel_symbols, const SubScratch* sub, std::complex<float>* g,
+                         float drift_ref)
 {
     const int nsym=162, nspersym=256;
     // subtract_signal2's phase, operation for operation
@@ -1623,7 +1627,7 @@ void spread_gain_precise(const float *id, const float *qd, long np, float f0, in
          f0 + (drift0/2.0)*((float)i-(float)nsym/2.0)/((float)nsym/2.0)
          + (cs-1.5)*df
          );
-        const double ddphi=dtwopi*ddt*((double)f0 + ((double)drift0/2.0)*((double)i-(double)nsym/2.0)/((double)nsym/2.0)
+        const double ddphi=dtwopi*ddt*((double)f0 + ((double)drift_ref/2.0)*((double)i-(double)nsym/2.0)/((double)nsym/2.0)
                                        + ((double)channel_symbols[i]-1.5)*ddf);
         for (int j=0; j<nspersym; j++) {
             const int k=shift0+nspersym*i+j;
@@ -1742,10 +1746,24 @@ float decode_spread(SpreadScratch& sc, int wspr_type, const float *id, const flo
     const float w50=dopspread(*sc.fft, fs, nullptr);
     if (fmid_fine) {  // -F: the same spectrum from a reference made in double (spread_gain_precise)
         std::fill(g, g + nfft, std::complex<float>());
-        spread_gain_precise(id, qd, std::min<long>(np, (long)nfft), f0, shift0, drift0, channel_symbols, sub, g);
+        spread_gain_precise(id, qd, std::min<long>(np, (long)nfft), f0, shift0, drift0, channel_symbols, sub, g, drift0);
         dopspread(*sc.fft, fs, fmid_fine);
     }
     return w50;
+}
+
+// Not wsprd's: a WSPR-2 decode's carrier (carrier_iq.h): the samples (np at
+// 375 Hz) times the conjugate of the decoded signal's reference at f0 with
+// no drift, over the transmission from shift0, decimated by 25 to 15 Hz.
+std::vector<std::complex<float>> wspr_carrier(const float *id, const float *qd, long np, float f0, int shift0,
+                                              float drift0, const unsigned char* channel_symbols, const SubScratch* sub)
+{
+    std::vector<std::complex<float>> g((size_t)np);
+    spread_gain_precise(id, qd, np, f0, shift0, drift0, channel_symbols, sub, g.data(), 0.0f);
+    const long nsig=162L*256, first=std::max(0, shift0), last=std::min(np, (long)shift0+nsig);
+    if (last <= first) return {};
+    static_assert(375 % carrier::RATE_HZ == 0, "wsprd's 375 Hz to the carrier's rate");
+    return carrier::decimate(g.data()+first, last-first, 375.0, 375/(int)carrier::RATE_HZ, 6.0, 9.0);
 }
 
 unsigned int count_hard_errors( unsigned char *symbols, unsigned char *channel_symbols)
@@ -1772,7 +1790,9 @@ struct result { char date[7]; char time[5]; float sync; float snr;
     unsigned int cycles; int jitter; int blocksize; unsigned int metric;
     int nhardmin; int ipass; int decodetype;
     float spread;  // not wsprd's: Decode::spread
-    float fmid_fine;};  // not wsprd's: Decode::fmid_fine
+    float fmid_fine;  // not wsprd's: Decode::fmid_fine
+    std::vector<std::complex<float>> carrier;  // not wsprd's: Decode::carrier
+    double carrier_t0, carrier_ref_hz;};
 
 // The message's fields for Decode.
 void split_message(Decode& d) {
@@ -2544,6 +2564,21 @@ void Decoder::Impl::decode(const Options& opt, char* hashtab, char* loctab, unsi
                         if (fine && *fine != -999.0f)
                             decodes[uniques-1].freq=freq_print+(double)*fine/1e6;
                     }
+                    decodes[uniques-1].carrier.clear();
+                    decodes[uniques-1].carrier_t0=0;
+                    decodes[uniques-1].carrier_ref_hz=0;
+                    if (!opt.carrier_dir.empty() && wspr_type == 2) {
+                        unsigned char own[162];
+                        const unsigned char* syms=nullptr;
+                        if (subtracted) syms=channel_symbols;
+                        else if (get_wspr_channel_symbols(call_loc_pow, hashtab, loctab, own)) syms=own;
+                        if (syms) {
+                            decodes[uniques-1].carrier=wspr_carrier(idat, qdat, npoints, f1, shift1, drift1, syms,
+                                                                    subtracted ? &sub : nullptr);
+                            decodes[uniques-1].carrier_t0=(double)std::max(0, shift1)/375.0;
+                            decodes[uniques-1].carrier_ref_hz=1500.0+(double)f1;
+                        }
+                    }
                 }
             }
         }
@@ -2590,6 +2625,9 @@ stopped:
         d.decodetype = decodes[i].decodetype;
         d.spread = decodes[i].spread;
         d.fmid_fine = decodes[i].fmid_fine;
+        d.carrier = std::move(decodes[i].carrier);
+        d.carrier_t0 = decodes[i].carrier_t0;
+        d.carrier_ref_hz = decodes[i].carrier_ref_hz;
         split_message(d);
         res.decodes.push_back(std::move(d));
     }

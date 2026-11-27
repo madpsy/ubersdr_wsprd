@@ -7,6 +7,7 @@
 // Steven Franke, K9AN, and Joe Taylor, K1JT, WSJT-X (GNU GPL v3), and so is
 // this.
 #include "fst4w.h"
+#include "carrier_iq.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -173,6 +174,9 @@ struct Decoder::Impl {
     void dopspread(const int* itone, const Sample* iwave, int nsps, int nmax, int ndown, int hmod, int i0, float fc,
                    float& fmid, float& w50, std::vector<std::pair<float, float>>* spectrum, bool fast = false,
                    bool count = true, float* fmid_fine = nullptr);
+    template <class Sample>
+    std::vector<std::complex<float>> carrier_iq(const int* itone, const Sample* iwave, int nsps, int nmax, int hmod,
+                                                long s0, float fc);
     template <class Sample>
     void decode(Sample* iwave, int nutc, const Options& o, const std::function<void(const Result&)>& on_result,
                 bool* calls_changed);
@@ -413,6 +417,30 @@ void Decoder::Impl::dopspread(const int* itone, const Sample* iwave, int nsps, i
             spectrum->emplace_back(static_cast<float>(i) * df, y);
         }
     }
+}
+
+// Ours: the decoded signal's carrier (carrier_iq.h): the samples from s0 (the
+// transmission's start, 12 kHz) times the conjugate of its reference at fc
+// (gen_fst4wave's, as dopspread makes it), to the transmission's end,
+// low-passed and decimated 40 then 20 to 15 Hz.
+template <class Sample>
+std::vector<std::complex<float>> Decoder::Impl::carrier_iq(const int* itone, const Sample* iwave, int nsps, int nmax,
+                                                           int hmod, long s0, float fc) {
+    const int nwave = std::max(nmax, (NN + 2) * nsps);
+    std::vector<cfloat> cwave(static_cast<size_t>(nwave));
+    gen_fst4wave(itone, NN, nsps, nwave, 12000.0f, hmod, fc, cwave.data());
+    const long first = std::max(0L, s0), last = std::min(static_cast<long>(nmax), s0 + static_cast<long>(NN) * nsps);
+    if (last <= first) return {};
+    std::vector<std::complex<float>> p(static_cast<size_t>(last - first));
+    const float fac = 1.0f / 32768;
+    for (long k = first; k < last; ++k) {
+        const float x = fac * static_cast<float>(iwave[k]);
+        const cfloat r = cwave[static_cast<size_t>(k - s0)];
+        p[static_cast<size_t>(k - first)] = {x * r.real(), -x * r.imag()};
+    }
+    static_assert(12000 % (40 * carrier::RATE_HZ) == 0, "12 kHz to 300 Hz to the carrier's rate");
+    const auto a = carrier::decimate(p.data(), static_cast<long>(p.size()), 12000.0, 40, 8.0, 100.0);
+    return carrier::decimate(a.data(), static_cast<long>(a.size()), 300.0, 300 / static_cast<int>(carrier::RATE_HZ), 6.0, 9.0);
 }
 
 template <class Sample>
@@ -698,6 +726,11 @@ void Decoder::Impl::decode(Sample* iwave, int nutc, const Options& o,
                         res.ntrperiod = o.ntrperiod;
                         res.fmid = fmid;
                         res.w50 = w50;
+                        if (o.carrier) {
+                            const long s0 = static_cast<long>(isbest) * ndown;
+                            res.carrier = carrier_iq(itone, iwave, nsps, nmax, hmod, s0, fc_synced);
+                            res.carrier_t0 = static_cast<double>(std::max(0L, s0)) / 12000.0;
+                        }
                         if (o.decdata) {
                             int nhp = 0;
                             float hd = 0.0f;

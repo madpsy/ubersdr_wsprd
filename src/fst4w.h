@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <complex>
 #include <string>
 #include <vector>
 
@@ -54,6 +55,9 @@ struct Options {
     // file still split it as before. Needs dopspread (plotspec, spread not
     // Off): without it fsig is written as jt9 writes it.
     bool fine_freq = false;
+    // Ours (--carrier-dir): each decode's carrier (carrier_iq.h) in
+    // Result::carrier. Off: none made.
+    bool carrier = false;
 };
 
 // One decode, as fst4_decode hands it to its callback and writes it to
@@ -77,6 +81,11 @@ struct Result {
     // threshold down to 3 dB above it, its printed 0.001 Hz the larger part
     // (scripts/fine-freq-check.sh). -999 without dopspread.
     float fmid_fine = -999.0f;
+    // Ours, with Options::carrier: the carrier (carrier_iq.h), the samples
+    // times the conjugate of the decoded signal's reference at fsig, at
+    // carrier::RATE_HZ from carrier_t0 s into the period. Empty otherwise.
+    std::vector<std::complex<float>> carrier;
+    double carrier_t0 = 0;
     // fst4_decodes.dat's fields (written when Options::decdata).
     int icand = 0, itry = 0, nsyncoh = 0, iaptype = 0, ijitter = 0, npct = 0, ntype = 0, keff = 0, nsync_qual = 0,
         nharderrors = 0, nhp = 0;
