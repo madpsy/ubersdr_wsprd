@@ -66,7 +66,7 @@ fi
 
 # The FT decoders' sources (what jt9_cli.cpp reaches), jt9_shm.cpp replaced.
 decoders=(
-    fft.cpp fst4w.cpp fst4w_frontend.cpp fst4w_jt9.cpp fst4w_ldpc.cpp fst4w_unpack.cpp
+    carrier_iq.cpp fft.cpp fst4w.cpp fst4w_frontend.cpp fst4w_jt9.cpp fst4w_ldpc.cpp fst4w_unpack.cpp
     ft2.cpp ft2_jt9.cpp ft4.cpp ft4_frontend.cpp ft4_jt9.cpp
     ft8.cpp ft8_frontend.cpp ft8_jt9.cpp ft8_ldpc.cpp ft8_nn.cpp ft8_maths.cpp
     ft_fast_subtract.cpp packjt77.cpp wsprd_osd.cpp
@@ -78,7 +78,7 @@ done
 for f in ft2_sync.cpp ft4_candidates.cpp ft4_metrics.cpp ft4_sync.cpp ft4_wave.cpp; do
     [ -f "$root/src/$f" ] && decoders+=("$f")
 done
-# wsprd's (fft_wisdom.cpp: no wisdom file of its own; wsprd_osd.cpp above).
+# wsprd's (fft_wisdom.cpp: no wisdom file of its own; wsprd_osd.cpp and carrier_iq.cpp above).
 wsprd_sources=(wsprd.cpp wsprd_fano.cpp wsprd_unpack.cpp wsprd_files.cpp)
 wisdom=$root/src/fft_wisdom.cpp
 [ -f "$root/wsprd/src/fft_wisdom.cpp" ] && wisdom=$root/wsprd/src/fft_wisdom.cpp
@@ -140,9 +140,9 @@ mkdir -p "$dist/jt9" "$dist/wsprd"
 em++ "$objs/ft_wasm.o" "${lib_objs[@]}" "${ldflags[@]}" "${es6[@]}" -sEXPORT_NAME=createFt -o "$dist/jt9/ft.mjs"
 em++ "$objs/jt9_main.o" "$objs/jt9_cli.o" "$objs/jt9_shm_none.o" "${lib_objs[@]}" "${ldflags[@]}" "${cli[@]}" \
     -o "$dist/jt9/jt9.cjs"
-em++ "$objs/wspr_wasm.o" "${wsprd_objs[@]}" "$objs/wsprd_osd.o" "$objs/fft.o" "$objs/fft_wisdom.o" \
+em++ "$objs/wspr_wasm.o" "${wsprd_objs[@]}" "$objs/wsprd_osd.o" "$objs/carrier_iq.o" "$objs/fft.o" "$objs/fft_wisdom.o" \
     "${ldflags[@]}" "${es6[@]}" -sEXPORT_NAME=createWspr -o "$dist/wsprd/wspr.mjs"
-em++ "$objs/wsprd_main.o" "${wsprd_objs[@]}" "$objs/wsprd_osd.o" "$objs/fft.o" "$objs/fft_wisdom.o" \
+em++ "$objs/wsprd_main.o" "${wsprd_objs[@]}" "$objs/wsprd_osd.o" "$objs/carrier_iq.o" "$objs/fft.o" "$objs/fft_wisdom.o" \
     "${ldflags[@]}" "${cli[@]}" -o "$dist/wsprd/wsprd.cjs"
 
 # package.json's: vYYYY.MM.DD[-N] as YYYY.MM.DD[-N], anything else 0.0.0-dev

@@ -141,6 +141,7 @@ wsprd [options...] infile        (infile: a .wav or .c2)
   -z x       fano metric table bias, default is 0.45
   -n         no drift, does not attempt to follow a drifting frequency
   -F         fine frequency: each decode's frequency measured to 0.001 Hz
+  -I dir     write each decode's carrier, modulation removed, as an IQ .wav in dir
   -0         streaming mode: PCM audio on stdin, decodes as NDJSON on stdout
 ```
 
@@ -210,6 +211,28 @@ with a spread of 0.24 Hz or more against a clean signal's 0.004: a wide
 spread marks a frequency not to trust. Without `-F` nothing differs, and the
 spread is measured as before.
 
+### `-I DIR`: each decode's carrier
+
+With `-I DIR` each WSPR-2 decode's carrier is written to `DIR` (which must
+exist): the samples times the conjugate of the decoded signal's reference
+(its tones, at its frequency, with no drift), so the modulation is gone and
+what is left is what the path did to the signal over the whole
+transmission, its Doppler shift and spread, not one frequency at its middle.
+It is low-passed and decimated to 15 Hz (complex, +-7.5 Hz around the
+reference) and written as a 2-channel 32-bit float `.wav` (I, Q), named
+`CALL_FREQ.wav` (the message's callsign, `/` as `_`, and the reference in
+audio Hz, `K1ABC_1500.124.wav`), with the decode's particulars as JSON in
+its `LIST/INFO/ICMT` comment: `t0_s` (the first sample's time into the
+file), `ref_hz`, `rate_hz`, the SNR, DT, drift, spread and, with `-F`,
+`fine_hz`. The carrier's frequency at a sample is `ref_hz` plus its
+baseband frequency. `scripts/carrier-read.py FILE.wav` prints the JSON and
+the frequency over time (`--mean` once for the whole transmission).
+
+A decode whose callsign is an unknown hash (`<...>`) has no file, nor has
+WSPR-15. The name carries no time: give each period its own directory, or a
+later period's carrier of the same station on the same frequency replaces
+the earlier one. Without `-I` nothing differs.
+
 `wsprd --version` (alone) prints the release it came from, where WSJT-X's
 would refuse `--version`.
 
@@ -250,6 +273,14 @@ spread (`plotspec`, not `--spread off`). On synthetic FST4W signals at known
 frequencies (`scripts/fine-freq-check.sh`) it is within 0.3 to 0.46 mHz RMS
 of the truth at every period, from 15 dB above the threshold to 3 dB above
 it, against about 30 mHz for the 0.1 Hz `fsig`.
+
+`--carrier-dir DIR`: each decode's carrier, as `wsprd -I DIR` writes it
+(above), from the start of the transmission to its end, against a reference
+at `fsig` (the lowest tone, `"ref_tone":"lowest"` in the JSON). The JSON's
+`fine_hz` is there with `--fine-freq`. Several files in one run write into
+the same directory, and the names carry no time, so a station decoded on the
+same frequency in a later file replaces the earlier carrier: run one period
+a directory to keep them all.
 
 `-c` and `-x` take standard calls only for FST4W.
 
@@ -587,7 +618,9 @@ then waits for `ipc[2]` to be 1 before the next; `ipc[1]` 999 ends it. FT8
 with `ndiskdat` set gets jt9's early passes (at 41 and 47 half-symbols, then
 50); without it, one pass at `nzhsym`, as WSJT-X's live decodes. `-w`, `-m`,
 `-e` and `-r` are read but change nothing (FFTW's planning is the
-decoders' own).
+decoders' own). `--fast-subtract`, `--nn` and `--nn-level` (FT8)
+are taken from `jt9`'s command line, as for files: the shared memory has
+no room for them.
 
 FT8 (`nmode` 8), FT4 (5) and FT2 (52) only. A request for another mode,
 or for FT8's multithreaded decoder (`lmultift8`), its Fox or SuperFox mode or
